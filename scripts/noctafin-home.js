@@ -2,9 +2,13 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.8.0";
+  const VERSION = "1.9.0";
   const DEFAULTS = {
     locale: "fr-FR",
+    navigation: {
+      preferHashRoutes: true,
+      serverIdFallback: ""
+    },
     brand: {
       name: "Lumo",
       logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
@@ -31,6 +35,7 @@
     taxonomyHero: { enabled: true, maxItems: 18 },
     rows: {
       rowLimit: 12,
+      dailyPoolLimit: 96,
       minItems: 2,
       dedupeNativeRows: true,
       hideNativeHomeRows: true,
@@ -50,6 +55,7 @@
   const CONFIG = {
     ...DEFAULTS,
     ...source,
+    navigation: { ...DEFAULTS.navigation, ...(source.navigation || {}) },
     brand: { ...DEFAULTS.brand, ...(source.brand || {}) },
     seasonal: { ...DEFAULTS.seasonal, ...(source.seasonal || {}) },
     hero: { ...DEFAULTS.hero, ...(source.hero || {}) },
@@ -365,6 +371,7 @@
 
   function shouldUseHomeVideo() {
     if (!CONFIG.background.video) return false;
+    if (isTaxonomyRoute()) return false;
     if (activeSeason() !== "default") return false;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
     if (!CONFIG.background.homeOnly) return true;
@@ -774,6 +781,47 @@
       .filter(Boolean);
   }
 
+  function configuredGroupIds(group, entries) {
+    const fixed = String(group?.id || "").trim();
+    const list = Array.isArray(entries) ? entries : [];
+    if (fixed) {
+      if (!list.length || list.some((entry) => String(entry?.Id || "") === fixed)) return [fixed];
+      const resolvedFallback = resolveIds(list, group?.aliases || []);
+      return resolvedFallback.length ? resolvedFallback : [fixed];
+    }
+    return resolveIds(list, group?.aliases || []);
+  }
+
+  function configuredGroupById(id, kind = "studio") {
+    const target = String(id || "").trim();
+    if (!target) return null;
+    const groups = kind === "genre"
+      ? CONFIG.genres.map((group) => ({ ...group, kind: "genre" }))
+      : [
+          ...CONFIG.studios.map((group) => ({ ...group, kind: "studio" })),
+          ...CONFIG.networks.map((group) => ({ ...group, kind: "network" }))
+        ];
+    return groups.find((group) => String(group.id || "").trim() === target) || null;
+  }
+
+  function configuredGroupByName(name) {
+    const target = norm(name);
+    if (!target) return null;
+    const groups = [
+      ...CONFIG.studios.map((group) => ({ ...group, kind: "studio" })),
+      ...CONFIG.networks.map((group) => ({ ...group, kind: "network" }))
+    ];
+    return groups.find((group) => {
+      const names = [group.label, ...(group.aliases || [])].map(norm).filter(Boolean);
+      return names.some((candidate) => candidate === target || candidate.includes(target) || target.includes(candidate));
+    }) || null;
+  }
+
+  function taxonomyEntryById(entries, id) {
+    const target = String(id || "").trim();
+    return (entries || []).find((entry) => String(entry?.Id || "").trim() === target) || null;
+  }
+
   function makeHeading(kicker, title, onTitleClick = null, actionLabel = "Voir tout") {
     const heading = document.createElement("div");
     heading.className = "noctafin-section-heading";
@@ -845,19 +893,21 @@
     const metrics = () => {
       const max = Math.max(0, track.scrollWidth - track.clientWidth);
       const first = track.firstElementChild;
-      if (!first) return { max, step: Math.max(240, track.clientWidth) };
+      if (!first) return { max, step: Math.max(1, track.clientWidth), visible: 1 };
       const style = getComputedStyle(track);
       const gap = parseFloat(style.columnGap || style.gap || "0") || 0;
       const cardWidth = first.getBoundingClientRect().width || first.clientWidth || 1;
-      const visible = clamp(Math.floor((track.clientWidth + gap + 1) / (cardWidth + gap)), 1, 12);
-      return { max, step: Math.max(cardWidth + gap, visible * (cardWidth + gap)) };
+      const advance = Math.max(1, cardWidth + gap);
+      const visible = clamp(Math.round((track.clientWidth + gap) / advance), 1, 12);
+      const pageWidth = visible * advance;
+      return { max, step: Math.max(1, pageWidth), visible };
     };
 
     const update = () => {
       const { max } = metrics();
-      const hasOverflow = max > 6;
-      const atStart = track.scrollLeft <= 4;
-      const atEnd = track.scrollLeft >= max - 4;
+      const hasOverflow = max > 8;
+      const atStart = track.scrollLeft <= 5;
+      const atEnd = track.scrollLeft >= max - 5;
       shell.classList.toggle("has-overflow", hasOverflow);
       nav.hidden = !hasOverflow;
       previous.disabled = !hasOverflow || atStart;
@@ -870,16 +920,29 @@
       button.classList.remove("is-clicked");
       void button.offsetWidth;
       button.classList.add("is-clicked");
-      setTimeout(() => button.classList.remove("is-clicked"), 190);
+      setTimeout(() => button.classList.remove("is-clicked"), 180);
     };
 
     const scrollPage = (direction, button) => {
       const { max, step } = metrics();
-      if (max <= 0) return;
-      const target = clamp(track.scrollLeft + direction * step, 0, max);
+      if (max <= 0 || step <= 0) return;
+      const current = track.scrollLeft;
+      const page = Math.round(current / step);
+      let target = clamp((page + direction) * step, 0, max);
+      if (direction > 0 && target <= current + 4) target = clamp(current + step, 0, max);
+      if (direction < 0 && target >= current - 4) target = clamp(current - step, 0, max);
       pulse(button);
-      track.scrollTo({ left: target, behavior: "smooth" });
-      setTimeout(update, 360);
+      try {
+        track.scrollTo({ left: target, top: 0, behavior: "smooth" });
+      } catch {
+        track.scrollLeft = target;
+      }
+      /* Old WebViews occasionally ignore smooth scrollTo on flex tracks.
+         Verify the destination after the animation window and correct it. */
+      setTimeout(() => {
+        if (Math.abs(track.scrollLeft - target) > 8) track.scrollLeft = target;
+        update();
+      }, 420);
     };
 
     previous.addEventListener("click", (event) => {
@@ -893,42 +956,26 @@
       scrollPage(1, next);
     });
 
-    /* Vertical wheel intent must always keep scrolling the page. A horizontal
-       track must never trap the user on the home page. */
+    /* Do not cancel wheel events. Vertical wheel/trackpad gestures bubble to
+       Jellyfin's page scroller naturally; horizontal gestures can still move
+       this rail. This avoids trapping the main page over a media row. */
     track.addEventListener("wheel", (event) => {
-      const dx = Math.abs(event.deltaX);
-      const dy = Math.abs(event.deltaY);
-      if (dy < 1 || dy <= dx * 1.15) return;
-
-      let scroller = track.parentElement;
-      while (scroller && scroller !== document.body) {
-        const css = getComputedStyle(scroller);
-        const scrollable = /(auto|scroll|overlay)/.test(css.overflowY) && scroller.scrollHeight > scroller.clientHeight + 4;
-        if (scrollable) break;
-        scroller = scroller.parentElement;
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) * 1.1) {
+        requestAnimationFrame(update);
       }
-      if (!scroller || scroller === document.body) scroller = document.scrollingElement || document.documentElement;
-      if (!scroller) return;
+    }, { passive: true });
 
-      const unit = event.deltaMode === 1 ? 32 : (event.deltaMode === 2 ? window.innerHeight : 1);
-      const delta = event.deltaY * unit;
-      if (event.cancelable) event.preventDefault();
-      if (scroller === document.scrollingElement || scroller === document.documentElement) {
-        window.scrollBy({ top: delta, behavior: "auto" });
-      } else {
-        scroller.scrollTop += delta;
-      }
-    }, { passive: false });
+    track.addEventListener("scroll", () => requestAnimationFrame(update), { passive: true });
 
-    track.addEventListener("scroll", update, { passive: true });
-
-    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(() => requestAnimationFrame(update)) : null;
+    const resizeObserver = typeof ResizeObserver === "function"
+      ? new ResizeObserver(() => requestAnimationFrame(update))
+      : null;
     resizeObserver?.observe(track);
     shell._noctafinResizeObserver = resizeObserver;
     shell._noctafinUpdateArrows = update;
     requestAnimationFrame(update);
-    setTimeout(update, 80);
-    setTimeout(update, 320);
+    setTimeout(update, 100);
+    setTimeout(update, 420);
     return { shell, track, nav, previous, next, update };
   }
 
@@ -938,14 +985,13 @@
 
 
   function navigateToNativeFilter(group, kind = "genre") {
-    if (!group?._ids?.length) return;
-    const id = group._ids.find(Boolean);
+    const id = String(group?.id || group?._ids?.find(Boolean) || "").trim();
     if (!id) return;
 
     const context = {
       kind,
       id,
-      ids: group._ids.filter(Boolean),
+      ids: [id],
       label: group.label || "",
       colors: Array.isArray(group.colors) ? group.colors.slice(0, 2) : [],
       logo: group.logo || "",
@@ -956,12 +1002,20 @@
     const params = new URLSearchParams();
     if (kind === "genre") params.set("genreId", id);
     else params.set("studioId", id);
-    params.set("type", kind === "network" ? "Series" : "Movie,Series");
-    if (auth?.serverId) params.set("serverId", auth.serverId);
-    if (group.label) params.set("name", group.label);
+    const serverId = String(auth?.serverId || CONFIG.navigation.serverIdFallback || "").trim();
+    if (serverId) params.set("serverId", serverId);
 
-    const page = isModernJellyfin() ? "/list" : "/list.html";
-    navigate(`${page}?${params.toString()}`);
+    /* Jellyfin 12's canonical list route is hash-based. Using it directly
+       avoids Dashboard.navigate version differences and produces the same
+       native URLs as Jellyfin's own studio/genre pages. */
+    const targetHash = `#/list?${params.toString()}`;
+    try {
+      if (window.location.hash === targetHash) scheduleMount();
+      else window.location.hash = targetHash;
+    } catch (error) {
+      console.warn(LOG, "Navigation taxonomie impossible", error);
+      navigate(`/list?${params.toString()}`);
+    }
   }
 
   function getRouteParams() {
@@ -973,6 +1027,23 @@
       hashParams.forEach((value, key) => { if (!params.has(key)) params.set(key, value); });
     }
     return params;
+  }
+
+  function routeParamId(params, names) {
+    for (const name of names) {
+      const raw = params.get(name);
+      if (!raw) continue;
+      const first = String(raw).split(",").map((value) => value.trim()).find(Boolean);
+      if (first) return first;
+    }
+    return "";
+  }
+
+  function isTaxonomyRoute() {
+    const params = getRouteParams();
+    const genreId = routeParamId(params, ["genreId", "GenreId", "genreIds", "GenreIds"]);
+    const studioId = routeParamId(params, ["studioId", "StudioId", "studioIds", "StudioIds"]);
+    return Boolean(genreId || studioId);
   }
 
   function taxonomyPalette(label) {
@@ -988,32 +1059,62 @@
   async function resolveTaxonomyContext() {
     if (!CONFIG.taxonomyHero.enabled) return null;
     const params = getRouteParams();
-    const genreId = params.get("genreId") || params.get("GenreId");
-    const studioId = params.get("studioId") || params.get("StudioId");
+    const genreId = routeParamId(params, ["genreId", "GenreId", "genreIds", "GenreIds"]);
+    const studioId = routeParamId(params, ["studioId", "StudioId", "studioIds", "StudioIds"]);
     if (!genreId && !studioId) return null;
 
+    const routeId = String(genreId || studioId || "").trim();
     let stored = null;
     try { stored = JSON.parse(sessionStorage.getItem("lumo.taxonomyContext") || "null"); } catch { stored = null; }
-    const routeId = genreId || studioId;
-    if (stored && (stored.id === routeId || stored.ids?.includes?.(routeId))) {
-      return { ...stored, id: routeId, ids: stored.ids?.length ? stored.ids : [routeId] };
+    if (stored && String(stored.id || "") === routeId) {
+      return { ...stored, id: routeId, ids: [routeId] };
     }
 
+    /* Static server-specific mappings are checked before the API so direct
+       links to the configured home studios always receive the right logo and
+       palette, even while /Studios is still loading. */
+    const configured = configuredGroupById(routeId, genreId ? "genre" : "studio");
+    if (configured) {
+      return {
+        kind: configured.kind || (genreId ? "genre" : "studio"),
+        id: routeId,
+        ids: [routeId],
+        label: configured.label || (genreId ? "Genre" : "Studio"),
+        colors: configured.colors || taxonomyPalette(configured.label || routeId),
+        logo: configured.logo || "",
+        logoFilter: configured.logoFilter || "none"
+      };
+    }
+
+    /* Every Jellyfin genre and studio gets a hero, not only the hand-picked
+       home shortcuts. We resolve the exact native taxonomy name by ID. */
     const taxonomy = await getTaxonomies();
     if (genreId) {
-      for (const group of CONFIG.genres) {
-        const ids = resolveIds(taxonomy.genres, group.aliases);
-        if (ids.includes(genreId)) return { kind: "genre", id: genreId, ids, label: group.label, colors: group.colors || taxonomyPalette(group.label), logo: "" };
-      }
-      return { kind: "genre", id: genreId, ids: [genreId], label: params.get("name") || "Genre", colors: taxonomyPalette(params.get("name") || genreId), logo: "" };
+      const entry = taxonomyEntryById(taxonomy.genres, routeId);
+      const label = entry?.Name || "Genre";
+      return {
+        kind: "genre",
+        id: routeId,
+        ids: [routeId],
+        label,
+        colors: taxonomyPalette(label),
+        logo: "",
+        logoFilter: "none"
+      };
     }
 
-    const groups = [...CONFIG.studios.map((g) => ({ ...g, kind: "studio" })), ...CONFIG.networks.map((g) => ({ ...g, kind: "network" }))];
-    for (const group of groups) {
-      const ids = resolveIds(taxonomy.studios, group.aliases);
-      if (ids.includes(studioId)) return { kind: group.kind, id: studioId, ids, label: group.label, colors: group.colors || taxonomyPalette(group.label), logo: group.logo || "", logoFilter: group.logoFilter || "none" };
-    }
-    return { kind: "studio", id: studioId, ids: [studioId], label: params.get("name") || "Studio", colors: taxonomyPalette(params.get("name") || studioId), logo: "", logoFilter: "none" };
+    const entry = taxonomyEntryById(taxonomy.studios, routeId);
+    const label = entry?.Name || "Studio";
+    const byName = configuredGroupByName(label);
+    return {
+      kind: byName?.kind || "studio",
+      id: routeId,
+      ids: [routeId],
+      label: byName?.label || label,
+      colors: byName?.colors || taxonomyPalette(label),
+      logo: byName?.logo || "",
+      logoFilter: byName?.logoFilter || "none"
+    };
   }
 
   function findTaxonomyHost() {
@@ -1057,8 +1158,19 @@
     $("#lumo-taxonomy-hero")?.remove();
     const root = document.documentElement;
     delete root.dataset.lumoTaxonomyKind;
+    delete root.dataset.lumoTaxonomyId;
     root.style.removeProperty("--lumo-taxonomy-a");
     root.style.removeProperty("--lumo-taxonomy-b");
+  }
+
+  function applyTaxonomyTheme(context) {
+    if (!context) return;
+    const colors = context.colors?.length >= 2 ? context.colors : taxonomyPalette(context.label);
+    const root = document.documentElement;
+    root.dataset.lumoTaxonomyKind = context.kind || "studio";
+    root.dataset.lumoTaxonomyId = context.id || "";
+    root.style.setProperty("--lumo-taxonomy-a", colors[0] || "#7c5cff");
+    root.style.setProperty("--lumo-taxonomy-b", colors[1] || colors[0] || "#25d7ff");
   }
 
   function hasBackdropArt(item) {
@@ -1164,34 +1276,47 @@
 
   async function syncTaxonomyPageHero() {
     if (!auth?.token || !auth?.userId) return;
-    if (locateHome()) {
+    if (!isTaxonomyRoute()) {
       clearTaxonomyHero();
       return;
     }
+
     const context = await resolveTaxonomyContext();
     if (!context) {
       clearTaxonomyHero();
       return;
     }
 
-    const host = findTaxonomyHost();
-    if (!host) return;
+    /* Apply the page palette immediately. Hero DOM can arrive a little later
+       while React finishes mounting the list, but the page background must
+       never flash back to the default theme. */
+    applyTaxonomyTheme(context);
+
     const key = `${context.kind}:${context.id}`;
     const existing = $("#lumo-taxonomy-hero");
-    if (existing?.isConnected && taxonomyHeroKey === key && existing.dataset.key === key) return;
+    const host = findTaxonomyHost();
+    if (!host) return;
+    if (existing?.isConnected && taxonomyHeroKey === key && existing.dataset.key === key) {
+      if (!host.contains(existing)) host.prepend(existing);
+      return;
+    }
 
     const requestId = ++taxonomyHeroRequest;
-    const item = await fetchTaxonomyHeroItem(context).catch(() => null);
-    if (requestId !== taxonomyHeroRequest) return;
+    const item = await fetchTaxonomyHeroItem(context).catch((error) => {
+      console.debug(LOG, "Hero taxonomie sans média", context.label, error);
+      return null;
+    });
+    if (requestId !== taxonomyHeroRequest || !isTaxonomyRoute()) return;
 
+    const latestContext = await resolveTaxonomyContext().catch(() => null);
+    if (!latestContext || latestContext.id !== context.id) return;
+
+    const latestHost = findTaxonomyHost();
+    if (!latestHost) return;
     $("#lumo-taxonomy-hero")?.remove();
     taxonomyHeroKey = key;
-    const colors = context.colors?.length >= 2 ? context.colors : taxonomyPalette(context.label);
-    const root = document.documentElement;
-    root.dataset.lumoTaxonomyKind = context.kind;
-    root.style.setProperty("--lumo-taxonomy-a", colors[0] || "#7c5cff");
-    root.style.setProperty("--lumo-taxonomy-b", colors[1] || colors[0] || "#25d7ff");
-    host.prepend(buildTaxonomyHero(context, item));
+    applyTaxonomyTheme(context);
+    latestHost.prepend(buildTaxonomyHero(context, item));
     syncBackgroundMedia();
   }
 
@@ -1265,11 +1390,67 @@
     return section;
   }
 
+  function localDayKey(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function hash32(value) {
+    let hash = 2166136261;
+    for (const char of String(value || "")) {
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }
+
+  function seededRandom(seed) {
+    let state = seed >>> 0;
+    return () => {
+      state += 0x6D2B79F5;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function uniqueItems(items) {
+    const seen = new Set();
+    return (items || []).filter((item) => {
+      const id = String(item?.Id || "");
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  function dailySelection(items, query, limit) {
+    const unique = uniqueItems(items);
+    const identity = JSON.stringify({
+      genreIds: [...(query.genreIds || [])].sort(),
+      studioIds: [...(query.studioIds || [])].sort(),
+      includeTypes: query.includeTypes || "Movie"
+    });
+    const seedText = `${auth?.serverId || "server"}|${auth?.userId || "user"}|${localDayKey()}|${identity}`;
+    const random = seededRandom(hash32(seedText));
+    const shuffled = unique.slice();
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, limit);
+  }
+
   async function fetchRowItems(query) {
-    /* Contract: a media rail contains at most twelve items. CSS keeps six
-       visible on desktop; the second six are reached with the rail arrows. */
+    /* Every non-resume rail exposes twelve media slots. Six are visible on
+       desktop and the second six are reached via the arrow pair. The content
+       is deterministic for the current local day, then changes next day. */
     const configuredLimit = Number(query?.limit ?? CONFIG.rows.rowLimit);
     const rowLimit = Math.max(1, Math.min(12, Number.isFinite(configuredLimit) ? configuredLimit : 12));
+
     if (query.resume) {
       const params = new URLSearchParams({
         Limit: String(rowLimit),
@@ -1281,15 +1462,18 @@
         EnableTotalRecordCount: "false"
       });
       const result = (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
-      return result.slice(0, rowLimit);
+      return uniqueItems(result).slice(0, rowLimit);
     }
 
+    const configuredPool = Number(CONFIG.rows.dailyPoolLimit) || 96;
+    const poolLimit = Math.max(rowLimit, Math.min(180, Math.max(rowLimit * 4, configuredPool)));
     const params = new URLSearchParams({
-      Limit: String(rowLimit),
+      Limit: String(poolLimit),
       Recursive: "true",
-      IncludeItemTypes: query.includeTypes || "Movie,Series",
+      IncludeItemTypes: query.includeTypes || "Movie",
       Fields: FIELDS,
-      SortBy: "Random",
+      SortBy: "DateCreated,SortName",
+      SortOrder: "Descending",
       EnableImageTypes: "Primary,Backdrop,Thumb",
       ImageTypeLimit: "2",
       EnableTotalRecordCount: "false"
@@ -1297,15 +1481,16 @@
     if (query.genreIds?.length) params.set("GenreIds", query.genreIds.join(","));
     if (query.studioIds?.length) params.set("StudioIds", query.studioIds.join(","));
 
+    let items = [];
     try {
-      const result = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
-      return result.slice(0, rowLimit);
-    } catch {
+      items = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
+    } catch (error) {
+      console.debug(LOG, "Sélection quotidienne: tri combiné indisponible, repli DateCreated", error);
       params.set("SortBy", "DateCreated");
       params.set("SortOrder", "Descending");
-      const result = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
-      return result.slice(0, rowLimit);
+      items = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
     }
+    return dailySelection(items, query, rowLimit);
   }
 
 
@@ -1452,9 +1637,9 @@
       const taxonomy = await getTaxonomies();
       if (!root.isConnected) return;
 
-      const genres = CONFIG.genres.map((group) => ({ ...group, _ids: resolveIds(taxonomy.genres, group.aliases) }));
-      const studios = CONFIG.studios.map((group) => ({ ...group, _ids: resolveIds(taxonomy.studios, group.aliases) }));
-      const networks = CONFIG.networks.map((group) => ({ ...group, _ids: resolveIds(taxonomy.studios, group.aliases) }));
+      const genres = CONFIG.genres.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.genres) }));
+      const studios = CONFIG.studios.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios) }));
+      const networks = CONFIG.networks.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios) }));
 
       const fragment = document.createDocumentFragment();
       if (CONFIG.rows.showResumeRow) {
@@ -1475,7 +1660,7 @@
             kicker: "",
             title: group.label,
             id: rowId("genre", group.label),
-            query: { genreIds: group._ids, includeTypes: "Movie,Series" },
+            query: { genreIds: group._ids, includeTypes: "Movie" },
             onTitleClick: () => navigateToNativeFilter(group, "genre")
           }));
         });
@@ -1487,7 +1672,7 @@
             kicker: "",
             title: group.label,
             id: rowId("studio", group.label),
-            query: { studioIds: group._ids, includeTypes: "Movie,Series" },
+            query: { studioIds: group._ids, includeTypes: "Movie" },
             onTitleClick: () => navigateToNativeFilter(group, "studio")
           }));
         });
@@ -1530,10 +1715,23 @@
   async function mount() {
     auth = getAuth() || auth;
     syncLumoChrome();
+
+    /* Jellyfin keeps previous pages mounted in the DOM. Route parameters are
+       therefore authoritative: a studio/genre list must never be mistaken for
+       the still-mounted home page. */
+    if (isTaxonomyRoute()) {
+      currentHome = null;
+      if (heroTimer) clearTimeout(heroTimer);
+      heroTimer = null;
+      await syncTaxonomyPageHero();
+      syncBackgroundMedia();
+      return;
+    }
+
     const found = locateHome();
     if (!found) {
       currentHome = null;
-      await syncTaxonomyPageHero();
+      clearTaxonomyHero();
       syncBackgroundMedia();
       return;
     }

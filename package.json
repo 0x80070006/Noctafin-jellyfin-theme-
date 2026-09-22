@@ -1,9 +1,9 @@
 {
   "name": "lumo-jellyfin-theme",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "description": "Lumo: cinematic Jellyfin 12 theme with seasonal branding, hero, continue-watching, genre, studio and TV network rows.",
   "scripts": {
-    "check": "node --check scripts/noctafin-config.js && node --check scripts/noctafin-home.js"
+    "check": "node --check scripts/noctafin-config.js && node --check scripts/noctafin-home.js && node scripts/validate-config.mjs"
   }
 }

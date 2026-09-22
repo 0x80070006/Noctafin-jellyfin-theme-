@@ -1,53 +1,34 @@
-# Configuration Lumo 1.7
+# Configuration Lumo
 
-La configuration dynamique est dans `scripts/noctafin-config.js`.
-
-## Fond vidéo
-
-```js
-background: {
-  video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
-  videoOpacity: 0.62,
-  overlayOpacity: 0.54,
-  homeOnly: true
-}
-```
-
-Le fond vidéo est utilisé uniquement sur l'accueil en saison `default`. Halloween et Noël gardent les fonds saisonniers statiques.
-
-## Heroes Genres / Studios
-
-```js
-taxonomyHero: {
-  enabled: true,
-  maxItems: 18
-}
-```
-
-Lumo conserve la page native Jellyfin filtrée et injecte un hero au-dessus. Le média du hero est choisi aléatoirement dans le filtre courant.
+La configuration principale se trouve dans `scripts/noctafin-config.js`.
 
 ## Rails
 
-Chaque ligne média demande au serveur **12 éléments maximum**. Sur desktop, Lumo en affiche exactement 6 par viewport : la flèche suivante révèle donc la seconde moitié de la ligne. Le responsive passe à 4 puis 2 cartes sur les écrans plus étroits. Le pas des flèches est calculé automatiquement à partir de la largeur réelle des cartes.
+```js
+rows: {
+  rowLimit: 12,
+  dailyPoolLimit: 96
+}
+```
+
+`rowLimit` est volontairement plafonné à 12 dans le moteur. Sur desktop, le CSS affiche 6 cartes à la fois. `dailyPoolLimit` définit la taille du pool récent dans lequel Lumo effectue sa sélection déterministe quotidienne.
 
 ## Studios / Réseaux
 
-Chaque entrée peut définir :
-
-- `label`
-- `aliases`
-- `colors`: deux couleurs utilisées par la carte et le fond de la page studio
-- `logo`: chemin local vers le logo
-- `logoFilter`: filtre CSS optionnel
-
-Exemple :
+Chaque entrée peut contenir un `id`. Lorsqu'il est présent, cet ID est prioritaire sur la résolution par nom :
 
 ```js
 {
   label: "PIXAR",
+  id: "a1384420050b89ea581e04c0dd9a83a8",
   aliases: ["Pixar", "Pixar Animation Studios"],
-  colors: ["#00b9ff", "#1555e8"],
   logo: "ui/noctafin-assets/logos/pixar.svg",
-  logoFilter: "brightness(0) invert(1)"
+  colors: ["#00b9ff", "#1555e8"]
 }
 ```
+
+Le clic ouvre la page native Jellyfin correspondant exactement à cet ID. Les aliases restent utiles comme fallback pour un autre serveur.
+
+## Hero universel
+
+Toute URL native contenant `genreId` ou `studioId` active automatiquement le hero Lumo. Les éléments non présents dans la configuration sont résolus par l'API Jellyfin et reçoivent une palette déterministe basée sur leur nom.

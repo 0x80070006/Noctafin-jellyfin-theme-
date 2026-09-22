@@ -7,7 +7,7 @@ Vérifie que **CSS personnalisé Jellyfin est vide**. Ne mélange pas l'installa
 Puis :
 
 ```bash
-grep -n "1.8.0" /usr/share/jellyfin/web/index.html
+grep -n "1.9.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ```

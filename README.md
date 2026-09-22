@@ -1,85 +1,57 @@
-# Lumo — thème cinématique pour Jellyfin 12
+# Lumo pour Jellyfin 12
 
-Lumo remplace l'accueil Jellyfin par une interface sombre et cinématique avec hero rotatif, **Continuer de regarder** façon Abyss, rails Studios/Réseaux/Genres, branding Lumo et habillage saisonnier.
+Thème cinématique + extension d'accueil pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript dans `jellyfin-web`.
 
-## Nouveautés 1.8.0
+## Nouveautés 1.9.0
 
-- Chaque ligne média charge **12 films/séries maximum** : 6 restent visibles sur desktop et les 6 suivants sont accessibles avec les flèches.
-- 6 cartes visibles par ligne sur desktop, 4 sur tablette, 2 sur mobile.
-- `Continuer de regarder` en 16:9, titres et métadonnées toujours dans le flux de page.
-- Aucune carte ne possède de scroll vertical interne.
-- Le zoom de survol reste strictement à l'intérieur de la vignette ou de la carte studio.
-- Les rails horizontaux ne bloquent plus la molette verticale de la page.
-- Flèches type Abyss : chevrons en haut à droite, pas de défilement calculé à partir de la largeur réelle des cartes, animation au clic.
-- Bouton `Lecture` du hero en SVG et correctifs des boutons Play natifs Jellyfin.
-- Fond vidéo nocturne japonais sur l'accueil en saison normale, compressé en H.264 1080p/24 fps sans audio (~0,8 Mo) avec overlay sombre.
-- Octobre conserve le fond Halloween, décembre le fond Noël.
-- Pages Genres / Studios / Réseaux : la grille et les filtres restent **natifs Jellyfin**, Lumo injecte uniquement un hero cinématique au-dessus.
-- Hero Genre : backdrop prioritairement issu d'un **film aléatoire du genre**, léger flou cinématique et nom du genre en très grand.
-- Hero Studio/Réseau : backdrop aléatoire + **logo officiel local contenu sans débordement** + ambiance de page teintée avec les couleurs configurées.
-- Le hero de taxonomie possède des fallbacks : tri aléatoire puis récent, backdrop puis image principale, fond coloré si aucune image n'est disponible.
+- 12 médias maximum par ligne, avec 6 cartes visibles à la fois sur desktop.
+- Sélection quotidienne déterministe : une ligne reste stable toute la journée puis change le lendemain.
+- Flèches de rail renforcées : calcul d'une page réelle, fallback pour les WebViews qui ignorent `scrollTo`, état gauche/droite recalculé après chaque déplacement.
+- Aucun blocage de molette verticale au-dessus d'une ligne : Lumo ne capture plus le scroll vertical.
+- Les raccourcis Studios/Réseaux de l'accueil utilisent les IDs exacts du serveur fournis dans `noctafin-config.js`.
+- Navigation native Jellyfin via `#/list?studioId=...&serverId=...` ou `#/list?genreId=...&serverId=...`.
+- Hero cinématique et fond contextualisé sur **toute page de genre ou de studio Jellyfin**, même si le genre/studio n'est pas présent dans la liste personnalisée de l'accueil.
+- Les 6 studios et 6 réseaux configurés utilisent leur logo officiel local dans le hero ; les autres studios utilisent leur nom Jellyfin avec le même traitement cinématique.
+- Les genres utilisent un film du genre comme backdrop, légèrement flouté, avec le nom du genre en grand.
+- Le routeur est désormais prioritaire sur le DOM : une ancienne page d'accueil encore montée par React ne peut plus empêcher l'injection du hero d'une page Studio/Genre.
+- Correction d'un doublon de métadonnées dans les cartes.
 
-## Installation complète recommandée
+## IDs Studios / Réseaux configurés
 
-Le mode complet est nécessaire pour le hero, les rails, le fond vidéo et les pages Genres/Studios personnalisées.
+| Libellé | ID Jellyfin |
+| --- | --- |
+| Pixar | `a1384420050b89ea581e04c0dd9a83a8` |
+| Paramount | `2672ed34a3f2b0bb6b4257c2ab9875b7` |
+| Marvel | `92e087260fb84bbba21ef249122925df` |
+| Walt Disney | `ff966337d51b0e006da6e16df7cb7ca1` |
+| Columbia | `3e8c9b438ab4664dc15b8cdbfce57134` |
+| 20th Century Fox | `da8c4e8ad6d11fba2241aebbf643bed7` |
+| Apple TV+ | `865e87e3544b4bcd5f1fcd3f7b8358e8` |
+| Netflix | `411cb7d6c12c8bf0d3c1caed22120c6f` |
+| BBC | `c39802fd4af78383c08c5ef2056d2ca7` |
+| Cartoon Network | `05d703671f62d4d6ee1a3636b89add52` |
+| ABC | `96b48893d56b599270991d22c7a88280` |
+| MTV | `ec5ae1b12f4efbf619aa77ca1bcd2d6f` |
+
+## Installation Linux / LXC
+
+Depuis le dossier du dépôt :
 
 ```bash
-cd /opt/Noctafin-jellyfin-theme-
-git pull --ff-only
 chmod +x install/install.sh
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
-Dans **Tableau de bord → Branding → CSS personnalisé**, laisse le champ **vide**. Un ancien `@import` jsDelivr peut charger une ancienne version en parallèle et provoquer des bugs visuels.
+Puis recharge complètement le navigateur (`Ctrl+Shift+R`).
 
-Après installation, Lumo est injecté localement :
+Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
-```text
-/usr/share/jellyfin/web/ui/lumo/theme.css
-/usr/share/jellyfin/web/ui/noctafin-config.js
-/usr/share/jellyfin/web/ui/noctafin-home.js
-/usr/share/jellyfin/web/ui/noctafin-assets/background/lumo-japan-night-1080p.mp4
+```html
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.9.0" data-lumo-theme="1.9.0">
+<script src="ui/noctafin-config.js?v=1.9.0" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.9.0" data-noctafin-home></script>
 ```
-
-Recharge ensuite le navigateur avec `Ctrl+Shift+R` ou `Ctrl+F5`.
-
-## Ordre de l'accueil
-
-1. Hero cinématique
-2. Continuer de regarder
-3. Studios
-4. Réseaux TV
-5. Genres
-6. Lignes par studio
-7. Lignes par réseau TV
-
-Les sections natives Jellyfin de l'accueil sont masquées lorsque `hideNativeHomeRows: true`.
-
-## Configuration
-
-Modifie `scripts/noctafin-config.js` avant de relancer l'installateur. Les principaux réglages sont :
-
-```js
-background: {
-  video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
-  videoOpacity: 0.62,
-  overlayOpacity: 0.54,
-  homeOnly: true
-},
-
-taxonomyHero: {
-  enabled: true,
-  maxItems: 18
-},
-
-rows: {
-  rowLimit: 12, // 12 éléments chargés, 6 visibles sur desktop
-  minItems: 2
-},
-```
-
-Les aliases Studios/Réseaux/Genres doivent correspondre aux métadonnées présentes dans ta bibliothèque Jellyfin.
 
 ## Mise à jour
 
@@ -90,20 +62,22 @@ JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
-Après une mise à jour de Jellyfin, relance l'installateur si `index.html` a été remplacé.
-
-## Désinstallation
+## Vérification locale
 
 ```bash
-cd /opt/Noctafin-jellyfin-theme-
-JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/uninstall.sh
-systemctl restart jellyfin
+npm run check
+bash -n install/install.sh
+bash -n install/uninstall.sh
 ```
 
-## Mode CSS uniquement
+La validation vérifie notamment les 12 IDs Studio/Réseau, la limite de 12 médias par rail et la présence du hero universel.
 
-Disponible uniquement pour prévisualiser l'apparence générale. Les fonctionnalités JavaScript ne seront pas présentes :
+## CSS-only
+
+Pour une simple prévisualisation du style, sans Hero/Studios/Genres dynamiques :
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.8.0");
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.9.0");
 ```
+
+Le mode CSS-only ne peut pas fournir les fonctions JavaScript de Lumo.
