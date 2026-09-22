@@ -1,66 +1,53 @@
-# Configuration Lumo 1.6
+# Configuration Lumo 1.7
 
-La configuration principale se trouve dans `scripts/noctafin-config.js`.
+La configuration dynamique est dans `scripts/noctafin-config.js`.
 
-## Branding
+## Fond vidéo
 
 ```js
-brand: {
-  name: "Lumo",
-  logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
-  logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
-  logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+background: {
+  video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
+  videoOpacity: 0.62,
+  overlayOpacity: 0.54,
+  homeOnly: true
 }
 ```
 
-## Saisons
+Le fond vidéo est utilisé uniquement sur l'accueil en saison `default`. Halloween et Noël gardent les fonds saisonniers statiques.
+
+## Heroes Genres / Studios
 
 ```js
-seasonal: {
+taxonomyHero: {
   enabled: true,
-  forceSeason: "auto",
-  halloweenMonth: 10,
-  christmasMonth: 12,
-  halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.png",
-  christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.png",
-  backgroundBlurPx: 8,
-  backgroundBrightness: 0.56
+  maxItems: 12
 }
 ```
 
-Le flou et l'assombrissement ne s'appliquent qu'aux fonds Halloween/Noël. Le fond par défaut garde les halos animés.
+Lumo conserve la page native Jellyfin filtrée et injecte un hero au-dessus. Le média du hero est choisi aléatoirement dans le filtre courant.
 
-## Hero
+## Rails
 
-- `enabled` : active/désactive le hero.
-- `rotateEveryMs` : délai entre deux contenus.
-- `maxItems` : nombre maximal de contenus dans la rotation.
+Sur desktop, Lumo affiche exactement 6 cartes par viewport de rail. Le responsive passe à 4 puis 2 cartes sur les écrans plus étroits. Le pas des flèches est calculé automatiquement à partir de la largeur réelle des cartes.
 
-## Lignes
+## Studios / Réseaux
 
-- `rowLimit` : nombre de médias demandés par ligne.
-- `minItems` : masque une ligne si elle contient trop peu d'éléments.
-- `scrollFactor` : portion de largeur parcourue par les chevrons.
-- `hideNativeHomeRows` : masque les sections natives de l'accueil.
-- `showResumeRow` : affiche `Continuer de regarder` en 16:9 avant Studios.
-- `showStudioRail`, `showNetworkRail` : tuiles de navigation.
-- `showGenreRows`, `showStudioRows`, `showNetworkRows` : lignes dynamiques.
+Chaque entrée peut définir :
 
-## Métadonnées et alias
+- `label`
+- `aliases`
+- `colors`: deux couleurs utilisées par la carte et le fond de la page studio
+- `logo`: chemin local vers le logo
+- `logoFilter`: filtre CSS optionnel
 
-Lumo utilise les Genres et Studios réellement présents dans Jellyfin. Ajoute un alias lorsque ton fournisseur de métadonnées emploie un autre nom :
+Exemple :
 
 ```js
-{ label: "PIXAR", aliases: ["Pixar", "Pixar Animation Studios"] }
+{
+  label: "PIXAR",
+  aliases: ["Pixar", "Pixar Animation Studios"],
+  colors: ["#00b9ff", "#1555e8"],
+  logo: "ui/noctafin-assets/logos/pixar.svg",
+  logoFilter: "brightness(0) invert(1)"
+}
 ```
-
-## CSS local
-
-L'installation complète copie :
-
-```text
-jellyfin-web/ui/lumo/theme.css
-jellyfin-web/ui/lumo/styles/*.css
-```
-
-N'ajoute pas simultanément un ancien `@import` jsDelivr dans le Custom CSS.

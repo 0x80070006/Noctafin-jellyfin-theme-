@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.6.0"
+$Version = "1.7.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -24,7 +24,8 @@ $LumoDir = Join-Path $Ui "lumo"
 $LumoStyles = Join-Path $LumoDir "styles"
 $SeasonDir = Join-Path $Ui "noctafin-assets\seasonal"
 $LogoDir = Join-Path $Ui "noctafin-assets\logos"
-New-Item -ItemType Directory -Path $Ui,$LumoDir,$LumoStyles,$SeasonDir,$LogoDir -Force | Out-Null
+$BackgroundDir = Join-Path $Ui "noctafin-assets\background"
+New-Item -ItemType Directory -Path $Ui,$LumoDir,$LumoStyles,$SeasonDir,$LogoDir,$BackgroundDir -Force | Out-Null
 
 $Backup = "$Index.pre-lumo.bak"
 if (-not (Test-Path $Backup)) { Copy-Item $Index $Backup -Force }
@@ -35,6 +36,7 @@ Copy-Item (Join-Path $Root "theme.css") (Join-Path $LumoDir "theme.css") -Force
 Get-ChildItem $LumoStyles -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Copy-Item (Join-Path $Root "styles\*.css") $LumoStyles -Force
 Copy-Item (Join-Path $Root "assets\seasonal\*.png") $SeasonDir -Force
+Copy-Item (Join-Path $Root "assets\background\lumo-japan-night-1080p.mp4") (Join-Path $BackgroundDir "lumo-japan-night-1080p.mp4") -Force
 
 $Logos = @{
     "pixar.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pixar_logo.svg"
@@ -85,4 +87,5 @@ Write-Host "Lumo $Version installé dans $WebDir" -ForegroundColor Green
 Write-Host "CSS local: $(Join-Path $LumoDir 'theme.css')"
 Write-Host "Logos studios/réseaux: $LogoDir"
 Write-Host "Assets saisonniers: $SeasonDir"
+Write-Host "Fond vidéo Lumo: $(Join-Path $BackgroundDir 'lumo-japan-night-1080p.mp4')"
 Write-Host "IMPORTANT: retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin pour éviter les conflits/cache d'une ancienne version." -ForegroundColor Yellow

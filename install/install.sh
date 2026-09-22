@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.6.0"
+VERSION="1.7.0"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
 
@@ -38,8 +38,9 @@ UI_DIR="$WEB_DIR/ui"
 LUMO_DIR="$UI_DIR/lumo"
 SEASON_DIR="$UI_DIR/noctafin-assets/seasonal"
 LOGO_DIR="$UI_DIR/noctafin-assets/logos"
+BACKGROUND_DIR="$UI_DIR/noctafin-assets/background"
 
-mkdir -p "$UI_DIR" "$LUMO_DIR/styles" "$SEASON_DIR" "$LOGO_DIR"
+mkdir -p "$UI_DIR" "$LUMO_DIR/styles" "$SEASON_DIR" "$LOGO_DIR" "$BACKGROUND_DIR"
 
 # Sauvegarde durable de l'index original, sans écraser une sauvegarde précédente.
 if [[ ! -f "$INDEX.pre-lumo.bak" ]]; then
@@ -60,6 +61,9 @@ chmod 0644 "$LUMO_DIR/theme.css" "$LUMO_DIR/styles/"*.css
 # Assets saisonniers fournis dans le dépôt.
 cp -f "$ROOT/assets/seasonal/"*.png "$SEASON_DIR/"
 chmod 0644 "$SEASON_DIR/"*.png
+
+# Fond vidéo Lumo compressé (1080p H.264, sans audio).
+install -m 0644 "$ROOT/assets/background/lumo-japan-night-1080p.mp4" "$BACKGROUND_DIR/lumo-japan-night-1080p.mp4"
 
 # Logos de marques : téléchargés localement afin d'éviter les blocages CSP.
 # En cas de panne réseau, une version déjà présente est conservée.
@@ -157,5 +161,6 @@ echo "Lumo $VERSION installé dans: $WEB_DIR"
 echo "CSS local: $LUMO_DIR/theme.css"
 echo "Logos studios/réseaux: $LOGO_DIR"
 echo "Assets saisonniers: $SEASON_DIR"
+echo "Fond vidéo Lumo: $BACKGROUND_DIR/lumo-japan-night-1080p.mp4"
 echo "IMPORTANT: pour l'installation complète, retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin afin d'éviter les conflits/cache d'une ancienne version."
 echo "Après une mise à jour Jellyfin, relance cet installateur si index.html a été remplacé."

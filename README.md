@@ -1,27 +1,46 @@
 # Lumo — thème cinématique pour Jellyfin 12
 
-Lumo transforme l'accueil Jellyfin 12 avec un hero rotatif, un rail **Continuer de regarder** inspiré d'Abyss, des raccourcis Studios / Réseaux TV, des lignes par Genre / Studio / Réseau, un branding Lumo et des saisons automatiques.
+Lumo remplace l'accueil Jellyfin par une interface sombre et cinématique avec hero rotatif, **Continuer de regarder** façon Abyss, rails Studios/Réseaux/Genres, branding Lumo et habillage saisonnier.
 
-Le dépôt conserve les noms techniques `noctafin-*.js` pour rester compatible avec les versions précédentes.
+## Nouveautés 1.7.0
 
-## v1.6.0 — refonte robuste des rails, du branding et du fond
+- 6 cartes visibles par ligne sur desktop, 4 sur tablette, 2 sur mobile.
+- `Continuer de regarder` en 16:9, titres et métadonnées toujours dans le flux de page.
+- Aucune carte ne possède de scroll vertical interne.
+- Le zoom de survol reste strictement à l'intérieur de la vignette ou de la carte studio.
+- Les rails horizontaux ne bloquent plus la molette verticale de la page.
+- Flèches type Abyss : chevrons en haut à droite, pas de défilement calculé à partir de la largeur réelle des cartes, animation au clic.
+- Bouton `Lecture` du hero en SVG et correctifs des boutons Play natifs Jellyfin.
+- Fond vidéo nocturne japonais sur l'accueil en saison normale, compressé en H.264 1080p/24 fps sans audio (~0,8 Mo) avec overlay sombre.
+- Octobre conserve le fond Halloween, décembre le fond Noël.
+- Pages Genres / Studios / Réseaux : navigation native Jellyfin filtrée + hero cinématique Lumo injecté au-dessus du contenu.
+- Hero Genre : backdrop d'un film aléatoire du genre + nom du genre.
+- Hero Studio/Réseau : backdrop aléatoire + logo ajusté + ambiance de page teintée avec les couleurs configurées.
 
-Cette version corrige les problèmes visibles avec les anciennes versions :
+## Installation complète recommandée
 
-- **Continuer de regarder en 16:9** : cartes horizontales comme Abyss, titre/épisode/année/note visibles directement sous l'image ;
-- Lumo privilégie `Thumb` et `Backdrop` avant les images portrait pour les épisodes ;
-- aucune carte Lumo n'a de scroll vertical interne ;
-- affiches des lignes Genres/Studios réduites et contenues en ratio 2:3 ;
-- navigation des rails avec une **paire de chevrons minimalistes en haut à droite**, comme Abyss ;
-- suppression des anciens boutons/pilules gris qui pouvaient apparaître sur le bord gauche ;
-- logos Studios/Réseaux centrés avec `object-fit: contain`, sans second watermark ;
-- `Action`, `Aventure`, `Pixar`, `Netflix`, etc. ouvrent la **liste native Jellyfin filtrée** ;
-- branding du header remplacé proprement par **logo Lumo + Lumo** sans transformer les titres des pages Paramètres en gros logo ;
-- logo Lumo borné dans le drawer/admin et remplacement du favicon ;
-- fond Lumo injecté globalement, y compris sur les vues modernes / Paramètres : halos sombres animés par défaut, Halloween en octobre, Noël en décembre ;
-- fonds saisonniers assombris + flou gaussien, fond normal non flouté ;
-- CSS complet installé **localement dans jellyfin-web**, ce qui évite les incohérences du cache jsDelivr et permet d'habiller les écrans où le Custom CSS Jellyfin n'est pas suffisant ;
-- installateur idempotent avec sauvegarde d'`index.html`, CSS/JS versionnés et conservation des logos déjà téléchargés en cas de panne réseau.
+Le mode complet est nécessaire pour le hero, les rails, le fond vidéo et les pages Genres/Studios personnalisées.
+
+```bash
+cd /opt/Noctafin-jellyfin-theme-
+git pull --ff-only
+chmod +x install/install.sh
+JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
+systemctl restart jellyfin
+```
+
+Dans **Tableau de bord → Branding → CSS personnalisé**, laisse le champ **vide**. Un ancien `@import` jsDelivr peut charger une ancienne version en parallèle et provoquer des bugs visuels.
+
+Après installation, Lumo est injecté localement :
+
+```text
+/usr/share/jellyfin/web/ui/lumo/theme.css
+/usr/share/jellyfin/web/ui/noctafin-config.js
+/usr/share/jellyfin/web/ui/noctafin-home.js
+/usr/share/jellyfin/web/ui/noctafin-assets/background/lumo-japan-night-1080p.mp4
+```
+
+Recharge ensuite le navigateur avec `Ctrl+Shift+R` ou `Ctrl+F5`.
 
 ## Ordre de l'accueil
 
@@ -33,97 +52,38 @@ Cette version corrige les problèmes visibles avec les anciennes versions :
 6. Lignes par studio
 7. Lignes par réseau TV
 
-Les lignes d'accueil natives Jellyfin sont masquées lorsque `hideNativeHomeRows: true`.
+Les sections natives Jellyfin de l'accueil sont masquées lorsque `hideNativeHomeRows: true`.
 
-## Installation recommandée — complète
+## Configuration
 
-Sur le serveur Jellyfin :
+Modifie `scripts/noctafin-config.js` avant de relancer l'installateur. Les principaux réglages sont :
+
+```js
+background: {
+  video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
+  videoOpacity: 0.62,
+  overlayOpacity: 0.54,
+  homeOnly: true
+},
+
+taxonomyHero: {
+  enabled: true,
+  maxItems: 12
+}
+```
+
+Les aliases Studios/Réseaux/Genres doivent correspondre aux métadonnées présentes dans ta bibliothèque Jellyfin.
+
+## Mise à jour
 
 ```bash
 cd /opt/Noctafin-jellyfin-theme-
 git pull --ff-only
-chmod +x install/install.sh
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
-L'installateur ajoute automatiquement :
-
-```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.6.0" data-lumo-theme="1.6.0">
-<script src="ui/noctafin-config.js?v=1.6.0" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.6.0" data-noctafin-home></script>
-```
-
-### Important après une ancienne version
-
-Pour l'installation complète, **supprime l'ancien `@import` jsDelivr dans Dashboard → Branding → CSS personnalisé**. Sinon un vieux CSS mis en cache peut remettre les anciennes flèches ou les anciennes règles de logo par-dessus la v1.6.0.
-
-Puis fais `Ctrl+F5` / `Ctrl+Shift+R`.
-
-## Vérification
-
-```bash
-grep -n "lumo/theme.css?v=1.6.0\|noctafin-home.js?v=1.6.0" /usr/share/jellyfin/web/index.html
-ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
-ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/seasonal/
-ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/logos/
-```
-
-## CSS-only via GitHub/jsDelivr
-
-Cette méthode ne fournit que l'apparence statique. Elle ne crée ni Hero, ni rails dynamiques, ni branding saisonnier complet.
-
-```css
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.6.0");
-```
-
-N'utilise pas cet import en même temps que l'installation complète ci-dessus.
-
-## Branding et saisons
-
-La saison est choisie d'après le mois du navigateur :
-
-- octobre → logo Halloween + fond cimetière ;
-- décembre → logo Noël + fond Noël ;
-- le reste de l'année → logo bleu + fond très sombre avec halos violet/cyan/rose animés.
-
-Configuration : `scripts/noctafin-config.js`.
-
-```js
-seasonal: {
-  enabled: true,
-  forceSeason: "auto",
-  halloweenMonth: 10,
-  christmasMonth: 12,
-  backgroundBlurPx: 8,
-  backgroundBrightness: 0.56
-}
-```
-
-`forceSeason` accepte `auto`, `default`, `halloween` ou `christmas`.
-
-## Studios et réseaux inclus
-
-Studios : Pixar, Marvel, Disney, 20th Century, Columbia, Paramount.
-
-Réseaux TV : Apple TV+, Netflix, BBC, Cartoon Network, ABC, MTV.
-
-Les alias sont configurables dans `scripts/noctafin-config.js`.
-
-## Navigation Genres / Studios
-
-Lumo récupère les identifiants réels depuis l'API Jellyfin puis ouvre une vue native filtrée avec `genreId` ou `studioId`. Aucune page catalogue Lumo n'est superposée au client Jellyfin.
-
-## Mise à jour Jellyfin
-
-Une mise à jour du paquet Jellyfin peut remplacer `index.html`. Dans ce cas, relance simplement :
-
-```bash
-cd /opt/Noctafin-jellyfin-theme-
-JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
-systemctl restart jellyfin
-```
+Après une mise à jour de Jellyfin, relance l'installateur si `index.html` a été remplacé.
 
 ## Désinstallation
 
@@ -133,22 +93,10 @@ JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/uninstall.sh
 systemctl restart jellyfin
 ```
 
-Retire aussi tout ancien `@import` Lumo/NoctaFin du CSS personnalisé.
+## Mode CSS uniquement
 
-## Contrôles développeur
+Disponible uniquement pour prévisualiser l'apparence générale. Les fonctionnalités JavaScript ne seront pas présentes :
 
-```bash
-npm run check
-bash -n install/install.sh
-bash -n install/uninstall.sh
+```css
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.7.0");
 ```
-
-## Inspirations
-
-- NetFin — https://github.com/ya0903/NetFin
-- Abyss — https://github.com/AumGupta/abyss-jellyfin
-- Jellyfish — https://github.com/n00bcodr/Jellyfish
-
-## Licence
-
-MIT — voir `LICENSE`.

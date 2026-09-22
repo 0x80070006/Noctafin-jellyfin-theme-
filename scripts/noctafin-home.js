@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.6.0";
+  const VERSION = "1.7.0";
   const DEFAULTS = {
     locale: "fr-FR",
     brand: {
@@ -22,10 +22,16 @@
       backgroundBrightness: 0.56
     },
     hero: { enabled: true, rotateEveryMs: 7000, maxItems: 8 },
+    background: {
+      video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
+      videoOpacity: 0.62,
+      overlayOpacity: 0.54,
+      homeOnly: true
+    },
+    taxonomyHero: { enabled: true, maxItems: 12 },
     rows: {
       rowLimit: 20,
       minItems: 2,
-      scrollFactor: 0.82,
       dedupeNativeRows: true,
       hideNativeHomeRows: true,
       showResumeRow: true,
@@ -47,6 +53,8 @@
     brand: { ...DEFAULTS.brand, ...(source.brand || {}) },
     seasonal: { ...DEFAULTS.seasonal, ...(source.seasonal || {}) },
     hero: { ...DEFAULTS.hero, ...(source.hero || {}) },
+    background: { ...DEFAULTS.background, ...(source.background || {}) },
+    taxonomyHero: { ...DEFAULTS.taxonomyHero, ...(source.taxonomyHero || {}) },
     rows: { ...DEFAULTS.rows, ...(source.rows || {}) },
     genres: Array.isArray(source.genres) ? source.genres : [],
     studios: Array.isArray(source.studios) ? source.studios : [],
@@ -83,6 +91,8 @@
   let rowObserver = null;
   let mountScheduled = false;
   let taxonomyCache = null;
+  let taxonomyHeroKey = "";
+  let taxonomyHeroRequest = 0;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -120,7 +130,7 @@
   function headers() {
     if (!auth?.token) return {};
     return {
-      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.6", Token="${auth.token}"`
+      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.7", Token="${auth.token}"`
     };
   }
 
@@ -179,9 +189,13 @@
     const nodes = $$(`[id="${id}"]`);
     for (const node of nodes) {
       if (!node.isConnected || node.hidden || node.classList.contains("hide")) continue;
+      try {
+        const style = getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden") continue;
+      } catch { /* ignore */ }
       return node;
     }
-    return nodes[nodes.length - 1] || null;
+    return null;
   }
 
   function locateHome() {
@@ -299,8 +313,9 @@
     style.textContent = `
       html.lumo-ui,html.lumo-ui body{background:#02030a!important}
       #lumo-background-layer{position:fixed!important;inset:0!important;z-index:0!important;overflow:hidden!important;pointer-events:none!important}
-      #lumo-background-art,#lumo-background-shade{position:absolute!important;pointer-events:none!important}
+      #lumo-background-art,#lumo-background-video,#lumo-background-shade{position:absolute!important;pointer-events:none!important}
       #lumo-background-art{inset:-30px!important;background-color:#02030a!important;will-change:transform,filter,background-position}
+      #lumo-background-video{inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;opacity:0!important}
       #lumo-background-shade{inset:0!important;background:linear-gradient(180deg,rgba(1,2,7,.05),rgba(1,2,7,.18) 60%,rgba(1,2,7,.32))!important}
       html[data-lumo-season="halloween"] #lumo-background-art,html[data-lumo-season="christmas"] #lumo-background-art{background-image:var(--lumo-season-background)!important;background-size:cover!important;background-position:center!important;filter:blur(var(--lumo-season-blur,8px)) brightness(var(--lumo-season-brightness,.56)) saturate(.92)!important;transform:scale(1.07)!important}
       html[data-lumo-season="default"] #lumo-background-art{background-image:radial-gradient(circle at 13% 17%,rgba(124,92,255,.26),transparent 43%),radial-gradient(circle at 83% 12%,rgba(37,215,255,.20),transparent 44%),radial-gradient(circle at 75% 79%,rgba(255,79,163,.18),transparent 43%),linear-gradient(180deg,#03040a,#010207)!important;background-size:82vmax 82vmax,76vmax 76vmax,84vmax 84vmax,100% 100%!important;background-position:-28vmax -26vmax,68vw -28vmax,62vw 62vh,center!important}
@@ -324,14 +339,65 @@
       layer = document.createElement("div");
       layer.id = "lumo-background-layer";
       layer.setAttribute("aria-hidden", "true");
+
       const art = document.createElement("div");
       art.id = "lumo-background-art";
+
+      const video = document.createElement("video");
+      video.id = "lumo-background-video";
+      video.muted = true;
+      video.loop = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.disablePictureInPicture = true;
+      video.setAttribute("tabindex", "-1");
+      video.setAttribute("aria-hidden", "true");
+      video.addEventListener("error", () => document.documentElement.classList.add("lumo-video-failed"));
+
       const shade = document.createElement("div");
       shade.id = "lumo-background-shade";
-      layer.append(art, shade);
+      layer.append(art, video, shade);
       document.body.prepend(layer);
     }
     return layer;
+  }
+
+  function shouldUseHomeVideo() {
+    if (!CONFIG.background.video) return false;
+    if (activeSeason() !== "default") return false;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+    if (!CONFIG.background.homeOnly) return true;
+    const found = locateHome();
+    if (!found?.homeTab?.isConnected) return false;
+    try {
+      const style = getComputedStyle(found.homeTab);
+      return style.display !== "none" && style.visibility !== "hidden" && !found.homeTab.hidden;
+    } catch {
+      return true;
+    }
+  }
+
+  function syncBackgroundMedia() {
+    const layer = ensureBackgroundLayer();
+    const video = layer?.querySelector?.("#lumo-background-video");
+    if (!video) return;
+
+    const enabled = shouldUseHomeVideo();
+    document.documentElement.classList.toggle("lumo-video-active", enabled);
+    document.documentElement.style.setProperty("--lumo-video-opacity", String(Math.max(0, Math.min(1, Number(CONFIG.background.videoOpacity) || 0.62))));
+    document.documentElement.style.setProperty("--lumo-video-overlay", String(Math.max(0, Math.min(0.95, Number(CONFIG.background.overlayOpacity) || 0.54))));
+
+    if (enabled) {
+      const src = assetUrl(CONFIG.background.video);
+      if (video.getAttribute("src") !== src) video.setAttribute("src", src);
+      if (video.paused) {
+        const promise = video.play?.();
+        if (promise?.catch) promise.catch(() => {});
+      }
+    } else {
+      try { video.pause?.(); } catch { /* ignore */ }
+    }
   }
 
   function replaceBrandContents(target, name, logoHref, season) {
@@ -482,6 +548,7 @@
     updateDocumentBrand(CONFIG.brand.name || "Lumo", logoHref);
     ensureLumoHeader(CONFIG.brand.name || "Lumo", logoHref, season);
     ensureNativeLogos(CONFIG.brand.name || "Lumo", logoHref);
+    syncBackgroundMedia();
   }
 
   function dedupeNativeRows(sections) {
@@ -525,8 +592,8 @@
         <div class="noctafin-hero__meta"></div>
         <p class="noctafin-hero__overview"></p>
         <div class="noctafin-hero__actions">
-          <button type="button" class="noctafin-hero__button noctafin-hero__button--primary focusable" data-action="play">▶ <span>Lecture</span></button>
-          <button type="button" class="noctafin-hero__button focusable" data-action="info">ⓘ <span>Plus d'infos</span></button>
+          <button type="button" class="noctafin-hero__button noctafin-hero__button--primary focusable" data-action="play"><svg class="noctafin-hero__button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M8 5.75v12.5L18.5 12 8 5.75Z"/></svg><span>Lecture</span></button>
+          <button type="button" class="noctafin-hero__button focusable" data-action="info"><svg class="noctafin-hero__button-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 10.5v6M12 7.7h.01"/></svg><span>Plus d'infos</span></button>
         </div>
       </div>
       <div class="noctafin-hero__dots" aria-label="Changer la sélection"></div>
@@ -749,6 +816,7 @@
     track.className = trackClass;
     track.setAttribute("role", "group");
     track.setAttribute("aria-label", label);
+    track.tabIndex = -1;
 
     const nav = document.createElement("div");
     nav.className = "noctafin-section-nav";
@@ -766,42 +834,101 @@
     next.setAttribute("aria-label", `Faire défiler ${label} vers la droite`);
     next.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>`;
 
-    previous.hidden = true;
-    next.hidden = true;
+    previous.disabled = true;
+    next.disabled = true;
     nav.hidden = true;
     nav.append(previous, next);
     shell.append(track);
 
-    const update = () => {
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+    const metrics = () => {
       const max = Math.max(0, track.scrollWidth - track.clientWidth);
-      const hasOverflow = max > 8;
-      const atStart = track.scrollLeft <= 6;
-      const atEnd = track.scrollLeft >= max - 6;
-      shell.classList.toggle("has-overflow", hasOverflow);
-      nav.hidden = !hasOverflow;
-      previous.hidden = !hasOverflow;
-      next.hidden = !hasOverflow;
-      previous.disabled = !hasOverflow || atStart;
-      next.disabled = !hasOverflow || atEnd;
+      const first = track.firstElementChild;
+      if (!first) return { max, step: Math.max(240, track.clientWidth) };
+      const style = getComputedStyle(track);
+      const gap = parseFloat(style.columnGap || style.gap || "0") || 0;
+      const cardWidth = first.getBoundingClientRect().width || first.clientWidth || 1;
+      const visible = clamp(Math.floor((track.clientWidth + gap + 1) / (cardWidth + gap)), 1, 12);
+      return { max, step: Math.max(cardWidth + gap, visible * (cardWidth + gap)) };
     };
 
-    const amount = () => Math.max(260, track.clientWidth * Math.max(0.45, Math.min(0.95, Number(CONFIG.rows.scrollFactor) || 0.82)));
+    const update = () => {
+      const { max } = metrics();
+      const hasOverflow = max > 6;
+      const atStart = track.scrollLeft <= 4;
+      const atEnd = track.scrollLeft >= max - 4;
+      shell.classList.toggle("has-overflow", hasOverflow);
+      nav.hidden = !hasOverflow;
+      previous.disabled = !hasOverflow || atStart;
+      next.disabled = !hasOverflow || atEnd;
+      previous.setAttribute("aria-disabled", String(previous.disabled));
+      next.setAttribute("aria-disabled", String(next.disabled));
+    };
+
+    const pulse = (button) => {
+      button.classList.remove("is-clicked");
+      void button.offsetWidth;
+      button.classList.add("is-clicked");
+      setTimeout(() => button.classList.remove("is-clicked"), 190);
+    };
+
+    const scrollPage = (direction, button) => {
+      const { max, step } = metrics();
+      if (max <= 0) return;
+      const target = clamp(track.scrollLeft + direction * step, 0, max);
+      pulse(button);
+      track.scrollTo({ left: target, behavior: "smooth" });
+      setTimeout(update, 360);
+    };
+
     previous.addEventListener("click", (event) => {
       event.preventDefault();
-      track.scrollBy({ left: -amount(), behavior: "smooth" });
+      event.stopPropagation();
+      scrollPage(-1, previous);
     });
     next.addEventListener("click", (event) => {
       event.preventDefault();
-      track.scrollBy({ left: amount(), behavior: "smooth" });
+      event.stopPropagation();
+      scrollPage(1, next);
     });
+
+    /* Vertical wheel intent must always keep scrolling the page. A horizontal
+       track must never trap the user on the home page. */
+    track.addEventListener("wheel", (event) => {
+      const dx = Math.abs(event.deltaX);
+      const dy = Math.abs(event.deltaY);
+      if (dy < 1 || dy <= dx * 1.15) return;
+
+      let scroller = track.parentElement;
+      while (scroller && scroller !== document.body) {
+        const css = getComputedStyle(scroller);
+        const scrollable = /(auto|scroll|overlay)/.test(css.overflowY) && scroller.scrollHeight > scroller.clientHeight + 4;
+        if (scrollable) break;
+        scroller = scroller.parentElement;
+      }
+      if (!scroller || scroller === document.body) scroller = document.scrollingElement || document.documentElement;
+      if (!scroller) return;
+
+      const unit = event.deltaMode === 1 ? 32 : (event.deltaMode === 2 ? window.innerHeight : 1);
+      const delta = event.deltaY * unit;
+      if (event.cancelable) event.preventDefault();
+      if (scroller === document.scrollingElement || scroller === document.documentElement) {
+        window.scrollBy({ top: delta, behavior: "auto" });
+      } else {
+        scroller.scrollTop += delta;
+      }
+    }, { passive: false });
+
     track.addEventListener("scroll", update, { passive: true });
 
-    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(() => requestAnimationFrame(update)) : null;
     resizeObserver?.observe(track);
     shell._noctafinResizeObserver = resizeObserver;
     shell._noctafinUpdateArrows = update;
     requestAnimationFrame(update);
-    setTimeout(update, 180);
+    setTimeout(update, 80);
+    setTimeout(update, 320);
     return { shell, track, nav, previous, next, update };
   }
 
@@ -815,6 +942,17 @@
     const id = group._ids.find(Boolean);
     if (!id) return;
 
+    const context = {
+      kind,
+      id,
+      ids: group._ids.filter(Boolean),
+      label: group.label || "",
+      colors: Array.isArray(group.colors) ? group.colors.slice(0, 2) : [],
+      logo: group.logo || "",
+      logoFilter: group.logoFilter || "none"
+    };
+    try { sessionStorage.setItem("lumo.taxonomyContext", JSON.stringify(context)); } catch { /* ignore */ }
+
     const params = new URLSearchParams();
     if (kind === "genre") params.set("genreId", id);
     else params.set("studioId", id);
@@ -824,6 +962,188 @@
 
     const page = isModernJellyfin() ? "/list" : "/list.html";
     navigate(`${page}?${params.toString()}`);
+  }
+
+  function getRouteParams() {
+    const params = new URLSearchParams(window.location.search || "");
+    const hash = String(window.location.hash || "");
+    const qIndex = hash.indexOf("?");
+    if (qIndex >= 0) {
+      const hashParams = new URLSearchParams(hash.slice(qIndex + 1));
+      hashParams.forEach((value, key) => { if (!params.has(key)) params.set(key, value); });
+    }
+    return params;
+  }
+
+  function taxonomyPalette(label) {
+    const palettes = [
+      ["#7c5cff", "#25d7ff"], ["#ff4fa3", "#7c5cff"], ["#ff8a34", "#ff3f81"],
+      ["#34e3b5", "#1f8fff"], ["#e9bf46", "#ff713d"], ["#8d68ff", "#d84fff"]
+    ];
+    let hash = 0;
+    for (const char of String(label || "")) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+    return palettes[Math.abs(hash) % palettes.length];
+  }
+
+  async function resolveTaxonomyContext() {
+    if (!CONFIG.taxonomyHero.enabled) return null;
+    const params = getRouteParams();
+    const genreId = params.get("genreId") || params.get("GenreId");
+    const studioId = params.get("studioId") || params.get("StudioId");
+    if (!genreId && !studioId) return null;
+
+    let stored = null;
+    try { stored = JSON.parse(sessionStorage.getItem("lumo.taxonomyContext") || "null"); } catch { stored = null; }
+    const routeId = genreId || studioId;
+    if (stored && (stored.id === routeId || stored.ids?.includes?.(routeId))) {
+      return { ...stored, id: routeId, ids: stored.ids?.length ? stored.ids : [routeId] };
+    }
+
+    const taxonomy = await getTaxonomies();
+    if (genreId) {
+      for (const group of CONFIG.genres) {
+        const ids = resolveIds(taxonomy.genres, group.aliases);
+        if (ids.includes(genreId)) return { kind: "genre", id: genreId, ids, label: group.label, colors: group.colors || taxonomyPalette(group.label), logo: "" };
+      }
+      return { kind: "genre", id: genreId, ids: [genreId], label: params.get("name") || "Genre", colors: taxonomyPalette(params.get("name") || genreId), logo: "" };
+    }
+
+    const groups = [...CONFIG.studios.map((g) => ({ ...g, kind: "studio" })), ...CONFIG.networks.map((g) => ({ ...g, kind: "network" }))];
+    for (const group of groups) {
+      const ids = resolveIds(taxonomy.studios, group.aliases);
+      if (ids.includes(studioId)) return { kind: group.kind, id: studioId, ids, label: group.label, colors: group.colors || taxonomyPalette(group.label), logo: group.logo || "", logoFilter: group.logoFilter || "none" };
+    }
+    return { kind: "studio", id: studioId, ids: [studioId], label: params.get("name") || "Studio", colors: taxonomyPalette(params.get("name") || studioId), logo: "", logoFilter: "none" };
+  }
+
+  function findTaxonomyHost() {
+    const selectors = [
+      "#reactRoot main",
+      "main[role='main']",
+      "main.MuiBox-root",
+      "main",
+      ".mainAnimatedPage:not(.hide)",
+      ".page:not(.hide)"
+    ];
+    for (const selector of selectors) {
+      for (const node of $$(selector)) {
+        if (!node?.isConnected || node.id === "indexPage" || node.closest?.("#indexPage")) continue;
+        try {
+          const style = getComputedStyle(node);
+          if (style.display === "none" || style.visibility === "hidden") continue;
+          if (node.getBoundingClientRect().width < 320) continue;
+        } catch { /* ignore */ }
+        return node;
+      }
+    }
+    return null;
+  }
+
+  function clearTaxonomyHero() {
+    taxonomyHeroKey = "";
+    taxonomyHeroRequest += 1;
+    $("#lumo-taxonomy-hero")?.remove();
+    const root = document.documentElement;
+    delete root.dataset.lumoTaxonomyKind;
+    root.style.removeProperty("--lumo-taxonomy-a");
+    root.style.removeProperty("--lumo-taxonomy-b");
+  }
+
+  async function fetchTaxonomyHeroItem(context) {
+    if (!auth?.userId) return null;
+    const params = new URLSearchParams({
+      Limit: String(Math.max(4, Number(CONFIG.taxonomyHero.maxItems) || 12)),
+      Recursive: "true",
+      IncludeItemTypes: context.kind === "network" ? "Series" : (context.kind === "genre" ? "Movie" : "Movie,Series"),
+      Fields: FIELDS,
+      SortBy: "Random",
+      EnableImageTypes: "Primary,Backdrop,Thumb,Logo",
+      ImageTypeLimit: "2",
+      EnableTotalRecordCount: "false"
+    });
+    if (context.kind === "genre") params.set("GenreIds", context.ids.join(","));
+    else params.set("StudioIds", context.ids.join(","));
+    const result = await fetchJson(`/Users/${auth.userId}/Items?${params}`);
+    const items = result.Items || [];
+    return items.length ? items[Math.floor(Math.random() * items.length)] : null;
+  }
+
+  function taxonomyBackdrop(item) {
+    if (!item) return "";
+    if (item.BackdropImageTags?.length) return imageUrl(item.Id, "Backdrop", 0, 2200);
+    if (item.ParentBackdropImageTags?.length && (item.ParentBackdropItemId || item.SeriesId)) {
+      return imageUrl(item.ParentBackdropItemId || item.SeriesId, "Backdrop", 0, 2200);
+    }
+    const primaryOwner = item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id;
+    return imageUrl(primaryOwner, "Primary", null, 1400);
+  }
+
+  function buildTaxonomyHero(context, item) {
+    const hero = document.createElement("section");
+    hero.id = "lumo-taxonomy-hero";
+    hero.className = `lumo-taxonomy-hero lumo-taxonomy-hero--${context.kind}`;
+    hero.dataset.key = `${context.kind}:${context.id}`;
+    hero.setAttribute("aria-label", context.label || "Sélection");
+
+    const backdrop = taxonomyBackdrop(item);
+    const logo = context.logo ? assetUrl(context.logo) : "";
+    const itemName = item?.Type === "Episode" ? (item.SeriesName || item.Name) : item?.Name;
+    hero.innerHTML = `
+      <div class="lumo-taxonomy-hero__backdrop"></div>
+      <div class="lumo-taxonomy-hero__veil"></div>
+      <div class="lumo-taxonomy-hero__content">
+        ${logo ? `<img class="lumo-taxonomy-hero__logo" alt="" draggable="false">` : ""}
+        <h1 class="lumo-taxonomy-hero__title"></h1>
+        ${itemName ? `<div class="lumo-taxonomy-hero__featured"></div>` : ""}
+      </div>`;
+    const bg = $(".lumo-taxonomy-hero__backdrop", hero);
+    if (backdrop) bg.style.backgroundImage = `url("${backdrop.replace(/"/g, "%22")}")`;
+    const title = $(".lumo-taxonomy-hero__title", hero);
+    title.textContent = context.label || "";
+    const logoNode = $(".lumo-taxonomy-hero__logo", hero);
+    if (logoNode) {
+      logoNode.src = logo;
+      logoNode.alt = context.label || "";
+      logoNode.style.setProperty("--lumo-taxonomy-logo-filter", context.logoFilter && context.logoFilter !== "none" ? context.logoFilter : "brightness(1)");
+      logoNode.addEventListener("load", () => hero.classList.add("has-logo"), { once: true });
+      logoNode.addEventListener("error", () => logoNode.remove(), { once: true });
+    }
+    const featured = $(".lumo-taxonomy-hero__featured", hero);
+    if (featured) featured.textContent = itemName;
+    return hero;
+  }
+
+  async function syncTaxonomyPageHero() {
+    if (!auth?.token || !auth?.userId) return;
+    if (locateHome()) {
+      clearTaxonomyHero();
+      return;
+    }
+    const context = await resolveTaxonomyContext();
+    if (!context) {
+      clearTaxonomyHero();
+      return;
+    }
+
+    const host = findTaxonomyHost();
+    if (!host) return;
+    const key = `${context.kind}:${context.id}`;
+    const existing = $("#lumo-taxonomy-hero");
+    if (existing?.isConnected && taxonomyHeroKey === key && existing.dataset.key === key) return;
+
+    const requestId = ++taxonomyHeroRequest;
+    const item = await fetchTaxonomyHeroItem(context).catch(() => null);
+    if (requestId !== taxonomyHeroRequest) return;
+
+    $("#lumo-taxonomy-hero")?.remove();
+    taxonomyHeroKey = key;
+    const colors = context.colors?.length >= 2 ? context.colors : taxonomyPalette(context.label);
+    const root = document.documentElement;
+    root.dataset.lumoTaxonomyKind = context.kind;
+    root.style.setProperty("--lumo-taxonomy-a", colors[0] || "#7c5cff");
+    root.style.setProperty("--lumo-taxonomy-b", colors[1] || colors[0] || "#25d7ff");
+    host.prepend(buildTaxonomyHero(context, item));
+    syncBackgroundMedia();
   }
 
   function createBrandShelf(title, groups, prefix) {
@@ -1155,7 +1475,15 @@
     auth = getAuth() || auth;
     syncLumoChrome();
     const found = locateHome();
-    if (!found) return;
+    if (!found) {
+      currentHome = null;
+      await syncTaxonomyPageHero();
+      syncBackgroundMedia();
+      return;
+    }
+
+    clearTaxonomyHero();
+    syncBackgroundMedia();
 
     if (currentHome?.homeTab === found.homeTab && $("#noctafin-custom-sections", found.homeTab)) {
       syncNativeRows(found.sections);
@@ -1209,6 +1537,7 @@
       if (!document.hidden) scheduleMount();
     });
     window.addEventListener("hashchange", scheduleMount);
+    window.addEventListener("popstate", scheduleMount);
     window.addEventListener("resize", () => {
       $$(".noctafin-track-shell").forEach((shell) => shell._noctafinUpdateArrows?.());
     }, { passive: true });

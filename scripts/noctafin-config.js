@@ -22,6 +22,16 @@ window.NOCTAFIN_CONFIG = {
     rotateEveryMs: 7000,
     maxItems: 8
   },
+  background: {
+    video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
+    videoOpacity: 0.62,
+    overlayOpacity: 0.54,
+    homeOnly: true
+  },
+  taxonomyHero: {
+    enabled: true,
+    maxItems: 12
+  },
   rows: {
     rowLimit: 20,
     minItems: 2,
