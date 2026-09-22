@@ -11,9 +11,9 @@ systemctl restart jellyfin
 
 ## Rien ne change après mise à jour
 
-1. Vérifie que Git contient bien la v1.3.0.
+1. Vérifie que Git contient bien la v1.4.0.
 2. Relance `install/install.sh`.
-3. Vérifie l'import CSS avec `?v=1.3.0`.
+3. Vérifie l'import CSS avec `?v=1.4.0`.
 4. Fais `Ctrl+F5`.
 5. Vérifie les deux scripts dans `jellyfin-web/ui/`.
 
@@ -55,7 +55,7 @@ Vérifie :
 hideNativeHomeRows: true
 ```
 
-et que `noctafin-home.js` v1.3.0 est bien copié dans `jellyfin-web/ui/`.
+et que `noctafin-home.js` v1.4.0 est bien copié dans `jellyfin-web/ui/`.
 
 ## Les logos Studios/Réseaux restent en texte
 

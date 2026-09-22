@@ -1,4 +1,4 @@
-/* Lumo v1.3 — cinematic branding, seasonal skins and refined home rails. */
+/* Lumo v1.4 — cinematic branding, seasonal skins and refined home rails. */
 
 /* -------------------------------------------------------------------------
    Lumo top bar
@@ -525,4 +525,733 @@ html[data-lumo-season="christmas"] [class*="MuiAppBar-root"]::after {
   .noctafin-track-arrow {
     display: none !important;
   }
+}
+
+/* ==========================================================================
+   Lumo v1.4 — Jellyfin 12 hardening
+   Fixes brand sizing, rail arrows, native filter navigation and poster sizing.
+   ========================================================================== */
+
+:root {
+  --lumo-poster-height: clamp(168px, 22vh, 220px);
+  --lumo-poster-width: calc(var(--lumo-poster-height) * 0.6666667);
+  --lumo-arrow-size: 42px;
+}
+
+/* --------------------------------------------------------------------------
+   Header brand: support both classic and Jellyfin 12 Modern header variants.
+   JS converts the live server button when possible; these selectors provide a
+   deterministic fallback for the legacy title node.
+   -------------------------------------------------------------------------- */
+.lumo-page-title-brand,
+.pageTitleWithDefaultLogo.lumo-page-title-brand,
+.pageTitleWithLogo.lumo-page-title-brand {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: auto !important;
+  min-width: 104px !important;
+  max-width: 170px !important;
+  min-height: 38px !important;
+  padding: 0 8px 0 2px !important;
+  background-image: none !important;
+  font-size: 0 !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.lumo-page-title-brand::before {
+  content: "" !important;
+  display: block !important;
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: var(--lumo-current-logo) center / contain no-repeat !important;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.38));
+}
+
+.lumo-page-title-brand::after {
+  content: attr(data-lumo-brand-name) !important;
+  display: block !important;
+  color: #fff !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  font-weight: 850 !important;
+  letter-spacing: -.025em !important;
+}
+
+.lumo-brand-button {
+  flex: 0 0 auto !important;
+  align-self: center !important;
+  min-width: 102px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 3px 9px 3px 4px !important;
+  gap: 7px !important;
+}
+
+.lumo-brand-logo {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  object-fit: contain !important;
+}
+
+.lumo-brand-name {
+  color: #fff !important;
+  font-size: .98rem !important;
+  font-weight: 850 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Brand tiles: the SVG lives inside a flex frame instead of being stretched
+   to the tile dimensions. This keeps every official logo fully visible.
+   -------------------------------------------------------------------------- */
+.noctafin-brand {
+  display: block !important;
+  position: relative !important;
+  flex: 0 0 clamp(190px, 15vw, 268px) !important;
+  width: clamp(190px, 15vw, 268px) !important;
+  min-width: clamp(190px, 15vw, 268px) !important;
+  height: clamp(96px, 7vw, 124px) !important;
+  padding: 0 !important;
+}
+
+.noctafin-brand__logo-frame {
+  position: absolute !important;
+  inset: 12px 16px !important;
+  z-index: 3 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.noctafin-brand__logo-frame .noctafin-brand__logo {
+  position: static !important;
+  inset: auto !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 82% !important;
+  max-height: 62% !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+.noctafin-brand.has-logo .noctafin-brand__name {
+  display: none !important;
+}
+
+.noctafin-brand:not(.has-logo) .noctafin-brand__name {
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Rail arrows: never leave disabled grey pills. Controls stay inside the rail
+   at the exact left/right edges and are vertically centered on the content.
+   -------------------------------------------------------------------------- */
+.noctafin-track-shell {
+  position: relative !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.noctafin-track-arrow,
+.noctafin-track-shell .noctafin-track-arrow {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  position: absolute !important;
+  top: 50% !important;
+  z-index: 30 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--lumo-arrow-size) !important;
+  height: var(--lumo-arrow-size) !important;
+  min-width: var(--lumo-arrow-size) !important;
+  min-height: var(--lumo-arrow-size) !important;
+  max-width: var(--lumo-arrow-size) !important;
+  max-height: var(--lumo-arrow-size) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255,255,255,.17) !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  background: rgba(8,10,18,.82) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.09) !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  transform: translateY(-50%) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+.noctafin-track-arrow--prev,
+.noctafin-track-shell .noctafin-track-arrow--prev {
+  left: 5px !important;
+  right: auto !important;
+}
+
+.noctafin-track-arrow--next,
+.noctafin-track-shell .noctafin-track-arrow--next {
+  right: 5px !important;
+  left: auto !important;
+}
+
+.noctafin-track-shell.has-overflow .noctafin-track-arrow:not(:disabled) {
+  opacity: .92 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.noctafin-track-shell .noctafin-track-arrow:disabled {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.noctafin-track-shell.has-overflow .noctafin-track-arrow:disabled {
+  display: grid !important;
+  opacity: .30 !important;
+  visibility: visible !important;
+  pointer-events: none !important;
+}
+
+.noctafin-track-arrow svg {
+  width: 20px !important;
+  height: 20px !important;
+  overflow: visible !important;
+}
+
+.noctafin-track-arrow:hover:not(:disabled),
+.noctafin-track-arrow:focus-visible:not(:disabled) {
+  background: linear-gradient(135deg, rgba(110,83,255,.96), rgba(36,207,255,.80)) !important;
+  border-color: rgba(255,255,255,.38) !important;
+  transform: translateY(-50%) scale(1.07) !important;
+}
+
+/* Keep content clear of the edge arrows. */
+.noctafin-brand-track,
+.noctafin-card-track {
+  box-sizing: border-box !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  scrollbar-width: none !important;
+}
+
+.noctafin-track-shell.has-overflow .noctafin-brand-track,
+.noctafin-track-shell.has-overflow .noctafin-card-track {
+  padding-left: 54px !important;
+  padding-right: 54px !important;
+  scroll-padding-left: 54px !important;
+  scroll-padding-right: 54px !important;
+}
+
+/* --------------------------------------------------------------------------
+   Poster rails: fixed display geometry based on viewport height. A complete
+   2:3 poster plus title/year/rating fits naturally; cards never have their own
+   vertical scroll area and artwork is never cropped.
+   -------------------------------------------------------------------------- */
+.noctafin-card-track--poster {
+  align-items: flex-start !important;
+  gap: 12px !important;
+  min-height: calc(var(--lumo-poster-height) + 48px) !important;
+  height: auto !important;
+  max-height: none !important;
+  padding-top: 8px !important;
+  padding-bottom: 10px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.noctafin-card--poster {
+  flex: 0 0 var(--lumo-poster-width) !important;
+  width: var(--lumo-poster-width) !important;
+  min-width: var(--lumo-poster-width) !important;
+  max-width: var(--lumo-poster-width) !important;
+  height: auto !important;
+  max-height: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.noctafin-card--poster .noctafin-card__art {
+  position: relative !important;
+  display: block !important;
+  width: var(--lumo-poster-width) !important;
+  height: var(--lumo-poster-height) !important;
+  min-height: var(--lumo-poster-height) !important;
+  max-height: var(--lumo-poster-height) !important;
+  aspect-ratio: 2 / 3 !important;
+  overflow: hidden !important;
+  contain: paint !important;
+}
+
+.noctafin-card--poster .noctafin-card__art img {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  object-position: 50% 50% !important;
+  pointer-events: none !important;
+}
+
+.noctafin-card--poster .noctafin-card__title {
+  display: block !important;
+  min-height: 18px !important;
+  margin-top: 6px !important;
+  font-size: .82rem !important;
+  line-height: 1.2 !important;
+}
+
+.noctafin-card--poster .noctafin-card__meta {
+  display: flex !important;
+  min-height: 16px !important;
+  margin-top: 1px !important;
+  font-size: .69rem !important;
+  line-height: 1.15 !important;
+}
+
+.noctafin-card--poster .noctafin-card__subtitle {
+  font-size: .70rem !important;
+  line-height: 1.15 !important;
+}
+
+/* Landscape resume cards also remain a self-contained card, never a nested scroller. */
+.noctafin-card-track--landscape {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  min-height: 190px !important;
+}
+
+.noctafin-card--landscape {
+  overflow: visible !important;
+  height: auto !important;
+}
+
+/* Clickable headings are text, not old-style buttons. */
+.noctafin-section-title-button {
+  appearance: none !important;
+  border: 0 !important;
+  background: none !important;
+  padding: 0 0 3px !important;
+  margin: 0 !important;
+  font: inherit !important;
+  line-height: inherit !important;
+  cursor: pointer !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+.noctafin-section-title-button .noctafin-section-title__label,
+.noctafin-section-title,
+.noctafin-card__title,
+.noctafin-card__subtitle,
+.noctafin-card__meta,
+.noctafin-brand__name {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* The v1.3 custom full-screen browser is no longer used. Native Jellyfin list
+   routes handle genre/studio navigation now. Hide any stale instance after an
+   update or cached script transition. */
+#noctafin-browser-page {
+  display: none !important;
+}
+body.noctafin-browser-open {
+  overflow: auto !important;
+}
+
+@media (min-width: 1500px) {
+  :root {
+    --lumo-poster-height: clamp(176px, 21vh, 228px);
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --lumo-poster-height: clamp(154px, 24vh, 196px);
+    --lumo-arrow-size: 38px;
+  }
+
+  .noctafin-brand {
+    flex-basis: clamp(166px, 39vw, 220px) !important;
+    width: clamp(166px, 39vw, 220px) !important;
+    min-width: clamp(166px, 39vw, 220px) !important;
+    height: 92px !important;
+  }
+
+  .noctafin-brand__logo-frame .noctafin-brand__logo {
+    max-width: 78% !important;
+    max-height: 58% !important;
+  }
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  /* Touch devices use native swipe, so arrows are intentionally absent. */
+  .noctafin-track-arrow {
+    display: none !important;
+  }
+
+  .noctafin-track-shell.has-overflow .noctafin-brand-track,
+  .noctafin-track-shell.has-overflow .noctafin-card-track {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+}
+
+/* ========================================================================== 
+   Lumo v1.4 — Jellyfin 12 hardening
+   Modern header branding, reliable edge arrows, contained logos/posters.
+   ========================================================================== */
+
+:root {
+  --lumo-poster-height: clamp(150px, 19vh, 205px);
+  --lumo-poster-width: calc(var(--lumo-poster-height) * 0.6666667);
+  --lumo-arrow-size: 40px;
+}
+
+/* Jellyfin 12 Modern ServerButton: keep React DOM intact and paint Lumo over it. */
+.lumo-modern-server-button {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 98px !important;
+  min-height: 40px !important;
+  width: auto !important;
+  padding: 4px 10px 4px 5px !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 14px !important;
+  color: #fff !important;
+  background: rgba(255,255,255,.035) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  text-transform: none !important;
+  overflow: hidden !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+.lumo-modern-server-button > * {
+  display: none !important;
+}
+
+.lumo-modern-server-button::before {
+  content: "" !important;
+  display: block !important;
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  background-image: var(--lumo-current-logo) !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+  filter: drop-shadow(0 3px 9px rgba(0,0,0,.32));
+}
+
+.lumo-modern-server-button::after {
+  content: "Lumo" !important;
+  display: block !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  font-weight: 850 !important;
+  letter-spacing: -.025em !important;
+  white-space: nowrap !important;
+}
+
+.lumo-modern-server-button:hover,
+.lumo-modern-server-button:focus-visible {
+  background: rgba(255,255,255,.075) !important;
+  border-color: rgba(111,91,255,.46) !important;
+}
+
+/* Classic header fallback. */
+.lumo-page-title-brand {
+  min-width: 106px !important;
+  width: auto !important;
+  background-image: none !important;
+  font-size: 0 !important;
+}
+.lumo-page-title-brand::before {
+  content: "" !important;
+  display: inline-block !important;
+  width: 32px !important;
+  height: 32px !important;
+  margin-right: 8px !important;
+  vertical-align: middle !important;
+  background: var(--lumo-current-logo) center / contain no-repeat !important;
+}
+.lumo-page-title-brand::after {
+  content: "Lumo" !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  color: #fff !important;
+  font-size: 1rem !important;
+  font-weight: 850 !important;
+}
+
+/* Studio/network marks: never crop; center the complete SVG inside a safe frame. */
+.noctafin-brand {
+  position: relative !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  height: clamp(96px, 7vw, 122px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.noctafin-brand__logo-frame {
+  position: absolute !important;
+  inset: 14px 20px !important;
+  z-index: 4 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.noctafin-brand__logo-frame > .noctafin-brand__logo {
+  position: static !important;
+  inset: auto !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 76% !important;
+  max-height: 58% !important;
+  margin: auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transform: none !important;
+}
+
+/* Wide wordmarks benefit from a little more horizontal room, but still never crop. */
+.noctafin-brand[data-brand="pixar"] .noctafin-brand__logo,
+.noctafin-brand[data-brand="disney"] .noctafin-brand__logo,
+.noctafin-brand[data-brand="20th-century"] .noctafin-brand__logo,
+.noctafin-brand[data-brand="paramount"] .noctafin-brand__logo,
+.noctafin-brand[data-brand="apple-tv+"] .noctafin-brand__logo,
+.noctafin-brand[data-brand="cartoon-network"] .noctafin-brand__logo {
+  max-width: 82% !important;
+  max-height: 55% !important;
+}
+
+.noctafin-brand.has-logo .noctafin-brand__name {
+  display: none !important;
+}
+
+/* Edge arrows: hidden really means gone. This prevents Jellyfin button styles
+   from collapsing an inactive control into the grey vertical pills seen before. */
+.noctafin-track-arrow[hidden],
+.noctafin-track-arrow:disabled {
+  display: none !important;
+}
+
+.noctafin-track-shell {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: visible !important;
+}
+
+.noctafin-track-shell.has-overflow .noctafin-track-arrow:not([hidden]):not(:disabled) {
+  position: absolute !important;
+  z-index: 100 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--lumo-arrow-size) !important;
+  height: var(--lumo-arrow-size) !important;
+  min-width: var(--lumo-arrow-size) !important;
+  min-height: var(--lumo-arrow-size) !important;
+  max-width: var(--lumo-arrow-size) !important;
+  max-height: var(--lumo-arrow-size) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 1px solid rgba(255,255,255,.18) !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  background: rgba(8,10,18,.90) !important;
+  box-shadow: 0 12px 34px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.11) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  opacity: .95 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+.noctafin-track-arrow--prev { left: -2px !important; right: auto !important; }
+.noctafin-track-arrow--next { right: -2px !important; left: auto !important; }
+
+.noctafin-track-arrow svg {
+  display: block !important;
+  width: 19px !important;
+  height: 19px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.35 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.noctafin-shelf .noctafin-track-arrow {
+  top: 50% !important;
+}
+
+.noctafin-media-row--poster .noctafin-track-arrow {
+  top: calc(8px + (var(--lumo-poster-height) / 2)) !important;
+}
+
+.noctafin-media-row--landscape .noctafin-track-arrow {
+  top: clamp(72px, 7.6vw, 108px) !important;
+}
+
+/* Cards: the whole 2:3 poster is visible. Only the ROW can move horizontally;
+   a card itself can never scroll vertically or crop its title/meta. */
+.noctafin-card-track--poster {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: calc(var(--lumo-poster-height) + 46px) !important;
+  max-height: none !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  overflow-x: auto !important;
+  overflow-y: clip !important;
+  overscroll-behavior-y: none !important;
+  scrollbar-width: none !important;
+}
+.noctafin-card-track--poster::-webkit-scrollbar { display: none !important; }
+
+.noctafin-card--poster {
+  display: block !important;
+  flex: 0 0 var(--lumo-poster-width) !important;
+  width: var(--lumo-poster-width) !important;
+  min-width: var(--lumo-poster-width) !important;
+  max-width: var(--lumo-poster-width) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}
+
+.noctafin-card--poster .noctafin-card__art {
+  position: relative !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: var(--lumo-poster-height) !important;
+  min-height: var(--lumo-poster-height) !important;
+  max-height: var(--lumo-poster-height) !important;
+  aspect-ratio: 2 / 3 !important;
+  overflow: hidden !important;
+}
+
+.noctafin-card--poster .noctafin-card__art img {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: none !important;
+}
+
+.noctafin-card--poster:hover .noctafin-card__art img,
+.noctafin-card--poster:focus-visible .noctafin-card__art img {
+  transform: none !important;
+}
+
+.noctafin-card--poster .noctafin-card__title {
+  display: block !important;
+  width: 100% !important;
+  min-height: 17px !important;
+  margin: 6px 0 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: .79rem !important;
+  line-height: 1.18 !important;
+}
+
+.noctafin-card--poster .noctafin-card__meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-height: 15px !important;
+  margin: 2px 0 0 !important;
+  overflow: visible !important;
+  font-size: .68rem !important;
+  line-height: 1.1 !important;
+}
+
+.noctafin-card--poster .noctafin-card__subtitle {
+  display: block !important;
+  min-height: 0 !important;
+  margin-top: 2px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: .68rem !important;
+  line-height: 1.1 !important;
+}
+
+/* No stale v1.3 full-screen browser may survive a cached update. */
+#noctafin-browser-page,
+.noctafin-browser-page {
+  display: none !important;
+}
+body.noctafin-browser-open {
+  overflow: auto !important;
+}
+
+/* Labels behave like application UI, never like selectable article text. */
+.noctafin-custom-sections,
+.noctafin-custom-sections *,
+.lumo-modern-server-button,
+.lumo-brand-button {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --lumo-poster-height: clamp(145px, 22vh, 188px);
+    --lumo-arrow-size: 38px;
+  }
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .noctafin-track-arrow { display: none !important; }
+  .lumo-modern-server-button { min-width: 42px !important; width: 42px !important; padding: 4px !important; }
+  .lumo-modern-server-button::after { display: none !important; }
+  .lumo-modern-server-button::before { width: 30px !important; height: 30px !important; flex-basis: 30px !important; }
 }

@@ -42,8 +42,7 @@ Le flou et l'assombrissement ne s'appliquent qu'aux fonds Halloween/Noël. Le fo
 
 - `rowLimit` : nombre de médias demandés par ligne.
 - `minItems` : une ligne standard est cachée si elle contient moins de médias.
-- `browsePageLimit` : nombre d'éléments chargés dans la page complète d'un genre.
-- `scrollFactor` : portion de largeur parcourue par les flèches.
+- - `scrollFactor` : portion de largeur parcourue par les flèches.
 - `hideNativeHomeRows` : masque les sections natives Jellyfin sur l'accueil.
 - `showResumeRow` : affiche `Continuer de regarder` juste avant les Studios.
 - `showStudioRail` : affiche les grandes tuiles Studios.
@@ -54,7 +53,7 @@ Le flou et l'assombrissement ne s'appliquent qu'aux fonds Halloween/Noël. Le fo
 
 ## Genres cliquables
 
-Le titre d'une ligne de genre ouvre une vue plein écran Lumo contenant tous les médias du genre. `Échap` ou le bouton retour ferment cette vue.
+Le titre d'une ligne de genre ouvre maintenant la liste native Jellyfin filtrée avec `genreId`. Les tuiles et titres Studios/Réseaux utilisent de la même façon `studioId`.
 
 ## Métadonnées et alias
 

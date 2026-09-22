@@ -55,7 +55,7 @@ foreach ($Entry in $Logos.GetEnumerator()) {
 $Index = Join-Path $WebDir "index.html"
 $Html = Get-Content $Index -Raw -Encoding UTF8
 $Html = [regex]::Replace($Html, '<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', 'IgnoreCase')
-$Block = "<script src=`"ui/noctafin-config.js`" data-noctafin-config></script>`n<script src=`"ui/noctafin-home.js`" data-noctafin-home></script>`n"
+$Block = "<script src=`"ui/noctafin-config.js?v=1.4.0`" data-noctafin-config></script>`n<script src=`"ui/noctafin-home.js?v=1.4.0`" data-noctafin-home></script>`n"
 if ($Html -notmatch '</body>') { throw "index.html ne contient pas </body>" }
 $Html = [regex]::Replace($Html, '</body>', $Block + '</body>', 'IgnoreCase')
 Set-Content -Path $Index -Value $Html -Encoding UTF8

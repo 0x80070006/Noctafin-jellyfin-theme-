@@ -60,9 +60,9 @@ fetch_logo() {
   local url="$2"
   if command -v curl >/dev/null 2>&1; then
     curl -L --fail --silent --show-error --connect-timeout 10 --max-time 30 \
-      -A "Lumo-Jellyfin/1.3" "$url" -o "$output"
+      -A "Lumo-Jellyfin/1.4" "$url" -o "$output"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q --timeout=30 --user-agent="Lumo-Jellyfin/1.3" -O "$output" "$url"
+    wget -q --timeout=30 --user-agent="Lumo-Jellyfin/1.4" -O "$output" "$url"
   else
     return 127
   fi
@@ -85,8 +85,8 @@ path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 text = re.sub(r'<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', text, flags=re.I)
 block = (
-    '<script src="ui/noctafin-config.js" data-noctafin-config></script>\n'
-    '<script src="ui/noctafin-home.js" data-noctafin-home></script>\n'
+    '<script src="ui/noctafin-config.js?v=1.4.0" data-noctafin-config></script>\n'
+    '<script src="ui/noctafin-home.js?v=1.4.0" data-noctafin-home></script>\n'
 )
 if not re.search(r'</body>', text, flags=re.I):
     raise SystemExit("index.html ne contient pas </body>")

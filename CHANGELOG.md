@@ -1,37 +1,35 @@
 # Changelog
 
+## 1.4.0
+
+- Correction du branding du header Jellyfin 12 Modern : ciblage du ServerButton natif et habillage CSS Lumo sans casser le DOM React.
+- Ajout d'un fallback pour le header classique Jellyfin.
+- Cache-busting des scripts injectés avec `?v=1.4.0`.
+- Refonte du centrage des logos Studios/Réseaux avec un `logo-frame` dédié.
+- Correction de la course de chargement qui laissait parfois le nom du studio au-dessus du logo.
+- Refonte des flèches de rails : chevrons SVG, boutons ronds, positionnement aux bords du rail ; les boutons inactifs utilisent désormais `hidden` afin d’éliminer définitivement les petites pilules grises.
+- Jaquettes verticales recalculées selon la hauteur de viewport ; ratio 2:3, image complète, aucun scroll vertical interne.
+- Titres, année et note directement visibles sous la jaquette.
+- Navigation Genres/Studios/Réseaux vers la page native Jellyfin `list.html` filtrée par `genreId` / `studioId`.
+- Désactivation de l'ancien navigateur plein écran Lumo qui pouvait se superposer incorrectement à l'accueil.
+- Titres de lignes cliquables et non sélectionnables.
+
 ## 1.3.0
 
-- Centre précisément les logos Studios et Réseaux TV dans leurs cartes.
-- Remplace les anciens chevrons par des boutons de navigation ronds avec SVG, centrés aux extrémités des rails.
-- Réduit légèrement la taille des jaquettes et affiche les posters complets sans recadrage.
-- Supprime le libellé `Genre` et la flèche textuelle à côté des titres de genres.
-- Conserve le nom du genre directement cliquable.
-- Désactive la sélection de texte sur les éléments d'interface Lumo.
+- Centrage initial des logos Studios/Réseaux.
+- Flèches SVG de rails.
+- Affiches non recadrées.
+- Titres de genres simplifiés.
 
 ## 1.2.0
 
-- Renomme l'interface visible en Lumo et personnalise la barre supérieure.
-- Ajoute le logo bleu permanent hors saison.
-- Ajoute les thèmes automatiques Halloween (octobre) et Noël (décembre).
-- Utilise les fonds saisonniers fournis avec assombrissement et flou gaussien CSS.
-- Conserve le fond Lumo sombre à halos animés hors saison.
-- Masque toutes les sections natives de la page d'accueil.
-- Ajoute une ligne `Continuer de regarder` Lumo juste avant les Studios.
-- Ajoute des cartes 16:9 et une barre de progression pour la reprise.
-- Rend les flèches de navigation des rails visibles quand nécessaire.
-- Ajoute `forceSeason` pour tester manuellement les saisons.
+- Branding Lumo et saisons automatiques.
+- Fonds Halloween et Noël assombris/floutés.
+- Ligne Continuer de regarder avant les Studios.
+- Masquage des lignes natives Jellyfin sur l'accueil.
 
 ## 1.1.0
 
-- Corrige le clipping vertical des jaquettes/titres dans les rails NoctaFin.
-- Ajoute des contrôles gauche/droite sur les rails desktop.
-- Ajoute un fond sombre animé avec halos colorés.
-- Rend les titres des genres cliquables.
-- Ajoute une page plein écran par genre avec chargement paginé.
-- Ajoute le téléchargement local des logos Studios/Réseaux à l'installation.
-- Améliore le responsive et le comportement clavier/tactile.
-
-## 1.0.0
-
-- Première version publique.
+- Studios, Réseaux TV et Genres dynamiques.
+- Logos de marques locaux.
+- Fond animé Lumo.

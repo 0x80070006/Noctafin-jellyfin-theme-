@@ -24,7 +24,6 @@
     rows: {
       rowLimit: 20,
       minItems: 2,
-      browsePageLimit: 120,
       scrollFactor: 0.82,
       dedupeNativeRows: true,
       hideNativeHomeRows: true,
@@ -106,7 +105,7 @@
       const server = servers.find((entry) => entry.AccessToken && entry.UserId && sameServer(entry))
         || servers.find((entry) => entry.AccessToken && entry.UserId);
       if (!server) return null;
-      return { base, token: server.AccessToken, userId: server.UserId };
+      return { base, token: server.AccessToken, userId: server.UserId, serverId: server.Id || "", serverName: server.Name || "" };
     } catch {
       return null;
     }
@@ -115,7 +114,7 @@
   function headers() {
     if (!auth?.token) return {};
     return {
-      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.3", Token="${auth.token}"`
+      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.4", Token="${auth.token}"`
     };
   }
 
@@ -129,7 +128,7 @@
     if (!itemId || !auth?.token) return "";
     const suffix = index == null ? "" : `/${index}`;
     const query = new URLSearchParams({
-      api_key: auth.token,
+      ApiKey: auth.token,
       quality: "88",
       maxWidth: String(width)
     });
@@ -228,7 +227,12 @@
   function updateDocumentBrand(name, logoHref) {
     document.documentElement.classList.add("lumo-ui");
     const title = document.title || "";
-    if (!title || /jellyfin/i.test(title)) document.title = title ? title.replace(/jellyfin/ig, name) : name;
+    const serverName = String(auth?.serverName || "").trim();
+    if (!title) document.title = name;
+    else if (/jellyfin/i.test(title)) document.title = title.replace(/jellyfin/ig, name);
+    else if (serverName && title.toLowerCase().includes(serverName.toLowerCase())) {
+      document.title = title.replace(new RegExp(serverName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), name);
+    }
 
     let appName = document.querySelector('meta[name="application-name"]');
     if (!appName) {
@@ -249,47 +253,91 @@
     }
   }
 
+  function replaceBrandContents(target, name, logoHref, season) {
+    if (!target) return false;
+    target.classList.add("lumo-brand-button");
+    target.setAttribute("data-lumo-brand", "true");
+    target.setAttribute("aria-label", name);
+    target.setAttribute("title", name);
+    target.dataset.lumoSeason = season;
+
+    let img = $(".lumo-brand-logo", target);
+    let label = $(".lumo-brand-name", target);
+    if (!img || !label) {
+      target.replaceChildren();
+      img = document.createElement("img");
+      img.className = "lumo-brand-logo";
+      img.alt = "";
+      img.draggable = false;
+      label = document.createElement("span");
+      label.className = "lumo-brand-name";
+      target.append(img, label);
+    }
+    if (img.getAttribute("src") !== logoHref) img.setAttribute("src", logoHref);
+    label.textContent = name;
+    return true;
+  }
+
   function ensureLumoHeader(name, logoHref, season) {
-    const header = $(".skinHeader") || $('[class*="MuiAppBar-root"]');
-    if (!header) return;
+    const headers = $$(".skinHeader, [class*='MuiAppBar-root'], header").filter((el) => {
+      try { return getComputedStyle(el).display !== "none"; } catch { return true; }
+    });
+    if (!headers.length) return;
 
-    let homeButton = $(".headerHomeButton", header);
-    if (homeButton) {
-      if (!homeButton.classList.contains("lumo-brand-button")) {
-        homeButton.classList.add("lumo-brand-button");
-        homeButton.replaceChildren();
-        const img = document.createElement("img");
-        img.className = "lumo-brand-logo";
-        img.alt = "";
-        const label = document.createElement("span");
-        label.className = "lumo-brand-name";
-        homeButton.append(img, label);
+    for (const header of headers) {
+      /* Jellyfin 12 Modern uses a MUI Link/Button to "/" for the server brand.
+         Do not replace its React-managed children: style the existing control instead. */
+      const serverName = String(auth?.serverName || "").trim();
+      const modernServerButton = $$("a[class*='MuiButton-root'], button[class*='MuiButton-root']", header).find((el) => {
+        const href = String(el.getAttribute("href") || "");
+        const text = String(el.textContent || "").trim();
+        let homeHref = href === "/" || href === "./" || /\/web\/?$/.test(href);
+        try {
+          if (href) {
+            const url = new URL(href, window.location.href);
+            homeHref = homeHref || /\/web\/?$/.test(url.pathname) || url.pathname === "/";
+          }
+        } catch { /* ignore malformed hrefs */ }
+        const serverText = serverName && norm(text) === norm(serverName);
+        return homeHref || serverText || el.dataset.lumoBrand === "true";
+      });
+      if (modernServerButton) {
+        modernServerButton.classList.add("lumo-modern-server-button");
+        modernServerButton.dataset.lumoBrand = "true";
+        modernServerButton.dataset.lumoSeason = season;
+        modernServerButton.setAttribute("aria-label", name);
+        modernServerButton.setAttribute("title", name);
+        $("#lumo-header-brand", header)?.remove();
+        continue;
       }
-      const img = $(".lumo-brand-logo", homeButton);
-      const label = $(".lumo-brand-name", homeButton);
-      if (img && img.src !== logoHref) img.src = logoHref;
-      if (label) label.textContent = name;
-      homeButton.setAttribute("aria-label", name);
-      homeButton.title = name;
-      homeButton.dataset.lumoSeason = season;
-      return;
-    }
 
-    const host = $(".headerTop", header) || $('[class*="MuiToolbar-root"]', header) || header;
-    let fallback = $("#lumo-header-brand", header);
-    if (!fallback) {
-      fallback = document.createElement("button");
-      fallback.type = "button";
-      fallback.id = "lumo-header-brand";
-      fallback.className = "lumo-brand-button lumo-brand-fallback focusable";
-      fallback.innerHTML = '<img class="lumo-brand-logo" alt=""><span class="lumo-brand-name"></span>';
-      fallback.addEventListener("click", () => navigate("/home"));
-      host.prepend(fallback);
+      /* Classic layout: replacing the home button is safe because it is not a React ServerButton. */
+      const classicHome = $(".headerHomeButton", header);
+      if (classicHome && replaceBrandContents(classicHome, name, logoHref, season)) {
+        $("#lumo-header-brand", header)?.remove();
+        continue;
+      }
+
+      const pageTitle = $(".pageTitleWithDefaultLogo, .pageTitleWithLogo, .pageTitle", header);
+      if (pageTitle) {
+        pageTitle.classList.add("lumo-page-title-brand");
+        pageTitle.style.setProperty("--lumo-brand-logo", `url("${logoHref}")`);
+        pageTitle.setAttribute("aria-label", name);
+        pageTitle.dataset.lumoBrandName = name;
+      }
+
+      const host = $(".headerLeft", header) || $(".headerTop", header) || $("[class*='MuiToolbar-root']", header) || header;
+      let fallback = $("#lumo-header-brand", header);
+      if (!fallback) {
+        fallback = document.createElement("button");
+        fallback.type = "button";
+        fallback.id = "lumo-header-brand";
+        fallback.className = "lumo-brand-button lumo-brand-fallback focusable";
+        fallback.addEventListener("click", () => navigate("/home.html"));
+        host.prepend(fallback);
+      }
+      replaceBrandContents(fallback, name, logoHref, season);
     }
-    $(".lumo-brand-logo", fallback).src = logoHref;
-    $(".lumo-brand-name", fallback).textContent = name;
-    fallback.setAttribute("aria-label", name);
-    fallback.dataset.lumoSeason = season;
   }
 
   function syncLumoChrome() {
@@ -298,6 +346,7 @@
     const logoHref = assetUrl(assets.logo);
     const root = document.documentElement;
     root.dataset.lumoSeason = season;
+    root.style.setProperty("--lumo-current-logo", `url("${logoHref}")`);
     root.style.setProperty("--lumo-season-blur", `${Math.max(0, Number(CONFIG.seasonal.backgroundBlurPx) || 0)}px`);
     root.style.setProperty("--lumo-season-brightness", String(Math.max(0.2, Math.min(1, Number(CONFIG.seasonal.backgroundBrightness) || 0.56))));
     if (assets.background) root.style.setProperty("--lumo-season-background", `url("${assetUrl(assets.background)}")`);
@@ -575,20 +624,27 @@
     track.setAttribute("role", "group");
     track.setAttribute("aria-label", label);
 
+    previous.hidden = true;
+
     const next = document.createElement("button");
     next.type = "button";
     next.className = "noctafin-track-arrow noctafin-track-arrow--next focusable";
     next.setAttribute("aria-label", `Faire défiler ${label} vers la droite`);
     next.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>`;
+    next.hidden = true;
 
     shell.append(previous, track, next);
 
     const update = () => {
       const max = Math.max(0, track.scrollWidth - track.clientWidth);
       const hasOverflow = max > 8;
+      const atStart = track.scrollLeft <= 6;
+      const atEnd = track.scrollLeft >= max - 6;
       shell.classList.toggle("has-overflow", hasOverflow);
-      previous.disabled = !hasOverflow || track.scrollLeft <= 6;
-      next.disabled = !hasOverflow || track.scrollLeft >= max - 6;
+      previous.disabled = !hasOverflow || atStart;
+      next.disabled = !hasOverflow || atEnd;
+      previous.hidden = !hasOverflow || atStart;
+      next.hidden = !hasOverflow || atEnd;
     };
 
     const amount = () => Math.max(260, track.clientWidth * Math.max(0.45, Math.min(0.95, Number(CONFIG.rows.scrollFactor) || 0.82)));
@@ -598,11 +654,26 @@
 
     shell._noctafinUpdateArrows = update;
     requestAnimationFrame(update);
+    setTimeout(update, 180);
     return { shell, track, previous, next, update };
   }
 
   function rowId(prefix, label) {
     return `noctafin-${prefix}-${norm(label).replace(/\s+/g, "-")}`;
+  }
+
+
+  function navigateToNativeFilter(group, kind = "genre") {
+    if (!group?._ids?.length) return;
+    const id = group._ids.find(Boolean);
+    if (!id) return;
+    const params = new URLSearchParams();
+    if (kind === "genre") params.set("genreId", id);
+    else params.set("studioId", id);
+    params.set("type", kind === "network" ? "Series" : "Movie,Series");
+    if (auth?.serverId) params.set("serverId", auth.serverId);
+    params.set("name", group.label || "");
+    navigate(`/list.html?${params.toString()}`);
   }
 
   function createBrandShelf(title, groups, prefix) {
@@ -617,6 +688,7 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "noctafin-brand focusable";
+      button.dataset.brand = norm(group.label).replace(/\s+/g, "-");
       button.style.setProperty("--brand-a", group.colors?.[0] || "#7c5cff");
       button.style.setProperty("--brand-b", group.colors?.[1] || "#25d7ff");
       if (group.darkText) button.style.color = "#080a11";
@@ -627,25 +699,30 @@
       button.appendChild(fallback);
 
       if (group.logo) {
+        const frame = document.createElement("span");
+        frame.className = "noctafin-brand__logo-frame";
         const logo = document.createElement("img");
         logo.className = "noctafin-brand__logo";
         logo.alt = group.label;
-        logo.loading = "lazy";
+        logo.loading = "eager";
         logo.decoding = "async";
+        logo.draggable = false;
         logo.referrerPolicy = "no-referrer";
-        logo.src = group.logo;
         if (group.logoFilter) logo.style.filter = group.logoFilter;
         logo.addEventListener("load", () => button.classList.add("has-logo"), { once: true });
-        logo.addEventListener("error", () => logo.remove(), { once: true });
-        button.appendChild(logo);
+        logo.addEventListener("error", () => {
+          button.classList.remove("has-logo");
+          frame.remove();
+        }, { once: true });
+        frame.appendChild(logo);
+        button.appendChild(frame);
+        logo.src = assetUrl(group.logo);
       }
 
       if (!group._ids?.length) {
         button.setAttribute("aria-disabled", "true");
       } else {
-        button.addEventListener("click", () => {
-          document.getElementById(rowId(prefix, group.label))?.scrollIntoView({ behavior: "smooth", block: "center" });
-        });
+        button.addEventListener("click", () => navigateToNativeFilter(group, prefix === "network" ? "network" : "studio"));
       }
       track.appendChild(button);
     });
@@ -697,92 +774,6 @@
     }
   }
 
-  async function fetchBrowseItems(query, startIndex = 0) {
-    const params = new URLSearchParams({
-      StartIndex: String(Math.max(0, startIndex)),
-      Limit: String(Math.max(24, Number(CONFIG.rows.browsePageLimit) || 120)),
-      Recursive: "true",
-      IncludeItemTypes: query.includeTypes || "Movie,Series",
-      Fields: FIELDS,
-      SortBy: "SortName",
-      SortOrder: "Ascending"
-    });
-    if (query.genreIds?.length) params.set("GenreIds", query.genreIds.join(","));
-    if (query.studioIds?.length) params.set("StudioIds", query.studioIds.join(","));
-    return fetchJson(`/Users/${auth.userId}/Items?${params}`);
-  }
-
-  function closeBrowserPage() {
-    $("#noctafin-browser-page")?.remove();
-    document.body.classList.remove("noctafin-browser-open");
-  }
-
-  async function openGenreBrowser(group) {
-    if (!group?._ids?.length) return;
-    closeBrowserPage();
-
-    const page = document.createElement("section");
-    page.id = "noctafin-browser-page";
-    page.className = "noctafin-browser-page";
-    page.innerHTML = `
-      <div class="noctafin-browser-page__ambient" aria-hidden="true"></div>
-      <header class="noctafin-browser-page__header">
-        <button type="button" class="noctafin-browser-page__back focusable" aria-label="Retour">←</button>
-        <div>
-          <h1 class="noctafin-browser-page__title"></h1>
-          <p class="noctafin-browser-page__count">Chargement…</p>
-        </div>
-      </header>
-      <div class="noctafin-browser-page__grid" aria-live="polite"></div>
-      <div class="noctafin-browser-page__footer">
-        <button type="button" class="noctafin-browser-page__more focusable" hidden>Charger plus</button>
-      </div>
-    `;
-
-    $(".noctafin-browser-page__title", page).textContent = group.label;
-    const back = $(".noctafin-browser-page__back", page);
-    const grid = $(".noctafin-browser-page__grid", page);
-    const count = $(".noctafin-browser-page__count", page);
-    const more = $(".noctafin-browser-page__more", page);
-    back.addEventListener("click", closeBrowserPage);
-
-    document.body.appendChild(page);
-    document.body.classList.add("noctafin-browser-open");
-    page.scrollTop = 0;
-    back.focus({ preventScroll: true });
-
-    let startIndex = 0;
-    let total = 0;
-    let loading = false;
-    const query = { genreIds: group._ids, includeTypes: "Movie,Series" };
-
-    const load = async () => {
-      if (loading) return;
-      loading = true;
-      more.disabled = true;
-      more.textContent = "Chargement…";
-      try {
-        const data = await fetchBrowseItems(query, startIndex);
-        const items = data.Items || [];
-        total = Number(data.TotalRecordCount) || items.length;
-        grid.append(...items.map((item) => makeCard(item, "poster")));
-        startIndex += items.length;
-        count.textContent = `${total.toLocaleString(CONFIG.locale)} titre${total > 1 ? "s" : ""}`;
-        more.hidden = !items.length || startIndex >= total;
-        more.textContent = "Charger plus";
-      } catch (error) {
-        console.warn(LOG, "Page de genre indisponible", error);
-        count.textContent = "Impossible de charger ce genre.";
-        more.hidden = true;
-      } finally {
-        loading = false;
-        more.disabled = false;
-      }
-    };
-
-    more.addEventListener("click", load);
-    await load();
-  }
 
   function makeCard(item, layout = "poster") {
     const card = document.createElement("button");
@@ -832,7 +823,6 @@
     const progressBar = $(".noctafin-card__progress > span", card);
     if (progressBar) progressBar.style.width = `${progress}%`;
     card.addEventListener("click", () => {
-      if (card.closest("#noctafin-browser-page")) closeBrowserPage();
       navigate(`/details?id=${encodeURIComponent(detailsId(item))}`);
     });
     return card;
@@ -909,7 +899,7 @@
             title: group.label,
             id: rowId("genre", group.label),
             query: { genreIds: group._ids, includeTypes: "Movie,Series" },
-            onTitleClick: () => openGenreBrowser(group)
+            onTitleClick: () => navigateToNativeFilter(group, "genre")
           }));
         });
       }
@@ -920,7 +910,8 @@
             kicker: "",
             title: group.label,
             id: rowId("studio", group.label),
-            query: { studioIds: group._ids, includeTypes: "Movie,Series" }
+            query: { studioIds: group._ids, includeTypes: "Movie,Series" },
+            onTitleClick: () => navigateToNativeFilter(group, "studio")
           }));
         });
       }
@@ -931,7 +922,8 @@
             kicker: "",
             title: group.label,
             id: rowId("network", group.label),
-            query: { studioIds: group._ids, includeTypes: "Series" }
+            query: { studioIds: group._ids, includeTypes: "Series" },
+            onTitleClick: () => navigateToNativeFilter(group, "network")
           }));
         });
       }
@@ -958,6 +950,7 @@
   }
 
   async function mount() {
+    auth = getAuth() || auth;
     syncLumoChrome();
     const found = locateHome();
     if (!found) return;
@@ -969,7 +962,8 @@
 
     cleanupTransient();
     currentHome = found;
-    auth = getAuth();
+    auth = getAuth() || auth;
+    syncLumoChrome();
     if (!auth?.token || !auth?.userId) {
       console.warn(LOG, "Session Jellyfin introuvable; le thème CSS reste actif mais les sections dynamiques ne peuvent pas charger.");
       return;
@@ -1002,6 +996,9 @@
   }
 
   function boot() {
+    $("#noctafin-browser-page")?.remove();
+    document.body?.classList.remove("noctafin-browser-open");
+    auth = getAuth() || auth;
     syncLumoChrome();
     scheduleMount();
     const observer = new MutationObserver(scheduleMount);
@@ -1013,9 +1010,6 @@
     window.addEventListener("resize", () => {
       $$(".noctafin-track-shell").forEach((shell) => shell._noctafinUpdateArrows?.());
     }, { passive: true });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && $("#noctafin-browser-page")) closeBrowserPage();
-    });
     setInterval(() => {
       syncLumoChrome();
       scheduleMount();

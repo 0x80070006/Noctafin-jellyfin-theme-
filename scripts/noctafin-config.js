@@ -25,7 +25,6 @@ window.NOCTAFIN_CONFIG = {
   rows: {
     rowLimit: 20,
     minItems: 2,
-    browsePageLimit: 120,
     scrollFactor: 0.82,
     dedupeNativeRows: true,
     hideNativeHomeRows: true,
