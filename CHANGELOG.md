@@ -1,22 +1,18 @@
 # Changelog
 
-## 1.11.0
+## 1.12.0
 
-- Refonte complète des fiches Films/Séries pour supprimer définitivement le grand espace vide provoqué par les règles de détail héritées.
-- Les routes `#/details?id=...` sont maintenant détectées avant les anciennes vues Jellyfin conservées dans le DOM.
-- Nouvelle fiche Film cinématique plein écran : backdrop, logo Jellyfin du média (ou titre en fallback), métadonnées, bouton Lecture, synopsis et genres.
-- Nouvelle fiche Série cinématique : backdrop assombri/flouté, grande jaquette, logo/titre, métadonnées, lecture du prochain épisode disponible, synopsis et genres.
-- Toutes les saisons d'une série sont visibles avec leur jaquette dans des panneaux accordéon.
-- Les panneaux Saison se déplient/replient avec un petit chevron ; les épisodes sont chargés uniquement à l'ouverture pour réduire les requêtes et accélérer la page.
-- La première saison peut être ouverte automatiquement (`details.autoExpandFirstSeason`).
-- Cartes épisodes 16:9 avec titre, durée, note, résumé et lecture directe.
-- Cache local court pour fiches, saisons et épisodes afin de limiter les appels API pendant les remounts React de Jellyfin 12.
-- Les vues natives sous-jacentes sont rendues `inert` uniquement pendant une fiche Lumo et sont restaurées à la navigation.
-- Suppression de la règle `padding-top` native qui pouvait casser une fiche si le runtime JavaScript n'était pas encore prêt.
-- Boutons Lecture / Plus d'infos du Hero d'accueil durcis : dimensions explicites, SVG isolés, états hover/active/disabled et lecture série via Next Up avec fallback.
-- Ajout d'un fondu noir en haut du Hero d'accueil pour une transition plus douce avec le header.
-- Le Hero d'accueil repose désormais sur un canvas noir opaque de mêmes dimensions : le fond spatial ne transparaît plus derrière lui.
-- Conservation de toutes les fonctions v1.10 : fond spatial, Halloween/Noël automatiques, Heroes Studio/Genre, 12 médias par rail / 6 visibles, sélection quotidienne, studios/réseaux et branding Lumo.
+- Isolation renforcée du lecteur Jellyfin : le fond spatial Lumo, les fiches custom et le header principal sont automatiquement retirés du compositing pendant la lecture.
+- Détection playback redondante par route, DOM lecteur/OSD, balise `<video>` et fallback CSS `:has()` afin d'éviter le cas où seul le fond Lumo reste visible derrière les contrôles.
+- Le conteneur vidéo natif est remis sur un canvas noir plein écran et la vidéo conserve `object-fit: contain`, sans filtre, opacité ou transform hérités du thème.
+- Le header Lumo n'est plus injecté dans l'OSD du lecteur : suppression du double bandeau observé pendant les épisodes.
+- Les boutons de l'OSD ne reçoivent plus les transformations hover globales du thème.
+- Nouvelle passerelle de lecture robuste : priorité au `PlaybackManager` natif Jellyfin ; si celui-ci n'est pas exposé, Lumo ouvre la vraie fiche native de l'item et déclenche son bouton Lecture au lieu d'utiliser une route `/video` synthétique susceptible de renvoyer vers l'accueil.
+- Watchdog de démarrage : si `PlaybackManager.play()` ne monte pas le lecteur, la passerelle native prend automatiquement le relais sans boucle de navigation.
+- Les cartes d'épisodes et la carte de reprise utilisent cette même pile de lecture, avec verrouillage anti-double-clic.
+- Ajout de **Lecture en cours** au-dessus des saisons pour le dernier épisode réellement reprenable de la série, avec progression et lancement direct.
+- Déduplication du Hero d'accueil renforcée par série, titre normalisé et année afin d'éviter qu'un même film/show apparaisse deux fois dans la boucle, y compris en présence de doublons de bibliothèque.
+- Conservation de la fiche Film/Série cinématique, saisons accordéon, Heroes Studio/Genre, fond spatial, Halloween/Noël, 12 médias par rail / 6 visibles et sélection quotidienne.
 
 ## 1.10.0
 

@@ -56,7 +56,7 @@ for (const relative of [
 }
 
 const runtimeSource = fs.readFileSync(new URL('./noctafin-home.js', import.meta.url), 'utf8');
-for (const needle of ['findTaxonomyHost', 'scheduleTaxonomyRetry', 'lumo-taxonomy-hero', 'GenreIds', 'StudioIds', 'syncDetailPage', 'buildMovieDetailPage', 'buildSeriesDetailPage', 'fetchSeriesSeasons', 'fetchSeasonEpisodes']) {
+for (const needle of ['findTaxonomyHost', 'scheduleTaxonomyRetry', 'lumo-taxonomy-hero', 'GenreIds', 'StudioIds', 'syncDetailPage', 'buildMovieDetailPage', 'buildSeriesDetailPage', 'fetchSeriesSeasons', 'fetchSeasonEpisodes', 'playItemRobust', 'resolvePlaybackManager', 'triggerNativeDetailPlayback', 'fetchSeriesResumeEpisode', 'buildSeriesResumeCard', 'hasActivePlaybackSurface']) {
   if (!runtimeSource.includes(needle)) throw new Error(`Runtime incomplet: ${needle}`);
 }
 
@@ -66,6 +66,21 @@ if (!cfg.taxonomyHero?.enabled) throw new Error('taxonomyHero doit rester activ�
 if (!cfg.details?.enabled) throw new Error('details doit rester activé');
 if (Number(cfg.details?.episodePageSize) < 20) throw new Error('details.episodePageSize doit rester >= 20');
 if (!cfg.navigation?.serverIdFallback) throw new Error('serverIdFallback absent');
+
+
+if (runtimeSource.includes('`#/video?') || runtimeSource.includes('navigate(`/video?')) {
+  throw new Error('La lecture ne doit jamais utiliser une route /video synthétique');
+}
+
+const playbackCss = new URL('../styles/lumo-v1.12.css', import.meta.url);
+if (!fs.existsSync(playbackCss)) throw new Error('styles/lumo-v1.12.css manquant');
+const playbackCssSource = fs.readFileSync(playbackCss, 'utf8');
+for (const needle of ['.lumo-playback-active', '.videoPlayerContainer', '.lumo-series-resume__card', ':has(.videoPlayerContainer)']) {
+  if (!playbackCssSource.includes(needle)) throw new Error(`CSS v1.12 incomplet: ${needle}`);
+}
+
+const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
+if (!themeCss.includes('lumo-v1.12.css?v=1.12.0')) throw new Error('theme.css doit charger lumo-v1.12.css en dernier');
 
 const detailCss = new URL('../styles/lumo-v1.11.css', import.meta.url);
 if (!fs.existsSync(detailCss)) throw new Error('styles/lumo-v1.11.css manquant');

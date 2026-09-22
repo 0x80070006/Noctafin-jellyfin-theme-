@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.11.0";
+  const VERSION = "1.12.0";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -121,6 +121,11 @@
   let detailRetryTimer = null;
   let detailRetryCount = 0;
   let detailFallbackUntil = 0;
+  let playbackManagerPromise = null;
+  let playbackPendingTimer = null;
+  let playbackFallbackTimer = null;
+  let nativePlaybackAttemptKey = "";
+  const seriesResumeCache = new Map();
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -215,6 +220,281 @@
       window.location.hash = target.startsWith("#") ? target.slice(1) : target;
     } catch (error) {
       console.warn(LOG, "Navigation impossible", error);
+    }
+  }
+
+  function isPlaybackRoute() {
+    const path = currentRoutePath();
+    return /(^|\/)(?:video(?:osd)?|playback|player|nowplaying)(?:\.html)?(?:\/|$)/.test(path);
+  }
+
+  function playbackSurfaceRect(node) {
+    if (!node?.isConnected) return false;
+    if (node.hidden || node.getAttribute?.("aria-hidden") === "true") return false;
+    try {
+      const rect = node.getBoundingClientRect();
+      return rect.width > 20 && rect.height > 20 && rect.right > 0 && rect.bottom > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  function hasActivePlaybackSurface() {
+    /* Do not use visibleElement() here: the exact bug we are protecting against
+       can make the native video temporarily transparent/covered. Presence + a
+       real viewport-sized rectangle is enough to switch Lumo into player mode. */
+    const strongSelectors = [
+      ".videoOsdBottom",
+      ".videoOsdHeader",
+      ".osdHeader",
+      ".videoOsd",
+      ".videoPlayerContainer",
+      "video.htmlVideoPlayer",
+      "video.htmlvideoplayer",
+      "video#videoPlayer",
+      "[class*='VideoPlayer'] video",
+      "[class*='videoPlayer'] video",
+      "[class*='VideoOsd']",
+      "[class*='videoOsd']"
+    ];
+    if (strongSelectors.some((selector) => $$(selector).some(playbackSurfaceRect))) return true;
+    return $$('video').some((video) => {
+      if (!playbackSurfaceRect(video)) return false;
+      const duration = Number(video.duration);
+      return !video.paused || Number(video.currentTime) > 0 || Number.isFinite(duration) && duration > 1 || Boolean(video.currentSrc);
+    });
+  }
+
+  function syncPlaybackMode() {
+    const active = Boolean(isPlaybackRoute() || hasActivePlaybackSurface());
+    const pending = document.documentElement.classList.contains("lumo-playback-pending");
+    if (active) nativePlaybackAttemptKey = "";
+    document.documentElement.classList.toggle("lumo-playback-active", active);
+    document.body?.classList.toggle("lumo-playback-active", active);
+    if (active) {
+      if (playbackPendingTimer) { clearTimeout(playbackPendingTimer); playbackPendingTimer = null; }
+      if (playbackFallbackTimer) { clearTimeout(playbackFallbackTimer); playbackFallbackTimer = null; }
+      document.documentElement.classList.remove("lumo-playback-pending");
+      document.body?.classList.remove("lumo-playback-pending");
+    } else if (!pending) {
+      document.documentElement.classList.remove("lumo-playback-active");
+      document.body?.classList.remove("lumo-playback-active");
+    }
+    return active;
+  }
+
+  function beginPlaybackPending() {
+    if (playbackPendingTimer) clearTimeout(playbackPendingTimer);
+    document.documentElement.classList.add("lumo-playback-pending");
+    document.body?.classList.add("lumo-playback-pending");
+    playbackPendingTimer = setTimeout(() => {
+      playbackPendingTimer = null;
+      if (!syncPlaybackMode()) {
+        document.documentElement.classList.remove("lumo-playback-pending");
+        document.body?.classList.remove("lumo-playback-pending");
+      }
+    }, 12_000);
+  }
+
+  function normalizePlaybackManager(mod) {
+    const candidate = mod?.playbackManager || mod?.default?.playbackManager || mod?.default || mod;
+    return candidate && typeof candidate.play === "function" ? candidate : null;
+  }
+
+  async function resolvePlaybackManager() {
+    const direct = normalizePlaybackManager(window.playbackManager || window.PlaybackManager);
+    if (direct) return direct;
+    if (playbackManagerPromise) return playbackManagerPromise;
+
+    playbackManagerPromise = (async () => {
+      if (typeof window.require !== "function") return null;
+      const names = ["playbackManager", "components/playback/playbackmanager", "playback/playbackmanager"];
+      for (const name of names) {
+        try {
+          const syncModule = window.require(name);
+          const manager = normalizePlaybackManager(syncModule);
+          if (manager) return manager;
+        } catch { /* RequireJS may need the async array form. */ }
+        try {
+          const mod = await new Promise((resolve) => {
+            let done = false;
+            const timer = setTimeout(() => { if (!done) { done = true; resolve(null); } }, 1200);
+            try {
+              window.require([name], (value) => {
+                if (done) return;
+                done = true;
+                clearTimeout(timer);
+                resolve(value);
+              }, () => {
+                if (done) return;
+                done = true;
+                clearTimeout(timer);
+                resolve(null);
+              });
+            } catch {
+              if (!done) { done = true; clearTimeout(timer); resolve(null); }
+            }
+          });
+          const manager = normalizePlaybackManager(mod);
+          if (manager) return manager;
+        } catch { /* try next module id */ }
+      }
+      return null;
+    })();
+
+    const manager = await playbackManagerPromise;
+    if (!manager) playbackManagerPromise = null;
+    return manager;
+  }
+
+  function nativePlaybackParams(itemId) {
+    const params = new URLSearchParams({ id: String(itemId || ""), lumoNativePlay: "1" });
+    const serverId = auth?.serverId || CONFIG.navigation.serverIdFallback;
+    if (serverId) params.set("serverId", serverId);
+    return params;
+  }
+
+  function fallbackNativePlayback(item) {
+    const id = String(item?.Id || "").trim();
+    if (!id) return false;
+    /* Never send the browser to a synthetic /video route. Jellyfin versions
+       differ on that route and some builds redirect it to Home. Instead open
+       the item's own native details view and let Jellyfin's own Play action
+       start the media. This is slower than PlaybackManager but cannot strand
+       the user on a broken player URL. */
+    const target = `#/details?${nativePlaybackParams(id).toString()}`;
+    try { window.location.hash = target; }
+    catch { navigate(`/details?${nativePlaybackParams(id).toString()}`); }
+    scheduleMount();
+    return true;
+  }
+
+  function nativePlaybackRequested() {
+    return getRouteParams().get("lumoNativePlay") === "1";
+  }
+
+  function removeNativePlaybackFlag() {
+    try {
+      const hash = String(window.location.hash || "");
+      const qIndex = hash.indexOf("?");
+      if (qIndex < 0) return;
+      const base = hash.slice(0, qIndex);
+      const params = new URLSearchParams(hash.slice(qIndex + 1));
+      if (!params.has("lumoNativePlay")) return;
+      params.delete("lumoNativePlay");
+      const next = `${base}${params.toString() ? `?${params.toString()}` : ""}`;
+      history.replaceState(history.state, "", `${location.pathname}${location.search}${next}`);
+    } catch { /* best effort */ }
+  }
+
+  function findNativePlayButton() {
+    const selectors = [
+      ".detailPagePrimaryContainer .btnPlay",
+      ".detailPageContent .btnPlay",
+      ".btnPlay",
+      "button[data-action='play']",
+      ".itemAction[data-action='play']",
+      "button[aria-label*='lecture' i]",
+      "button[aria-label*='play' i]",
+      "button[title*='lecture' i]",
+      "button[title*='play' i]"
+    ];
+    for (const selector of selectors) {
+      for (const button of $$(selector)) {
+        if (button.closest?.("#lumo-detail-page,#noctafin-hero")) continue;
+        if (!visibleElement(button) || button.disabled || button.getAttribute?.("aria-disabled") === "true") continue;
+        return button;
+      }
+    }
+    return null;
+  }
+
+  function triggerNativeDetailPlayback(itemId) {
+    const expected = String(itemId || "");
+    if (!expected) return;
+    if (playbackFallbackTimer) clearTimeout(playbackFallbackTimer);
+    const startedAt = performance.now();
+    let clicked = false;
+
+    const tick = () => {
+      playbackFallbackTimer = null;
+      if (isPlaybackRoute() || hasActivePlaybackSurface()) {
+        nativePlaybackAttemptKey = "";
+        removeNativePlaybackFlag();
+        syncPlaybackMode();
+        return;
+      }
+      if (detailRouteId() !== expected || !nativePlaybackRequested()) return;
+
+      if (!clicked) {
+        const button = findNativePlayButton();
+        if (button) {
+          clicked = true;
+          try { button.click(); }
+          catch (error) { console.debug(LOG, "Clic Lecture natif impossible", error); }
+        }
+      }
+
+      const elapsed = performance.now() - startedAt;
+      if (elapsed >= 6500) {
+        /* Keep the native detail page usable instead of looping or returning
+           Home. Removing the marker also lets Lumo remount normally later. */
+        nativePlaybackAttemptKey = "";
+        removeNativePlaybackFlag();
+        document.documentElement.classList.remove("lumo-playback-pending");
+        document.body?.classList.remove("lumo-playback-pending");
+        scheduleMount();
+        return;
+      }
+      playbackFallbackTimer = setTimeout(tick, clicked ? 260 : 140);
+    };
+
+    playbackFallbackTimer = setTimeout(tick, 80);
+  }
+
+  async function playItemRobust(itemOrId, options = {}) {
+    const requestedId = typeof itemOrId === "string" ? itemOrId : itemOrId?.Id;
+    if (!requestedId) return false;
+    beginPlaybackPending();
+
+    let item = typeof itemOrId === "object" && itemOrId?.Id ? itemOrId : null;
+    try {
+      item = item || await fetchDetailItem(requestedId);
+      if (item?.Type === "Series") item = await firstPlayableEpisode(item.Id);
+      if (!item?.Id) throw new Error("Aucun média lisible");
+
+      if (!item.ServerId && auth?.serverId) item = { ...item, ServerId: auth.serverId };
+      const manager = await resolvePlaybackManager();
+      if (manager) {
+        const resumeTicks = options.resume === false ? 0 : Math.max(0, Number(item.UserData?.PlaybackPositionTicks) || 0);
+        await Promise.resolve(manager.play({
+          items: [item],
+          fullscreen: true,
+          startPositionTicks: resumeTicks,
+          startIndex: 0
+        }));
+        requestAnimationFrame(() => syncPlaybackMode());
+
+        /* A successful call should mount the native player almost immediately.
+           Guard against a client extension/runtime swallowing play(): fall back
+           to the native detail action, never to Home or an invented route. */
+        if (playbackFallbackTimer) clearTimeout(playbackFallbackTimer);
+        playbackFallbackTimer = setTimeout(() => {
+          playbackFallbackTimer = null;
+          if (isPlaybackRoute() || hasActivePlaybackSurface()) return;
+          console.warn(LOG, "Le lecteur ne s'est pas monté; relais vers la lecture native.");
+          fallbackNativePlayback(item);
+        }, 5500);
+        return true;
+      }
+
+      console.warn(LOG, "PlaybackManager non accessible; relais vers la lecture native Jellyfin.");
+      return fallbackNativePlayback(item);
+    } catch (error) {
+      console.warn(LOG, "Lecture impossible", error);
+      document.documentElement.classList.remove("lumo-playback-pending");
+      document.body?.classList.remove("lumo-playback-pending");
+      return false;
     }
   }
 
@@ -354,8 +634,9 @@
       #lumo-background-art{inset:0!important;background-color:#02030a!important;background-image:var(--lumo-default-background)!important;background-size:cover!important;background-position:center center!important;background-repeat:no-repeat!important;filter:brightness(var(--lumo-background-brightness,.72)) saturate(.94)!important}
       #lumo-background-shade{inset:0!important;background:linear-gradient(180deg,rgba(1,2,7,.18),rgba(1,2,7,var(--lumo-background-overlay,.50)) 56%,rgba(1,2,7,.72))!important}
       html[data-lumo-season="halloween"] #lumo-background-art,html[data-lumo-season="christmas"] #lumo-background-art{inset:-20px!important;background-image:var(--lumo-season-background)!important;background-size:cover!important;background-position:center!important;filter:blur(var(--lumo-season-blur,8px)) brightness(var(--lumo-season-brightness,.56)) saturate(.92)!important;transform:scale(1.045)!important}
-      html.lumo-ui #reactRoot,html.lumo-ui #root,html.lumo-ui .mainAnimatedPages,html.lumo-ui .page,html.lumo-ui .backgroundContainer,html.lumo-ui main,html.lumo-ui main.MuiBox-root,html.lumo-ui #reactRoot>div,html.lumo-ui #reactRoot>div>.MuiBox-root{background-color:transparent!important;background-image:none!important}
+      html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) #reactRoot,html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) #root,html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) .mainAnimatedPages,html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) .page,html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) .backgroundContainer,html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) main,html.lumo-ui:not(.lumo-playback-active):not(.lumo-playback-pending) main.MuiBox-root{background-color:transparent!important;background-image:none!important}
       html.lumo-ui #reactRoot,html.lumo-ui #root,html.lumo-ui .mainAnimatedPages{position:relative!important;z-index:1!important}
+      html.lumo-playback-active #lumo-background-layer,html.lumo-playback-pending #lumo-background-layer{display:none!important}
       [data-lumo-native-brand-hidden="true"]{display:none!important}
       #lumo-header-brand{appearance:none!important;display:inline-flex!important;align-items:center!important;gap:8px!important;width:auto!important;min-width:88px!important;max-width:150px!important;height:40px!important;margin:0 6px!important;padding:4px 10px 4px 4px!important;overflow:hidden!important;border:0!important;border-radius:10px!important;background:transparent!important;color:#fff!important;box-shadow:none!important;cursor:pointer!important}
       #lumo-header-brand .lumo-brand-logo{display:block!important;width:31px!important;height:31px!important;min-width:31px!important;max-width:31px!important;object-fit:contain!important;border-radius:7px!important}
@@ -462,8 +743,21 @@
       node.style.removeProperty("--lumo-brand-logo");
     });
 
-    const headers = $$(".skinHeader, header.MuiAppBar-root, header").filter((header, index, list) => {
+    /* Jellyfin mounts its playback OSD as a header too. Never brand that
+       surface: doing so creates the duplicate Lumo bar seen over playback. */
+    if (isPlaybackRoute() || hasActivePlaybackSurface() || document.documentElement.classList.contains("lumo-playback-pending")) {
+      $$("#lumo-header-brand").forEach((node) => node.remove());
+      $$(".lumo-main-header").forEach((header) => {
+        if (header.matches?.(".videoOsdHeader,.osdHeader,[class*='videoOsd'],[class*='VideoOsd'],[class*='osdHeader']") || header.closest?.(".videoOsd,.osdHeader,[class*='videoOsd'],[class*='VideoOsd'],[class*='osdHeader']")) {
+          header.classList.remove("lumo-main-header");
+        }
+      });
+      return;
+    }
+
+    const headers = $$(".skinHeader, header.MuiAppBar-root").filter((header, index, list) => {
       if (!header.isConnected || list.some((other, i) => i < index && other.contains(header))) return false;
+      if (header.matches?.(".osdHeader,[class*='osdHeader']") || header.closest?.(".videoOsdHeader,.videoOsd,.osdHeader,[class*='videoOsd'],[class*='VideoOsd'],[class*='osdHeader'],[class*='playback']")) return false;
       try { return getComputedStyle(header).display !== "none"; } catch { return true; }
     });
 
@@ -474,6 +768,12 @@
         ...$$(".pageTitleWithDefaultLogo,.pageTitleWithLogo", header).filter(looksLikeNativeServerBrand)
       ].filter(Boolean);
       const nativeBrand = candidates[0] || null;
+      const legacyHeader = header.matches?.(".skinHeader") && Boolean($(".headerLeft", header));
+      if (!nativeBrand && !legacyHeader) continue;
+
+      /* Only a verified application header gets this class. Player headers must
+         never inherit the hide/show rules attached to .lumo-main-header. */
+      header.classList.add("lumo-main-header");
       if (nativeBrand && nativeBrand.id !== "lumo-header-brand") nativeBrand.setAttribute("data-lumo-native-brand-hidden", "true");
 
       const host = $(".headerLeft", header)
@@ -544,7 +844,9 @@
   function syncLumoChrome() {
     ensureCriticalStyle();
     ensureLocalThemeStylesheet();
-    ensureBackgroundLayer();
+
+    const playbackNow = isPlaybackRoute() || hasActivePlaybackSurface() || document.documentElement.classList.contains("lumo-playback-pending");
+    if (!playbackNow) ensureBackgroundLayer();
 
     const season = activeSeason();
     const assets = seasonAssets(season);
@@ -561,7 +863,7 @@
     updateDocumentBrand(CONFIG.brand.name || "Lumo", logoHref);
     ensureLumoHeader(CONFIG.brand.name || "Lumo", logoHref, season);
     ensureNativeLogos(CONFIG.brand.name || "Lumo", logoHref);
-    syncBackgroundMedia();
+    if (!playbackNow) syncBackgroundMedia();
   }
 
   function dedupeNativeRows(sections) {
@@ -644,11 +946,43 @@
     }
 
     const merged = new Map();
+    const canonicalTitle = (value) => norm(value || "").replace(/[^a-z0-9]+/g, " ").trim();
+    const identity = (item) => {
+      if (!item?.Id) return "";
+      if (item.Type === "Episode") {
+        if (item.SeriesId) return `series-id:${item.SeriesId}`;
+        return `series-name:${canonicalTitle(item.SeriesName || item.Name)}`;
+      }
+      if (item.Type === "Series") {
+        /* Series IDs are authoritative, but title/year catches duplicated
+           library entries pointing to the same show. */
+        const title = canonicalTitle(item.Name);
+        return title ? `series-title:${title}:${item.ProductionYear || ""}` : `series-id:${item.Id}`;
+      }
+      const title = canonicalTitle(item.Name);
+      return title ? `movie-title:${title}:${item.ProductionYear || ""}` : `item:${item.Id}`;
+    };
     [...resume, ...random].forEach((item) => {
-      if (item?.Id && !merged.has(item.Id)) merged.set(item.Id, item);
+      const key = identity(item);
+      if (key && !merged.has(key)) merged.set(key, item);
     });
 
-    return Array.from(merged.values()).slice(0, CONFIG.hero.maxItems);
+    /* Second pass: resume episodes can carry a SeriesId while the Series item
+       itself only contributes a title key. Drop a title duplicate as well. */
+    const seenTitles = new Set();
+    const unique = [];
+    for (const item of merged.values()) {
+      const mediaTitle = canonicalTitle(item.Type === "Episode" ? (item.SeriesName || item.Name) : item.Name);
+      const family = item.Type === "Movie" ? "movie" : "series";
+      const titleKey = mediaTitle
+        ? (family === "series" ? `${family}:${mediaTitle}` : `${family}:${mediaTitle}:${item.ProductionYear || ""}`)
+        : "";
+      if (titleKey && seenTitles.has(titleKey)) continue;
+      if (titleKey) seenTitles.add(titleKey);
+      unique.push(item);
+    }
+
+    return unique.slice(0, CONFIG.hero.maxItems);
   }
 
   function heroArtworkId(item) {
@@ -715,13 +1049,8 @@
       if (!item?.Id) return;
       play.disabled = true;
       try {
-        if (item.Type === "Series") {
-          const episode = await firstPlayableEpisode(item.Id).catch(() => null);
-          if (episode?.Id) navigate(`/video?id=${encodeURIComponent(episode.Id)}`);
-          else navigate(`/details?id=${encodeURIComponent(item.Id)}`);
-        } else {
-          navigate(`/video?id=${encodeURIComponent(item.Id)}`);
-        }
+        const ok = await playItemRobust(item);
+        if (!ok) navigate(`/details?id=${encodeURIComponent(detailsId(item))}`);
       } finally {
         play.disabled = false;
       }
@@ -1708,6 +2037,117 @@
     return null;
   }
 
+  async function fetchSeriesResumeEpisode(seriesId) {
+    const id = String(seriesId || "").trim();
+    if (!id) return null;
+    const cached = seriesResumeCache.get(id);
+    if (cached && Date.now() - cached.ts < 60_000) return cached.item || null;
+
+    let item = null;
+    try {
+      const params = new URLSearchParams({
+        ParentId: id,
+        Recursive: "true",
+        IncludeItemTypes: "Episode",
+        Filters: "IsResumable",
+        SortBy: "DatePlayed",
+        SortOrder: "Descending",
+        Limit: "1",
+        Fields: FIELDS,
+        EnableImages: "true",
+        EnableTotalRecordCount: "false"
+      });
+      const data = await fetchJson(`/Users/${auth.userId}/Items?${params}`);
+      item = data?.Items?.[0] || null;
+    } catch (error) {
+      console.debug(LOG, "Recherche reprise par série indisponible", error);
+    }
+
+    if (!item?.Id) {
+      try {
+        const params = new URLSearchParams({
+          Limit: "120",
+          Recursive: "true",
+          IncludeItemTypes: "Episode",
+          MediaTypes: "Video",
+          Fields: FIELDS,
+          EnableTotalRecordCount: "false"
+        });
+        const data = await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`);
+        const candidates = (data?.Items || []).filter((episode) => String(episode?.SeriesId || "") === id);
+        candidates.sort((a, b) => String(b?.UserData?.LastPlayedDate || "").localeCompare(String(a?.UserData?.LastPlayedDate || "")));
+        item = candidates[0] || null;
+      } catch (error) {
+        console.debug(LOG, "Fallback reprise de série indisponible", error);
+      }
+    }
+
+    seriesResumeCache.set(id, { ts: Date.now(), item });
+    return item;
+  }
+
+  function buildSeriesResumeCard(episode, series) {
+    const section = document.createElement("section");
+    section.className = "lumo-series-resume";
+    const heading = document.createElement("h2");
+    heading.textContent = "Lecture en cours";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "lumo-series-resume__card";
+    button.setAttribute("aria-label", `Reprendre ${episode.Name || "l'épisode"}`);
+
+    const art = document.createElement("span");
+    art.className = "lumo-series-resume__art";
+    const img = document.createElement("img");
+    img.alt = "";
+    img.decoding = "async";
+    img.loading = "lazy";
+    img.draggable = false;
+    applyImageCandidates(img, episodeThumbCandidates(episode, series));
+    const progress = document.createElement("span");
+    progress.className = "lumo-series-resume__progress";
+    const progressFill = document.createElement("span");
+    const pct = Math.max(0, Math.min(100, Number(episode.UserData?.PlayedPercentage) || 0));
+    progressFill.style.width = `${pct}%`;
+    progress.appendChild(progressFill);
+    art.append(img, progress);
+
+    const copy = document.createElement("span");
+    copy.className = "lumo-series-resume__copy";
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "lumo-series-resume__eyebrow";
+    const season = Number(episode.ParentIndexNumber);
+    const index = Number(episode.IndexNumber);
+    eyebrow.textContent = [
+      Number.isFinite(season) ? `S${season}` : "",
+      Number.isFinite(index) ? `E${index}` : ""
+    ].filter(Boolean).join(" · ");
+    const title = document.createElement("strong");
+    title.textContent = episode.Name || "Épisode";
+    const meta = document.createElement("span");
+    meta.className = "lumo-series-resume__meta";
+    const bits = [];
+    const runtime = formatRuntime(episode.RunTimeTicks);
+    if (runtime) bits.push(runtime);
+    if (pct > 0) bits.push(`${Math.round(pct)} % regardé`);
+    meta.textContent = bits.join(" · ");
+    const action = document.createElement("span");
+    action.className = "lumo-series-resume__action";
+    action.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8L18.7 12 8 5.6Z"/></svg><span>Reprendre</span>';
+    copy.append(eyebrow, title, meta, action);
+    button.append(art, copy);
+    button.addEventListener("click", async () => {
+      if (button.disabled) return;
+      button.disabled = true;
+      button.classList.add("is-starting");
+      try { await playItemRobust(episode); }
+      finally { setTimeout(() => { button.disabled = false; button.classList.remove("is-starting"); }, 900); }
+    });
+    section.append(heading, button);
+    return section;
+  }
+
   function detailMetaValues(item) {
     const values = [];
     if (item?.ProductionYear) values.push(String(item.ProductionYear));
@@ -1804,7 +2244,7 @@
     appendDetailMeta(meta, item);
     const actions = document.createElement("div");
     actions.className = "lumo-detail-actions";
-    actions.appendChild(makeDetailAction("Lecture", "play", () => navigate(`/video?id=${encodeURIComponent(item.Id)}`), true));
+    actions.appendChild(makeDetailAction("Lecture", "play", () => playItemRobust(item), true));
     const overviewWrap = document.createElement("div");
     overviewWrap.className = "lumo-movie-detail-hero__overview-wrap";
     if (Array.isArray(item.Taglines) && item.Taglines[0]) {
@@ -1875,7 +2315,21 @@
     overview.textContent = episode.Overview || "";
     text.append(heading, meta, overview);
     card.append(art, text);
-    card.addEventListener("click", () => navigate(`/video?id=${encodeURIComponent(episode.Id)}`));
+    card.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (card.disabled) return;
+      card.disabled = true;
+      card.classList.add("is-starting");
+      try {
+        await playItemRobust(episode);
+      } finally {
+        setTimeout(() => {
+          card.disabled = false;
+          card.classList.remove("is-starting");
+        }, 900);
+      }
+    });
     return card;
   }
 
@@ -1988,8 +2442,7 @@
     const play = makeDetailAction("Lecture", "play", async () => {
       play.disabled = true;
       try {
-        const episode = await firstPlayableEpisode(item.Id);
-        if (episode?.Id) navigate(`/video?id=${encodeURIComponent(episode.Id)}`);
+        await playItemRobust(item);
       } finally {
         play.disabled = false;
       }
@@ -2007,6 +2460,10 @@
     });
     info.append(logo, title, meta, actions, overview, genres);
     shell.append(poster, info);
+
+    const resumeSlot = document.createElement("div");
+    resumeSlot.className = "lumo-series-resume-slot";
+
     const seasonsWrap = document.createElement("section");
     seasonsWrap.className = "lumo-series-seasons";
     const seasonsHeading = document.createElement("h2");
@@ -2018,7 +2475,12 @@
     loading.textContent = "Chargement des saisons…";
     seasonsList.appendChild(loading);
     seasonsWrap.append(seasonsHeading, seasonsList);
-    root.append(backdrop, veil, shell, seasonsWrap);
+    root.append(backdrop, veil, shell, resumeSlot, seasonsWrap);
+
+    fetchSeriesResumeEpisode(item.Id).then((episode) => {
+      if (!root.isConnected || !episode?.Id) return;
+      resumeSlot.replaceChildren(buildSeriesResumeCard(episode, item));
+    }).catch((error) => console.debug(LOG, "Reprise de série indisponible", error));
 
     fetchSeriesSeasons(item.Id).then((seasons) => {
       if (!root.isConnected) return;
@@ -2044,6 +2506,25 @@
 
   async function syncDetailPage() {
     const itemId = detailRouteId();
+
+    /* Playback fallback deliberately uses Jellyfin's native detail page. Do
+       not cover/inert it with the Lumo detail surface while its Play action is
+       being located. MutationObserver may call mount many times, so key the
+       retry loop by item id and start it only once. */
+    if (itemId && nativePlaybackRequested()) {
+      $("#lumo-detail-page")?.remove();
+      detailPageKey = "";
+      document.body?.classList.remove("lumo-detail-active");
+      delete document.documentElement.dataset.lumoDetailType;
+      setNativeDetailInert(false);
+      if (nativePlaybackAttemptKey !== itemId) {
+        nativePlaybackAttemptKey = itemId;
+        triggerNativeDetailPlayback(itemId);
+      }
+      return;
+    }
+    nativePlaybackAttemptKey = "";
+
     if (Date.now() < detailFallbackUntil) {
       document.body?.classList.remove("lumo-detail-active");
       setNativeDetailInert(false);
@@ -2497,7 +2978,17 @@
 
   async function mount() {
     auth = getAuth() || auth;
+    const playbackActive = syncPlaybackMode();
     syncLumoChrome();
+
+    if (playbackActive || document.documentElement.classList.contains("lumo-playback-pending")) {
+      currentHome = null;
+      clearTaxonomyHero();
+      if (heroTimer) clearTimeout(heroTimer);
+      heroTimer = null;
+      if (playbackActive) clearDetailPage();
+      return;
+    }
 
     /* Route parameters are authoritative because Jellyfin 12 keeps previous
        pages mounted. Details are handled first so a stale home/list subtree can
@@ -2578,6 +3069,7 @@
     $("#noctafin-browser-page")?.remove();
     document.body?.classList.remove("noctafin-browser-open");
     auth = getAuth() || auth;
+    syncPlaybackMode();
     syncLumoChrome();
     scheduleMount();
     const observer = new MutationObserver(scheduleMount);
@@ -2587,6 +3079,9 @@
     });
     window.addEventListener("hashchange", scheduleMount);
     window.addEventListener("popstate", scheduleMount);
+    document.addEventListener("play", () => { syncPlaybackMode(); scheduleMount(); }, true);
+    document.addEventListener("playing", () => { syncPlaybackMode(); scheduleMount(); }, true);
+    document.addEventListener("ended", () => setTimeout(() => { syncPlaybackMode(); scheduleMount(); }, 120), true);
     window.addEventListener("resize", () => {
       $$(".noctafin-track-shell").forEach((shell) => shell._noctafinUpdateArrows?.());
     }, { passive: true });

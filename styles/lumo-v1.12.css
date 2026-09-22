@@ -1,0 +1,395 @@
+/* ========================================================================== 
+   Lumo v1.12.0 — playback isolation, reliable episode launch and series resume
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   PLAYER ISOLATION
+   The normal Lumo wallpaper/transparency layer must never participate in the
+   video compositing tree. Jellyfin's player gets a dedicated opaque canvas.
+   -------------------------------------------------------------------------- */
+html.lumo-playback-active,
+html.lumo-playback-active body,
+html.lumo-playback-pending,
+html.lumo-playback-pending body {
+  background: #000 !important;
+}
+
+html.lumo-playback-active #lumo-background-layer,
+html.lumo-playback-pending #lumo-background-layer {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  content-visibility: hidden !important;
+}
+
+/* The regular application header is not part of the fullscreen player. The
+   player keeps its own OSD/back/title controls. */
+html.lumo-playback-active .lumo-main-header,
+html.lumo-playback-pending .lumo-main-header {
+  display: none !important;
+}
+
+html.lumo-playback-active #lumo-detail-page {
+  display: none !important;
+}
+
+/* Undo the global transparent-page treatment only while the player is active.
+   This protects both the legacy HTML5 player and the Jellyfin 12 player shell. */
+html.lumo-ui.lumo-playback-active #reactRoot,
+html.lumo-ui.lumo-playback-active #root,
+html.lumo-ui.lumo-playback-active .mainAnimatedPages,
+html.lumo-ui.lumo-playback-active .mainAnimatedPage,
+html.lumo-ui.lumo-playback-active .page,
+html.lumo-ui.lumo-playback-active .backgroundContainer,
+html.lumo-ui.lumo-playback-active main,
+html.lumo-ui.lumo-playback-active main.MuiBox-root {
+  background-color: #000 !important;
+  background-image: none !important;
+}
+
+html.lumo-playback-active .videoPlayerContainer,
+html.lumo-playback-active [class*="videoPlayerContainer"],
+html.lumo-playback-active [class*="VideoPlayer"] {
+  background: #000 !important;
+}
+
+/* Do not globally transform/filter the actual decoded video frame. */
+html.lumo-playback-active video.htmlVideoPlayer,
+html.lumo-playback-active video.htmlvideoplayer,
+html.lumo-playback-active .videoPlayerContainer video,
+html.lumo-playback-active [class*="VideoPlayer"] video,
+html.lumo-playback-active video#videoPlayer {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  filter: none !important;
+  transform: none !important;
+  background: #000 !important;
+  box-shadow: none !important;
+}
+
+/* The native OSD remains above the image and keeps its click targets. */
+html.lumo-playback-active .videoOsdHeader,
+html.lumo-playback-active .osdHeader,
+html.lumo-playback-active .videoOsdBottom,
+html.lumo-playback-active .osdControls,
+html.lumo-playback-active [class*="VideoOsd"],
+html.lumo-playback-active [class*="videoOsd"] {
+  position: relative;
+  z-index: 20 !important;
+}
+
+/* Avoid an injected Lumo brand inside any late-mounted playback toolbar. */
+html.lumo-playback-active .videoOsdHeader #lumo-header-brand,
+html.lumo-playback-active .osdHeader #lumo-header-brand,
+html.lumo-playback-active [class*="VideoOsd"] #lumo-header-brand,
+html.lumo-playback-active [class*="videoOsd"] #lumo-header-brand {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   EPISODE START FEEDBACK
+   Keep click state local to the card; never navigate/resize the whole season.
+   -------------------------------------------------------------------------- */
+.lumo-episode-card.is-starting,
+.lumo-series-resume__card.is-starting {
+  pointer-events: none !important;
+}
+
+.lumo-episode-card.is-starting .lumo-episode-card__art::after,
+.lumo-series-resume__card.is-starting .lumo-series-resume__art::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 3 !important;
+  background:
+    radial-gradient(circle at center, rgba(255,255,255,.14), transparent 35%),
+    rgba(3,5,10,.34) !important;
+  pointer-events: none !important;
+}
+
+.lumo-episode-card.is-starting .lumo-episode-card__play {
+  transform: translate(-50%,-50%) scale(.88) !important;
+  opacity: .7 !important;
+}
+
+/* --------------------------------------------------------------------------
+   SERIES — IN-PROGRESS EPISODE ABOVE SEASONS
+   -------------------------------------------------------------------------- */
+.lumo-series-resume-slot {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(var(--lumo-detail-max), calc(100% - 2 * var(--nf-page-x))) !important;
+  margin: 0 auto !important;
+}
+
+.lumo-series-resume-slot:empty {
+  display: none !important;
+}
+
+.lumo-series-resume {
+  width: 100% !important;
+  margin: 0 auto clamp(26px, 3vw, 44px) !important;
+}
+
+.lumo-series-resume > h2 {
+  margin: 0 0 14px !important;
+  color: #fff !important;
+  font-size: clamp(1.35rem, 1.65vw, 1.85rem) !important;
+  line-height: 1.05 !important;
+  font-weight: 820 !important;
+  letter-spacing: -.035em !important;
+}
+
+.lumo-series-resume__card {
+  all: unset !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 440px) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: clamp(18px, 2.6vw, 38px) !important;
+  width: 100% !important;
+  max-width: 1120px !important;
+  min-height: 190px !important;
+  padding: 10px !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  border-radius: 18px !important;
+  color: #fff !important;
+  background: linear-gradient(110deg, rgba(15,18,29,.88), rgba(8,10,17,.58)) !important;
+  box-shadow: 0 20px 70px rgba(0,0,0,.26) !important;
+  backdrop-filter: blur(16px) saturate(118%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(118%) !important;
+  cursor: pointer !important;
+  overflow: hidden !important;
+}
+
+.lumo-series-resume__card:hover,
+.lumo-series-resume__card:focus-visible {
+  border-color: rgba(117,108,255,.48) !important;
+  background: linear-gradient(110deg, rgba(20,23,37,.94), rgba(11,14,23,.72)) !important;
+}
+
+.lumo-series-resume__art {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  aspect-ratio: 16 / 9 !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  background: #080a11 !important;
+}
+
+.lumo-series-resume__art img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transition: transform 240ms cubic-bezier(.2,.8,.2,1), filter 240ms ease !important;
+}
+
+.lumo-series-resume__card:hover .lumo-series-resume__art img,
+.lumo-series-resume__card:focus-visible .lumo-series-resume__art img {
+  transform: scale(1.025) !important;
+  filter: brightness(1.05) saturate(1.04) !important;
+}
+
+.lumo-series-resume__progress {
+  position: absolute !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: 10px !important;
+  height: 4px !important;
+  overflow: hidden !important;
+  border-radius: 99px !important;
+  background: rgba(255,255,255,.24) !important;
+  box-shadow: 0 1px 8px rgba(0,0,0,.28) !important;
+}
+
+.lumo-series-resume__progress > span {
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, var(--nf-violet), var(--nf-pink), var(--nf-cyan)) !important;
+}
+
+.lumo-series-resume__copy {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 7px !important;
+  padding: 8px clamp(4px, 1.2vw, 18px) !important;
+}
+
+.lumo-series-resume__eyebrow,
+.lumo-series-resume__meta {
+  color: rgba(247,248,255,.60) !important;
+  font-size: .86rem !important;
+  line-height: 1.25 !important;
+}
+
+.lumo-series-resume__copy strong {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  color: #fff !important;
+  font-size: clamp(1.15rem, 1.65vw, 1.55rem) !important;
+  line-height: 1.15 !important;
+  font-weight: 800 !important;
+  letter-spacing: -.025em !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.lumo-series-resume__action {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  min-height: 40px !important;
+  margin-top: 4px !important;
+  padding: 0 16px !important;
+  border-radius: 999px !important;
+  color: #090b11 !important;
+  background: rgba(255,255,255,.94) !important;
+  font-size: .90rem !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+}
+
+.lumo-series-resume__action svg {
+  width: 17px !important;
+  height: 17px !important;
+  fill: currentColor !important;
+}
+
+/* Keep the seasons immediately after resume without a giant gap. */
+.lumo-series-resume-slot + .lumo-series-seasons {
+  padding-top: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .lumo-series-resume__card {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    max-width: 620px !important;
+  }
+  .lumo-series-resume__copy {
+    padding: 8px 6px 10px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lumo-series-resume__art img,
+  .lumo-episode-card__play {
+    transition: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   PLAYER HARDENING — DOM-driven fallback
+   Modern browsers support :has(). This protects the player even before the
+   runtime has had a chance to add .lumo-playback-active after a route change.
+   -------------------------------------------------------------------------- */
+html:has(.videoPlayerContainer) {
+  background: #000 !important;
+}
+
+html:has(.videoPlayerContainer) #lumo-background-layer {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+html.lumo-playback-active .videoPlayerContainer,
+html.lumo-playback-pending .videoPlayerContainer,
+html:has(.videoPlayerContainer) .videoPlayerContainer {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #000 !important;
+  isolation: isolate !important;
+  z-index: 2 !important;
+}
+
+html.lumo-playback-active video.htmlVideoPlayer,
+html.lumo-playback-active video.htmlvideoplayer,
+html.lumo-playback-pending video.htmlVideoPlayer,
+html.lumo-playback-pending video.htmlvideoplayer,
+html:has(.videoPlayerContainer) video.htmlVideoPlayer,
+html:has(.videoPlayerContainer) video.htmlvideoplayer,
+html.lumo-playback-active .videoPlayerContainer > video,
+html.lumo-playback-pending .videoPlayerContainer > video {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  transform: none !important;
+  mix-blend-mode: normal !important;
+  background: #000 !important;
+}
+
+html.lumo-playback-active .videoOsdHeader,
+html.lumo-playback-active .osdHeader,
+html.lumo-playback-active .videoOsdBottom,
+html.lumo-playback-active .osdControls,
+html.lumo-playback-pending .videoOsdHeader,
+html.lumo-playback-pending .videoOsdBottom,
+html:has(.videoPlayerContainer) .videoOsdHeader,
+html:has(.videoPlayerContainer) .videoOsdBottom {
+  z-index: 80 !important;
+}
+
+/* Global Lumo button hover transforms are useful in the app, but moving OSD
+   controls while the pointer is over them makes the player feel unstable. */
+html.lumo-playback-active .videoOsdHeader button,
+html.lumo-playback-active .videoOsdBottom button,
+html.lumo-playback-active .osdControls button,
+html.lumo-playback-pending .videoOsdHeader button,
+html.lumo-playback-pending .videoOsdBottom button {
+  transform: none !important;
+  box-shadow: none;
+}
+
+/* Any stale regular application header gets removed during playback. Native
+   video OSD headers are explicitly excluded by the JavaScript classifier. */
+html.lumo-playback-active .lumo-main-header:not(.videoOsdHeader):not(.osdHeader):not([class*="videoOsd"]):not([class*="VideoOsd"]):not([class*="osdHeader"]),
+html.lumo-playback-pending .lumo-main-header:not(.videoOsdHeader):not(.osdHeader):not([class*="videoOsd"]):not([class*="VideoOsd"]):not([class*="osdHeader"]),
+html:has(.videoPlayerContainer) .lumo-main-header:not(.videoOsdHeader):not(.osdHeader):not([class*="videoOsd"]):not([class*="VideoOsd"]):not([class*="osdHeader"]) {
+  display: none !important;
+}
+
+/* CSS-only emergency path when JavaScript route detection is delayed. */
+html:has(.videoPlayerContainer) .backgroundContainer,
+html:has(.videoPlayerContainer) .mainAnimatedPages,
+html:has(.videoPlayerContainer) .mainAnimatedPage {
+  background-color: #000 !important;
+  background-image: none !important;
+}
+
+html:has(.videoPlayerContainer) #lumo-detail-page {
+  display: none !important;
+}

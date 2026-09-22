@@ -2,50 +2,52 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
-## Nouveautés 1.11.0
+## Nouveautés 1.12.0
 
-### Fiches Films
+### Lecteur Jellyfin protégé du thème
 
-Les routes natives `#/details?id=...` sont remplacées visuellement par une fiche Lumo isolée et stable :
+Lumo traite désormais le lecteur comme une surface isolée :
 
-- backdrop plein écran ;
-- logo du film lorsque Jellyfin en possède un, titre texte en fallback ;
-- année, durée, classification et note ;
-- bouton **Lecture** ;
-- synopsis, tagline et genres ;
-- gradients cinématiques permettant de garder les textes lisibles.
+- détection de la lecture par route Jellyfin, OSD, conteneur vidéo et `<video>` actif ;
+- fond spatial/saisonnier masqué avant le montage du lecteur ;
+- canvas vidéo noir plein écran et image vidéo `contain`, sans filtre ni transformation du thème ;
+- aucun header Lumo injecté dans le header/OSD vidéo ;
+- les contrôles du lecteur gardent leur géométrie native ;
+- nettoyage automatique de la fiche Lumo sous-jacente dès que la lecture démarre.
 
-La règle de mise en page qui produisait un très grand espace vide dans les versions précédentes a été supprimée. Si le JavaScript ne charge pas, la fiche native Jellyfin reste donc exploitable.
+### Lecture des épisodes
 
-### Fiches Séries
+Les épisodes, films, boutons Hero et cartes de reprise utilisent une seule fonction de lecture :
 
-- backdrop assombri et légèrement flouté ;
-- grande jaquette 2:3 ;
-- logo ou titre de la série ;
-- bouton Lecture qui tente d'abord le prochain épisode (`Next Up`) puis retombe sur le premier épisode disponible ;
-- synopsis et genres ;
-- toutes les saisons affichées avec leur jaquette ;
-- panneaux Saison repliables via un petit chevron ;
-- chargement des épisodes uniquement quand une saison est ouverte ;
-- première saison ouverte automatiquement par défaut ;
-- épisodes en cartes 16:9 avec durée, note, résumé et lecture directe.
+1. utilisation du `PlaybackManager` natif Jellyfin lorsque disponible ;
+2. contrôle qu'un vrai lecteur/OSD se monte ;
+3. en secours, ouverture de la vraie fiche native de l'épisode puis clic sur son bouton Lecture ;
+4. aucune navigation vers une route `/video` inventée, ce qui évite le retour accidentel à l'accueil.
+
+### Séries
+
+Au-dessus des saisons, **Lecture en cours** affiche le dernier épisode reprenable de cette série avec :
+
+- vignette 16:9 ;
+- Sxx/Exx et titre ;
+- durée et progression ;
+- bouton Reprendre ;
+- démarrage via la même pile de lecture robuste.
+
+Toutes les saisons restent visibles avec leur jaquette et leurs panneaux accordéon. Les épisodes sont chargés uniquement à l'ouverture de la saison.
 
 ### Hero d'accueil
 
-- boutons Lecture / Plus d'infos reconstruits avec dimensions et SVG explicites ;
-- état disabled pendant la recherche du prochain épisode d'une série ;
-- fond noir opaque strictement limité à la surface du Hero ;
-- fondu noir supérieur pour éviter la coupure visuelle avec le header.
+La boucle est dédupliquée à plusieurs niveaux : ID de série, titre normalisé, type et année. Un épisode en cours et la série correspondante ne peuvent donc plus occuper deux slides, et les doublons de bibliothèque sont également filtrés.
 
-### Robustesse / fluidité
+### Performances / robustesse
 
-- les routes Détails sont traitées avant les anciennes vues Home/List laissées montées par Jellyfin 12 ;
-- la fiche Lumo est une couche isolée, scrollable indépendamment, sans modifier les dimensions de la fiche native ;
-- le contenu natif sous-jacent est `inert` uniquement pendant la fiche Lumo puis restauré ;
-- cache court des métadonnées, saisons et épisodes ;
-- épisodes chargés à la demande ;
-- les animations respectent `prefers-reduced-motion` ;
-- les fonctions précédentes restent actives : Heroes Studio/Genre, fond spatial, Halloween/Noël, rails quotidiens de 12 médias avec 6 visibles, studios/réseaux et branding Lumo.
+- aucune vidéo décorative de fond ;
+- fond spatial WebP léger ;
+- cache court des détails/saisons/épisodes ;
+- CSS playback chargé en dernier pour neutraliser les anciennes règles ;
+- retry borné et watchdogs, sans boucle infinie ;
+- fonctionnalités précédentes conservées : Heroes Studio/Genre, saisons Halloween/Noël, rails de 12 médias avec 6 visibles, studios/réseaux et branding Lumo.
 
 ## Configuration des saisons
 
@@ -87,9 +89,9 @@ Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
 ```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.11.0" data-lumo-theme="1.11.0">
-<script src="ui/noctafin-config.js?v=1.11.0" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.11.0" data-noctafin-home></script>
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.12.0" data-lumo-theme="1.12.0">
+<script src="ui/noctafin-config.js?v=1.12.0" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.12.0" data-noctafin-home></script>
 ```
 
 ## Mise à jour
@@ -105,9 +107,9 @@ systemctl restart jellyfin
 ## Vérification
 
 ```bash
-grep -n "1.11.0" /usr/share/jellyfin/web/index.html
+grep -n "1.12.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
-ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.11.css
+ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.12.css
 ```
 
 ## Tests du dépôt
@@ -123,7 +125,7 @@ bash -n install/uninstall.sh
 Prévisualisation uniquement, sans les fonctions JavaScript :
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.11.0");
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.12.0");
 ```
 
 Le mode CSS-only ne peut pas fournir les fiches cinématiques, les Heroes dynamiques ni les rails Studio/Genre/Réseau.
