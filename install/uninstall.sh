@@ -15,4 +15,5 @@ text = re.sub(r'<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', ''
 path.write_text(text, encoding="utf-8")
 PY
 rm -f "$WEB_DIR/ui/noctafin-config.js" "$WEB_DIR/ui/noctafin-home.js"
+rm -rf "$WEB_DIR/ui/noctafin-assets"
 echo "Injection NoctaFin supprimée. Pense aussi à retirer l'@import du Custom CSS."

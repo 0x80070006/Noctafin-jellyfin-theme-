@@ -23,3 +23,23 @@ Le dossier web d'une image Docker peut être recréé au redémarrage ou à la m
 ## Mise à jour Jellyfin
 
 Une mise à jour peut remplacer `index.html`. Relance simplement l'installateur NoctaFin après la mise à jour.
+
+## Les titres sous les jaquettes sont encore coupés
+
+La correction est dans `styles/home.css` v1.1. Vérifie que ton import CSS utilise `?v=1.1.0`, puis fais `Ctrl+F5`. Si tu utilises un tag GitHub, mets le tag à jour dans l'URL jsDelivr.
+
+## Les logos Studios/Réseaux restent en texte
+
+Relance l'installateur afin qu'il télécharge les SVG dans `jellyfin-web/ui/noctafin-assets/logos` :
+
+```bash
+JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
+```
+
+Puis vérifie :
+
+```bash
+ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/logos/
+```
+
+Si le dossier est vide, vérifie que `curl` ou `wget` est installé et que le LXC a accès à Internet. Le thème conserve le nom en texte comme solution de repli.

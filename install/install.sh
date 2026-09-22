@@ -31,6 +31,50 @@ mkdir -p "$WEB_DIR/ui"
 cp -f "$ROOT/scripts/noctafin-config.js" "$WEB_DIR/ui/noctafin-config.js"
 cp -f "$ROOT/scripts/noctafin-home.js" "$WEB_DIR/ui/noctafin-home.js"
 
+# Logos de marques : téléchargés localement afin d'éviter les blocages CSP
+# et de ne pas dépendre d'images distantes au moment de l'affichage.
+LOGO_DIR="$WEB_DIR/ui/noctafin-assets/logos"
+mkdir -p "$LOGO_DIR"
+
+logo_sources=(
+  "pixar.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Pixar_logo.svg"
+  "marvel-studios.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Marvel_Studios_2025.svg"
+  "disney.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Walt_Disney_Pictures_text_logo.svg"
+  "20th-century.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/20th_Century_Studios_(2021).svg"
+  "columbia.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Columbia_Pictures.svg"
+  "paramount.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Paramount_Pictures_Logo_2025.svg"
+  "apple-tv-plus.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Apple_TV_Plus_Logo.svg"
+  "netflix.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Netflix_2015_logo.svg"
+  "bbc.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/BBC_Logo_2021.svg"
+  "cartoon-network.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Cartoon_Network.svg"
+  "abc.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/ABC-2021-LOGO_(3).svg"
+  "mtv.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/MTV-2021.svg"
+)
+
+fetch_logo() {
+  local output="$1"
+  local url="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -L --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+      -A "NoctaFin-Jellyfin/1.1" "$url" -o "$output"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q --timeout=30 --user-agent="NoctaFin-Jellyfin/1.1" -O "$output" "$url"
+  else
+    return 127
+  fi
+}
+
+for entry in "${logo_sources[@]}"; do
+  IFS='|' read -r filename url <<< "$entry"
+  target="$LOGO_DIR/$filename"
+  if ! fetch_logo "$target.tmp" "$url"; then
+    rm -f "$target.tmp"
+    echo "Avertissement: logo $filename non téléchargé (curl/wget ou accès Internet indisponible)."
+    continue
+  fi
+  mv -f "$target.tmp" "$target"
+done
+
 python3 - "$WEB_DIR/index.html" <<'PY'
 import pathlib, re, sys
 path = pathlib.Path(sys.argv[1])
@@ -47,5 +91,6 @@ path.write_text(text, encoding="utf-8")
 PY
 
 echo "NoctaFin Home installé dans: $WEB_DIR"
+echo "Logos locaux: $LOGO_DIR"
 echo "Ajoute maintenant l'import theme.css dans Dashboard > Général/Branding > Custom CSS."
 echo "Après une mise à jour Jellyfin, il peut être nécessaire de relancer cet installateur."

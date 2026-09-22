@@ -8,6 +8,14 @@
   .noctafin-hero__content {
     width: min(620px, 60vw);
   }
+
+  .noctafin-track-arrow--prev {
+    left: -10px;
+  }
+
+  .noctafin-track-arrow--next {
+    right: -10px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -56,13 +64,48 @@
 
   .noctafin-brand {
     flex-basis: 180px;
-    height: 92px;
+    height: 96px;
+  }
+
+  .noctafin-brand__logo {
+    inset: 16px 20px;
+    width: calc(100% - 40px);
+    height: calc(100% - 32px);
+  }
+
+  .noctafin-track-arrow {
+    display: none;
   }
 
   #homeTab .verticalSection,
   #indexPage .verticalSection {
     padding-left: 16px !important;
     padding-right: 16px !important;
+  }
+
+  .noctafin-browser-page {
+    padding: 22px 16px 70px;
+  }
+
+  .noctafin-browser-page__header {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .noctafin-browser-page__back {
+    width: 42px;
+    height: 42px;
+  }
+
+  .noctafin-browser-page__grid {
+    grid-template-columns: repeat(auto-fill, minmax(122px, 1fr));
+    gap: 22px 10px;
+  }
+}
+
+@media (pointer: coarse) {
+  .noctafin-track-arrow {
+    display: none;
   }
 }
 

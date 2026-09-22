@@ -6,8 +6,10 @@
     locale: "fr-FR",
     hero: { enabled: true, rotateEveryMs: 7000, maxItems: 8 },
     rows: {
-      rowLimit: 18,
+      rowLimit: 20,
       minItems: 2,
+      browsePageLimit: 120,
+      scrollFactor: 0.82,
       dedupeNativeRows: true,
       showStudioRail: true,
       showNetworkRail: true,
@@ -378,13 +380,77 @@
       .filter(Boolean);
   }
 
-  function makeHeading(kicker, title) {
-    const heading = document.createElement("h2");
+  function makeHeading(kicker, title, onTitleClick = null, actionLabel = "Voir tout") {
+    const heading = document.createElement("div");
     heading.className = "noctafin-section-heading";
-    heading.innerHTML = `<span class="noctafin-section-kicker"></span><span class="noctafin-section-title"></span>`;
-    $(".noctafin-section-kicker", heading).textContent = kicker;
-    $(".noctafin-section-title", heading).textContent = title;
+
+    const text = document.createElement("div");
+    text.className = "noctafin-section-heading__text";
+
+    const kickerNode = document.createElement("span");
+    kickerNode.className = "noctafin-section-kicker";
+    kickerNode.textContent = kicker;
+    text.appendChild(kickerNode);
+
+    if (typeof onTitleClick === "function") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "noctafin-section-title noctafin-section-title-button focusable";
+      button.innerHTML = `<span class="noctafin-section-title__label"></span><span class="noctafin-section-title__arrow" aria-hidden="true">→</span>`;
+      $(".noctafin-section-title__label", button).textContent = title;
+      button.setAttribute("aria-label", `${title} — ${actionLabel}`);
+      button.addEventListener("click", onTitleClick);
+      text.appendChild(button);
+    } else {
+      const titleNode = document.createElement("span");
+      titleNode.className = "noctafin-section-title";
+      titleNode.textContent = title;
+      text.appendChild(titleNode);
+    }
+
+    heading.appendChild(text);
     return heading;
+  }
+
+  function createTrackShell(trackClass, label) {
+    const shell = document.createElement("div");
+    shell.className = "noctafin-track-shell";
+
+    const previous = document.createElement("button");
+    previous.type = "button";
+    previous.className = "noctafin-track-arrow noctafin-track-arrow--prev focusable";
+    previous.setAttribute("aria-label", `Faire défiler ${label} vers la gauche`);
+    previous.innerHTML = `<span aria-hidden="true">‹</span>`;
+
+    const track = document.createElement("div");
+    track.className = trackClass;
+    track.setAttribute("role", "group");
+    track.setAttribute("aria-label", label);
+
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "noctafin-track-arrow noctafin-track-arrow--next focusable";
+    next.setAttribute("aria-label", `Faire défiler ${label} vers la droite`);
+    next.innerHTML = `<span aria-hidden="true">›</span>`;
+
+    shell.append(previous, track, next);
+
+    const update = () => {
+      const max = Math.max(0, track.scrollWidth - track.clientWidth);
+      const hasOverflow = max > 8;
+      shell.classList.toggle("has-overflow", hasOverflow);
+      previous.disabled = !hasOverflow || track.scrollLeft <= 6;
+      next.disabled = !hasOverflow || track.scrollLeft >= max - 6;
+    };
+
+    const amount = () => Math.max(260, track.clientWidth * Math.max(0.45, Math.min(0.95, Number(CONFIG.rows.scrollFactor) || 0.82)));
+    previous.addEventListener("click", () => track.scrollBy({ left: -amount(), behavior: "smooth" }));
+    next.addEventListener("click", () => track.scrollBy({ left: amount(), behavior: "smooth" }));
+    track.addEventListener("scroll", update, { passive: true });
+
+    shell._noctafinUpdateArrows = update;
+    requestAnimationFrame(update);
+    return { shell, track, previous, next, update };
   }
 
   function rowId(prefix, label) {
@@ -395,9 +461,9 @@
     const section = document.createElement("section");
     section.className = "noctafin-shelf";
     section.appendChild(makeHeading("Explorer", title));
-    const track = document.createElement("div");
-    track.className = "noctafin-brand-track";
-    section.appendChild(track);
+
+    const { shell, track, update } = createTrackShell("noctafin-brand-track", title);
+    section.appendChild(shell);
 
     groups.forEach((group) => {
       const button = document.createElement("button");
@@ -406,8 +472,26 @@
       button.style.setProperty("--brand-a", group.colors?.[0] || "#7c5cff");
       button.style.setProperty("--brand-b", group.colors?.[1] || "#25d7ff");
       if (group.darkText) button.style.color = "#080a11";
-      button.innerHTML = `<span class="noctafin-brand__name"></span>`;
-      $(".noctafin-brand__name", button).textContent = group.label;
+
+      const fallback = document.createElement("span");
+      fallback.className = "noctafin-brand__name";
+      fallback.textContent = group.label;
+      button.appendChild(fallback);
+
+      if (group.logo) {
+        const logo = document.createElement("img");
+        logo.className = "noctafin-brand__logo";
+        logo.alt = group.label;
+        logo.loading = "lazy";
+        logo.decoding = "async";
+        logo.referrerPolicy = "no-referrer";
+        logo.src = group.logo;
+        if (group.logoFilter) logo.style.filter = group.logoFilter;
+        logo.addEventListener("load", () => button.classList.add("has-logo"), { once: true });
+        logo.addEventListener("error", () => logo.remove(), { once: true });
+        button.appendChild(logo);
+      }
+
       if (!group._ids?.length) {
         button.setAttribute("aria-disabled", "true");
       } else {
@@ -417,18 +501,20 @@
       }
       track.appendChild(button);
     });
+
+    requestAnimationFrame(update);
     return section;
   }
 
-  function createLazyMediaRow({ kicker, title, id, query }) {
+  function createLazyMediaRow({ kicker, title, id, query, onTitleClick = null }) {
     const section = document.createElement("section");
     section.className = "noctafin-media-row is-loading";
     section.id = id;
     section.dataset.noctafinQuery = JSON.stringify(query);
-    section.appendChild(makeHeading(kicker, title));
-    const track = document.createElement("div");
-    track.className = "noctafin-card-track";
-    section.appendChild(track);
+    section.appendChild(makeHeading(kicker, title, onTitleClick));
+
+    const { shell, track } = createTrackShell("noctafin-card-track", title);
+    section.appendChild(shell);
     return section;
   }
 
@@ -452,6 +538,94 @@
     }
   }
 
+  async function fetchBrowseItems(query, startIndex = 0) {
+    const params = new URLSearchParams({
+      StartIndex: String(Math.max(0, startIndex)),
+      Limit: String(Math.max(24, Number(CONFIG.rows.browsePageLimit) || 120)),
+      Recursive: "true",
+      IncludeItemTypes: query.includeTypes || "Movie,Series",
+      Fields: FIELDS,
+      SortBy: "SortName",
+      SortOrder: "Ascending"
+    });
+    if (query.genreIds?.length) params.set("GenreIds", query.genreIds.join(","));
+    if (query.studioIds?.length) params.set("StudioIds", query.studioIds.join(","));
+    return fetchJson(`/Users/${auth.userId}/Items?${params}`);
+  }
+
+  function closeBrowserPage() {
+    $("#noctafin-browser-page")?.remove();
+    document.body.classList.remove("noctafin-browser-open");
+  }
+
+  async function openGenreBrowser(group) {
+    if (!group?._ids?.length) return;
+    closeBrowserPage();
+
+    const page = document.createElement("section");
+    page.id = "noctafin-browser-page";
+    page.className = "noctafin-browser-page";
+    page.innerHTML = `
+      <div class="noctafin-browser-page__ambient" aria-hidden="true"></div>
+      <header class="noctafin-browser-page__header">
+        <button type="button" class="noctafin-browser-page__back focusable" aria-label="Retour">←</button>
+        <div>
+          <span class="noctafin-section-kicker">Genre</span>
+          <h1 class="noctafin-browser-page__title"></h1>
+          <p class="noctafin-browser-page__count">Chargement…</p>
+        </div>
+      </header>
+      <div class="noctafin-browser-page__grid" aria-live="polite"></div>
+      <div class="noctafin-browser-page__footer">
+        <button type="button" class="noctafin-browser-page__more focusable" hidden>Charger plus</button>
+      </div>
+    `;
+
+    $(".noctafin-browser-page__title", page).textContent = group.label;
+    const back = $(".noctafin-browser-page__back", page);
+    const grid = $(".noctafin-browser-page__grid", page);
+    const count = $(".noctafin-browser-page__count", page);
+    const more = $(".noctafin-browser-page__more", page);
+    back.addEventListener("click", closeBrowserPage);
+
+    document.body.appendChild(page);
+    document.body.classList.add("noctafin-browser-open");
+    page.scrollTop = 0;
+    back.focus({ preventScroll: true });
+
+    let startIndex = 0;
+    let total = 0;
+    let loading = false;
+    const query = { genreIds: group._ids, includeTypes: "Movie,Series" };
+
+    const load = async () => {
+      if (loading) return;
+      loading = true;
+      more.disabled = true;
+      more.textContent = "Chargement…";
+      try {
+        const data = await fetchBrowseItems(query, startIndex);
+        const items = data.Items || [];
+        total = Number(data.TotalRecordCount) || items.length;
+        grid.append(...items.map(makeCard));
+        startIndex += items.length;
+        count.textContent = `${total.toLocaleString(CONFIG.locale)} titre${total > 1 ? "s" : ""}`;
+        more.hidden = !items.length || startIndex >= total;
+        more.textContent = "Charger plus";
+      } catch (error) {
+        console.warn(LOG, "Page de genre indisponible", error);
+        count.textContent = "Impossible de charger ce genre.";
+        more.hidden = true;
+      } finally {
+        loading = false;
+        more.disabled = false;
+      }
+    };
+
+    more.addEventListener("click", load);
+    await load();
+  }
+
   function makeCard(item) {
     const card = document.createElement("button");
     card.type = "button";
@@ -470,7 +644,10 @@
     $(".noctafin-card__title", card).textContent = title || "Sans titre";
     $(".noctafin-card__year", card).textContent = item.ProductionYear || "";
     $(".noctafin-card__rating", card).textContent = Number.isFinite(rating) && rating > 0 ? `★ ${rating.toFixed(1)}` : "";
-    card.addEventListener("click", () => navigate(`/details?id=${encodeURIComponent(detailsId(item))}`));
+    card.addEventListener("click", () => {
+      if (card.closest("#noctafin-browser-page")) closeBrowserPage();
+      navigate(`/details?id=${encodeURIComponent(detailsId(item))}`);
+    });
     return card;
   }
 
@@ -489,6 +666,8 @@
       const track = $(".noctafin-card-track", section);
       track.replaceChildren(...items.map(makeCard));
       section.classList.remove("is-loading");
+      const shell = track.closest(".noctafin-track-shell");
+      requestAnimationFrame(() => shell?._noctafinUpdateArrows?.());
     } catch (error) {
       console.warn(LOG, "Ligne indisponible", section.id, error);
       section.classList.remove("is-loading");
@@ -531,7 +710,8 @@
             kicker: "Genre",
             title: group.label,
             id: rowId("genre", group.label),
-            query: { genreIds: group._ids, includeTypes: "Movie,Series" }
+            query: { genreIds: group._ids, includeTypes: "Movie,Series" },
+            onTitleClick: () => openGenreBrowser(group)
           }));
         });
       }
@@ -633,6 +813,12 @@
       if (!document.hidden) scheduleMount();
     });
     window.addEventListener("hashchange", scheduleMount);
+    window.addEventListener("resize", () => {
+      $$(".noctafin-track-shell").forEach((shell) => shell._noctafinUpdateArrows?.());
+    }, { passive: true });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && $("#noctafin-browser-page")) closeBrowserPage();
+    });
     setInterval(scheduleMount, 2500);
   }
 

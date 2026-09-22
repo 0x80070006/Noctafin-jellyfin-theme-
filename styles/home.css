@@ -81,7 +81,7 @@
   overflow: hidden;
   isolation: isolate;
   margin: 0 0 12px;
-  background: #060810;
+  background: #050710;
 }
 
 .noctafin-hero__bg,
@@ -241,23 +241,29 @@
 .noctafin-custom-sections {
   width: 100%;
   display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .noctafin-shelf,
 .noctafin-media-row {
   position: relative;
   width: 100%;
-  margin: 0 0 2.25rem;
+  margin: 0 0 2.45rem;
   padding: 0 var(--nf-page-x);
 }
 
 .noctafin-section-heading {
-  margin: 0 0 13px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  min-height: 46px;
+  margin: 0 0 8px;
   color: var(--nf-text);
-  font-size: clamp(1.22rem, 1.45vw, 1.58rem);
-  line-height: 1.15;
-  font-weight: 800;
-  letter-spacing: -.025em;
+}
+
+.noctafin-section-heading__text {
+  min-width: 0;
 }
 
 .noctafin-section-kicker {
@@ -270,16 +276,72 @@
   text-transform: uppercase;
 }
 
+.noctafin-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--nf-text);
+  font-size: clamp(1.22rem, 1.45vw, 1.58rem);
+  line-height: 1.15;
+  font-weight: 820;
+  letter-spacing: -.025em;
+}
+
+.noctafin-section-title-button {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+  cursor: pointer;
+  text-align: left;
+}
+
+.noctafin-section-title-button:hover,
+.noctafin-section-title-button:focus-visible {
+  color: var(--nf-cyan);
+  transform: none !important;
+}
+
+.noctafin-section-title__arrow {
+  display: inline-block;
+  opacity: .66;
+  transform: translateX(0);
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.noctafin-section-title-button:hover .noctafin-section-title__arrow,
+.noctafin-section-title-button:focus-visible .noctafin-section-title__arrow {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.noctafin-track-shell {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+
 .noctafin-brand-track,
 .noctafin-card-track {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 12px;
+  width: 100%;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
-  padding: 4px 2px 18px;
+  scroll-behavior: smooth;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.noctafin-brand-track {
+  padding: 10px 4px 18px;
+}
+
+.noctafin-card-track {
+  padding: 12px 4px 28px;
 }
 
 .noctafin-brand-track::-webkit-scrollbar,
@@ -287,18 +349,74 @@
   display: none;
 }
 
+.noctafin-track-arrow {
+  appearance: none;
+  position: absolute;
+  top: 50%;
+  z-index: 8;
+  width: 44px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.13);
+  color: #fff;
+  background: rgba(4,6,12,.78);
+  box-shadow: 0 12px 32px rgba(0,0,0,.38);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transform: translateY(-50%) !important;
+  transition: opacity 180ms ease, background 180ms ease, border-color 180ms ease !important;
+}
+
+.noctafin-track-arrow span {
+  display: block;
+  margin-top: -3px;
+  font-size: 2.4rem;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.noctafin-track-arrow--prev {
+  left: -18px;
+}
+
+.noctafin-track-arrow--next {
+  right: -18px;
+}
+
+.noctafin-track-shell.has-overflow:hover .noctafin-track-arrow:not(:disabled),
+.noctafin-track-shell.has-overflow:focus-within .noctafin-track-arrow:not(:disabled) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.noctafin-track-arrow:hover:not(:disabled),
+.noctafin-track-arrow:focus-visible:not(:disabled) {
+  background: rgba(25,28,45,.94);
+  border-color: rgba(124,92,255,.6);
+  box-shadow: 0 0 0 1px rgba(124,92,255,.25), 0 16px 42px rgba(0,0,0,.46);
+  transform: translateY(-50%) scale(1.04) !important;
+}
+
+.noctafin-track-arrow:disabled {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .noctafin-brand {
   --brand-a: #7c5cff;
   --brand-b: #25d7ff;
   position: relative;
   flex: 0 0 clamp(190px, 15vw, 270px);
-  height: clamp(92px, 7vw, 126px);
+  height: clamp(98px, 7.4vw, 132px);
   border: 1px solid rgba(255,255,255,.12);
   border-radius: var(--nf-radius) !important;
   overflow: hidden;
   color: white;
   background:
-    radial-gradient(circle at 20% 15%, rgba(255,255,255,.30), transparent 30%),
+    radial-gradient(circle at 18% 8%, rgba(255,255,255,.28), transparent 30%),
     linear-gradient(135deg, var(--brand-a), var(--brand-b));
   box-shadow: 0 14px 34px rgba(0,0,0,.24);
   scroll-snap-align: start;
@@ -309,24 +427,27 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,.14), transparent 35%, rgba(0,0,0,.22));
-}
-
-.noctafin-brand::after {
-  content: "";
-  position: absolute;
-  width: 130px;
-  height: 130px;
-  right: -42px;
-  bottom: -58px;
-  border: 18px solid rgba(255,255,255,.12);
-  border-radius: 50%;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.12), transparent 35%, rgba(0,0,0,.25)),
+    radial-gradient(circle at 84% 110%, rgba(255,255,255,.13) 0 30%, transparent 31%);
 }
 
 .noctafin-brand:hover,
 .noctafin-brand:focus-visible {
-  transform: translateY(-6px) scale(1.025) !important;
-  box-shadow: 0 22px 54px color-mix(in srgb, var(--brand-a) 35%, transparent) !important;
+  transform: translateY(-5px) scale(1.025) !important;
+  box-shadow: 0 22px 54px color-mix(in srgb, var(--brand-a) 34%, transparent) !important;
+}
+
+.noctafin-brand__logo {
+  position: absolute;
+  inset: 18px 24px;
+  z-index: 2;
+  width: calc(100% - 48px);
+  height: calc(100% - 36px);
+  object-fit: contain;
+  object-position: center;
+  opacity: .98;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.25));
 }
 
 .noctafin-brand__name {
@@ -338,7 +459,12 @@
   font-size: clamp(1.05rem, 1.38vw, 1.5rem);
   font-weight: 900;
   letter-spacing: -.035em;
+  text-align: center;
   text-shadow: 0 4px 20px rgba(0,0,0,.35);
+}
+
+.noctafin-brand.has-logo .noctafin-brand__name {
+  opacity: 0;
 }
 
 .noctafin-brand[aria-disabled="true"] {
@@ -361,18 +487,21 @@
   appearance: none;
   flex: 0 0 var(--nf-card-width);
   width: var(--nf-card-width);
-  padding: 0;
+  min-width: var(--nf-card-width);
+  padding: 0 0 2px;
   border: 0;
   color: var(--nf-text);
-  background: transparent;
+  background: transparent !important;
   text-align: left;
   cursor: pointer;
   scroll-snap-align: start;
   transform-origin: center bottom;
+  overflow: visible !important;
 }
 
 .noctafin-card__art {
   position: relative;
+  display: block;
   width: 100%;
   aspect-ratio: 2 / 3;
   overflow: hidden;
@@ -404,38 +533,149 @@
 
 .noctafin-card:hover .noctafin-card__art,
 .noctafin-card:focus-visible .noctafin-card__art {
-  transform: translateY(-7px) scale(1.035);
+  transform: translateY(-5px) scale(1.025);
   border-color: rgba(124,92,255,.62);
   box-shadow: var(--nf-glow);
 }
 
 .noctafin-card:hover .noctafin-card__art img,
 .noctafin-card:focus-visible .noctafin-card__art img {
-  transform: scale(1.05);
+  transform: scale(1.045);
   filter: saturate(1.08) brightness(1.05);
 }
 
 .noctafin-card__title {
   display: block;
+  width: 100%;
+  min-height: 20px;
   margin-top: 9px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--nf-text);
   font-size: .9rem;
+  line-height: 1.25;
   font-weight: 720;
 }
 
 .noctafin-card__meta {
   display: flex;
+  align-items: center;
+  min-height: 18px;
   gap: 7px;
   margin-top: 3px;
   color: var(--nf-muted);
   font-size: .76rem;
+  line-height: 1.2;
 }
 
 .noctafin-card__rating {
   color: var(--nf-yellow);
+}
+
+/* Full genre browser -------------------------------------------------------- */
+body.noctafin-browser-open {
+  overflow: hidden !important;
+}
+
+.noctafin-browser-page {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 34px var(--nf-page-x) 80px;
+  color: var(--nf-text);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(124,92,255,.16), transparent 34%),
+    radial-gradient(circle at 90% 18%, rgba(37,215,255,.11), transparent 32%),
+    linear-gradient(180deg, rgba(3,4,10,.98), rgba(1,2,7,.995));
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.noctafin-browser-page__ambient {
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 30%, rgba(181,76,255,.15), transparent 22%),
+    radial-gradient(circle at 78% 25%, rgba(37,215,255,.12), transparent 20%),
+    radial-gradient(circle at 64% 80%, rgba(255,79,163,.12), transparent 22%);
+  animation: noctafin-browser-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes noctafin-browser-drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+
+.noctafin-browser-page__header,
+.noctafin-browser-page__grid,
+.noctafin-browser-page__footer {
+  position: relative;
+  z-index: 1;
+}
+
+.noctafin-browser-page__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  margin: 0 0 30px;
+}
+
+.noctafin-browser-page__back {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  background: rgba(255,255,255,.08);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.noctafin-browser-page__title {
+  margin: 0;
+  font-size: clamp(2.1rem, 4vw, 4.4rem);
+  line-height: .98;
+  letter-spacing: -.055em;
+}
+
+.noctafin-browser-page__count {
+  margin: 8px 0 0;
+  color: var(--nf-muted);
+  font-size: .92rem;
+}
+
+.noctafin-browser-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--nf-card-width), 1fr));
+  gap: 26px 14px;
+  align-items: start;
+}
+
+.noctafin-browser-page__grid .noctafin-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.noctafin-browser-page__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 34px;
+}
+
+.noctafin-browser-page__more {
+  appearance: none;
+  min-height: 46px;
+  padding: 0 22px;
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  background: rgba(255,255,255,.08);
+  font-weight: 760;
+  cursor: pointer;
 }
 
 [data-noctafin-duplicate="true"] {

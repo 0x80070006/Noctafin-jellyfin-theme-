@@ -7,8 +7,10 @@ window.NOCTAFIN_CONFIG = {
     maxItems: 8
   },
   rows: {
-    rowLimit: 18,
+    rowLimit: 20,
     minItems: 2,
+    browsePageLimit: 120,
+    scrollFactor: 0.82,
     dedupeNativeRows: true,
     showStudioRail: true,
     showNetworkRail: true,
@@ -29,19 +31,87 @@ window.NOCTAFIN_CONFIG = {
     { label: "Thriller", aliases: ["Thriller"] }
   ],
   studios: [
-    { label: "PIXAR", aliases: ["Pixar", "Pixar Animation Studios"], colors: ["#00c6ff", "#2160ff"] },
-    { label: "MARVEL", aliases: ["Marvel Studios", "Marvel Entertainment", "Marvel"], colors: ["#ff3548", "#7b0715"] },
-    { label: "DISNEY", aliases: ["Walt Disney Pictures", "Walt Disney Animation Studios", "Disney"], colors: ["#2b7cff", "#7128ff"] },
-    { label: "20TH CENTURY", aliases: ["20th Century Studios", "20th Century Fox", "Twentieth Century Fox"], colors: ["#ffb52e", "#ff5f22"] },
-    { label: "COLUMBIA", aliases: ["Columbia Pictures", "Columbia"], colors: ["#25d7ff", "#725cff"] },
-    { label: "PARAMOUNT", aliases: ["Paramount Pictures", "Paramount"], colors: ["#4e7cff", "#161a62"] }
+    {
+      label: "PIXAR",
+      aliases: ["Pixar", "Pixar Animation Studios"],
+      colors: ["#00b9ff", "#1555e8"],
+      logo: "ui/noctafin-assets/logos/pixar.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "MARVEL",
+      aliases: ["Marvel Studios", "Marvel Entertainment", "Marvel"],
+      colors: ["#ff304e", "#7d0618"],
+      logo: "ui/noctafin-assets/logos/marvel-studios.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "DISNEY",
+      aliases: ["Walt Disney Pictures", "Walt Disney Animation Studios", "Disney"],
+      colors: ["#2878ff", "#6427ef"],
+      logo: "ui/noctafin-assets/logos/disney.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "20TH CENTURY",
+      aliases: ["20th Century Studios", "20th Century Fox", "Twentieth Century Fox"],
+      colors: ["#ffb52e", "#e14f18"],
+      logo: "ui/noctafin-assets/logos/20th-century.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "COLUMBIA",
+      aliases: ["Columbia Pictures", "Columbia"],
+      colors: ["#28c9ff", "#5653e6"],
+      logo: "ui/noctafin-assets/logos/columbia.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "PARAMOUNT",
+      aliases: ["Paramount Pictures", "Paramount"],
+      colors: ["#4e7cff", "#161a62"],
+      logo: "ui/noctafin-assets/logos/paramount.svg",
+      logoFilter: "brightness(0) invert(1)"
+    }
   ],
   networks: [
-    { label: "Apple TV+", aliases: ["Apple TV+", "Apple TV Plus", "Apple Studios", "Apple"], colors: ["#555a66", "#0d0f14"] },
-    { label: "NETFLIX", aliases: ["Netflix"], colors: ["#e50914", "#69000a"] },
-    { label: "BBC", aliases: ["BBC", "BBC One", "BBC Two", "BBC Three"], colors: ["#f1f1f1", "#5b606a"], darkText: true },
-    { label: "CARTOON NETWORK", aliases: ["Cartoon Network"], colors: ["#08d8d8", "#b92dff"] },
-    { label: "ABC", aliases: ["ABC", "American Broadcasting Company"], colors: ["#353945", "#08090d"] },
-    { label: "MTV", aliases: ["MTV"], colors: ["#ff4fa3", "#7c5cff"] }
+    {
+      label: "Apple TV+",
+      aliases: ["Apple TV+", "Apple TV Plus", "Apple Studios", "Apple"],
+      colors: ["#434853", "#0a0c11"],
+      logo: "ui/noctafin-assets/logos/apple-tv-plus.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "NETFLIX",
+      aliases: ["Netflix"],
+      colors: ["#1a1014", "#050508"],
+      logo: "ui/noctafin-assets/logos/netflix.svg"
+    },
+    {
+      label: "BBC",
+      aliases: ["BBC", "BBC One", "BBC Two", "BBC Three"],
+      colors: ["#30343d", "#080a0e"],
+      logo: "ui/noctafin-assets/logos/bbc.svg"
+    },
+    {
+      label: "CARTOON NETWORK",
+      aliases: ["Cartoon Network"],
+      colors: ["#15d3dc", "#8b38ef"],
+      logo: "ui/noctafin-assets/logos/cartoon-network.svg"
+    },
+    {
+      label: "ABC",
+      aliases: ["ABC", "American Broadcasting Company"],
+      colors: ["#353945", "#08090d"],
+      logo: "ui/noctafin-assets/logos/abc.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "MTV",
+      aliases: ["MTV"],
+      colors: ["#ff4fa3", "#7547dd"],
+      logo: "ui/noctafin-assets/logos/mtv.svg"
+    }
   ]
 };

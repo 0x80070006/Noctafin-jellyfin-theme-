@@ -17,4 +17,5 @@ $Html = [regex]::Replace($Html, '<script[^>]*data-noctafin-(?:config|home)[^>]*>
 Set-Content -Path $Index -Value $Html -Encoding UTF8
 Remove-Item (Join-Path $WebDir "ui\noctafin-config.js") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $WebDir "ui\noctafin-home.js") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $WebDir "ui\noctafin-assets") -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "Injection NoctaFin supprimée." -ForegroundColor Green

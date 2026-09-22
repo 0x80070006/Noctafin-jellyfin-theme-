@@ -1,28 +1,49 @@
 html,
-body,
-.backgroundContainer,
-.mainAnimatedPages,
-.page {
-  background: var(--nf-bg) !important;
+body {
+  background: #02030a !important;
   color: var(--nf-text) !important;
+}
+
+.backgroundContainer {
+  background-color: #02030a !important;
+  background-image:
+    radial-gradient(circle at 14% 18%, rgba(124, 92, 255, .22) 0, rgba(124, 92, 255, .11) 18%, transparent 42%),
+    radial-gradient(circle at 78% 14%, rgba(37, 215, 255, .16) 0, rgba(37, 215, 255, .08) 19%, transparent 43%),
+    radial-gradient(circle at 74% 76%, rgba(255, 79, 163, .15) 0, rgba(255, 79, 163, .07) 17%, transparent 42%),
+    radial-gradient(circle at 24% 84%, rgba(63, 100, 255, .13) 0, transparent 38%),
+    linear-gradient(180deg, #03040a 0%, #020309 48%, #010207 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: 82vmax 82vmax, 76vmax 76vmax, 84vmax 84vmax, 70vmax 70vmax, 100% 100% !important;
+  background-position: -28vmax -26vmax, 68vw -28vmax, 62vw 62vh, -20vmax 70vh, center !important;
+  animation: noctafin-ambient-drift 28s ease-in-out infinite alternate !important;
+}
+
+.mainAnimatedPages,
+.page,
+#indexPage,
+#homeTab {
+  background: transparent !important;
+}
+
+@keyframes noctafin-ambient-drift {
+  0% {
+    background-position: -28vmax -26vmax, 68vw -28vmax, 62vw 62vh, -20vmax 70vh, center;
+  }
+  35% {
+    background-position: -16vmax -12vmax, 54vw -16vmax, 74vw 52vh, -8vmax 62vh, center;
+  }
+  70% {
+    background-position: -22vmax 4vmax, 62vw -6vmax, 52vw 66vh, 4vmax 72vh, center;
+  }
+  100% {
+    background-position: -8vmax -18vmax, 48vw -22vmax, 70vw 44vh, -14vmax 56vh, center;
+  }
 }
 
 html,
 body {
   font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
   scrollbar-color: rgba(124, 92, 255, .55) rgba(255, 255, 255, .04);
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(950px 520px at 12% -10%, rgba(181, 76, 255, .18), transparent 68%),
-    radial-gradient(850px 520px at 88% 0%, rgba(37, 215, 255, .13), transparent 70%),
-    linear-gradient(180deg, #050711 0%, #03050a 48%, #020307 100%);
 }
 
 ::selection {
@@ -39,7 +60,7 @@ button,
 .button-submit,
 .raised {
   border-radius: 999px !important;
-  transition: transform var(--nf-speed) ease, background var(--nf-speed) ease, box-shadow var(--nf-speed) ease !important;
+  transition: transform var(--nf-speed) ease, background var(--nf-speed) ease, box-shadow var(--nf-speed) ease, opacity var(--nf-speed) ease !important;
 }
 
 button:hover,
@@ -109,4 +130,10 @@ button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--nf-cyan) !important;
   outline-offset: 3px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backgroundContainer {
+    animation: none !important;
+  }
 }

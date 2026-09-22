@@ -1,5 +1,5 @@
-/* Remplace VOTRE_GITHUB et NoctaFin si tu utilises un autre nom de dépôt. */
-@import url("https://cdn.jsdelivr.net/gh/VOTRE_GITHUB/NoctaFin@main/theme.css");
+/* NoctaFin v1.1 — dépôt de 0x80070006 */
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.1.0");
 
 /* Exemples de personnalisation locale : */
 :root {
