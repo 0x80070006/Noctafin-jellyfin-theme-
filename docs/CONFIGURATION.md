@@ -1,4 +1,4 @@
-# Configuration Lumo
+# Configuration Lumo 1.6
 
 La configuration principale se trouve dans `scripts/noctafin-config.js`.
 
@@ -28,51 +28,39 @@ seasonal: {
 }
 ```
 
-`forceSeason` accepte `auto`, `default`, `halloween` ou `christmas`.
-
-Le flou et l'assombrissement ne s'appliquent qu'aux fonds Halloween/Noël. Le fond par défaut conserve les halos animés violet/cyan/rose.
+Le flou et l'assombrissement ne s'appliquent qu'aux fonds Halloween/Noël. Le fond par défaut garde les halos animés.
 
 ## Hero
 
-- `enabled` : active ou désactive le hero.
+- `enabled` : active/désactive le hero.
 - `rotateEveryMs` : délai entre deux contenus.
 - `maxItems` : nombre maximal de contenus dans la rotation.
 
 ## Lignes
 
 - `rowLimit` : nombre de médias demandés par ligne.
-- `minItems` : une ligne standard est cachée si elle contient moins de médias.
-- - `scrollFactor` : portion de largeur parcourue par les flèches.
-- `hideNativeHomeRows` : masque les sections natives Jellyfin sur l'accueil.
-- `showResumeRow` : affiche `Continuer de regarder` juste avant les Studios.
-- `showStudioRail` : affiche les grandes tuiles Studios.
-- `showNetworkRail` : affiche les grandes tuiles Réseaux TV.
-- `showGenreRows` : affiche une ligne par genre.
-- `showStudioRows` : affiche une ligne par studio.
-- `showNetworkRows` : affiche une ligne de séries par réseau TV.
-
-## Genres cliquables
-
-Le titre d'une ligne de genre ouvre maintenant la liste native Jellyfin filtrée avec `genreId`. Les tuiles et titres Studios/Réseaux utilisent de la même façon `studioId`.
+- `minItems` : masque une ligne si elle contient trop peu d'éléments.
+- `scrollFactor` : portion de largeur parcourue par les chevrons.
+- `hideNativeHomeRows` : masque les sections natives de l'accueil.
+- `showResumeRow` : affiche `Continuer de regarder` en 16:9 avant Studios.
+- `showStudioRail`, `showNetworkRail` : tuiles de navigation.
+- `showGenreRows`, `showStudioRows`, `showNetworkRows` : lignes dynamiques.
 
 ## Métadonnées et alias
 
-Lumo utilise les Genres et Studios présents dans Jellyfin. Ajoute des alias quand ton fournisseur de métadonnées utilise un autre nom.
+Lumo utilise les Genres et Studios réellement présents dans Jellyfin. Ajoute un alias lorsque ton fournisseur de métadonnées emploie un autre nom :
 
 ```js
 { label: "PIXAR", aliases: ["Pixar", "Pixar Animation Studios"] }
 ```
 
-## Logos Studios / Réseaux
+## CSS local
 
-Les logos de marques sont téléchargés localement lors de l'installation dans :
-
-```text
-jellyfin-web/ui/noctafin-assets/logos/
-```
-
-Les assets Lumo saisonniers sont copiés depuis le dépôt dans :
+L'installation complète copie :
 
 ```text
-jellyfin-web/ui/noctafin-assets/seasonal/
+jellyfin-web/ui/lumo/theme.css
+jellyfin-web/ui/lumo/styles/*.css
 ```
+
+N'ajoute pas simultanément un ancien `@import` jsDelivr dans le Custom CSS.

@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+$Version = "1.6.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -13,21 +14,28 @@ if (-not $WebDir) {
     }
 }
 
-if (-not $WebDir -or -not (Test-Path (Join-Path $WebDir "index.html"))) {
+$Index = if ($WebDir) { Join-Path $WebDir "index.html" } else { $null }
+if (-not $WebDir -or -not (Test-Path $Index)) {
     throw "Jellyfin web introuvable. Définis JELLYFIN_WEB_DIR puis relance le script."
 }
 
 $Ui = Join-Path $WebDir "ui"
-New-Item -ItemType Directory -Path $Ui -Force | Out-Null
+$LumoDir = Join-Path $Ui "lumo"
+$LumoStyles = Join-Path $LumoDir "styles"
+$SeasonDir = Join-Path $Ui "noctafin-assets\seasonal"
+$LogoDir = Join-Path $Ui "noctafin-assets\logos"
+New-Item -ItemType Directory -Path $Ui,$LumoDir,$LumoStyles,$SeasonDir,$LogoDir -Force | Out-Null
+
+$Backup = "$Index.pre-lumo.bak"
+if (-not (Test-Path $Backup)) { Copy-Item $Index $Backup -Force }
+
 Copy-Item (Join-Path $Root "scripts\noctafin-config.js") (Join-Path $Ui "noctafin-config.js") -Force
 Copy-Item (Join-Path $Root "scripts\noctafin-home.js") (Join-Path $Ui "noctafin-home.js") -Force
-
-$SeasonDir = Join-Path $Ui "noctafin-assets\seasonal"
-New-Item -ItemType Directory -Path $SeasonDir -Force | Out-Null
+Copy-Item (Join-Path $Root "theme.css") (Join-Path $LumoDir "theme.css") -Force
+Get-ChildItem $LumoStyles -File -ErrorAction SilentlyContinue | Remove-Item -Force
+Copy-Item (Join-Path $Root "styles\*.css") $LumoStyles -Force
 Copy-Item (Join-Path $Root "assets\seasonal\*.png") $SeasonDir -Force
 
-$LogoDir = Join-Path $Ui "noctafin-assets\logos"
-New-Item -ItemType Directory -Path $LogoDir -Force | Out-Null
 $Logos = @{
     "pixar.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pixar_logo.svg"
     "marvel-studios.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Marvel_Studios_2025.svg"
@@ -45,22 +53,36 @@ $Logos = @{
 
 foreach ($Entry in $Logos.GetEnumerator()) {
     $Target = Join-Path $LogoDir $Entry.Key
+    $Tmp = "$Target.tmp"
+    Remove-Item $Tmp -Force -ErrorAction SilentlyContinue
     try {
-        Invoke-WebRequest -Uri $Entry.Value -OutFile $Target -MaximumRedirection 10 -UseBasicParsing
+        Invoke-WebRequest -Uri $Entry.Value -OutFile $Tmp -MaximumRedirection 10 -UseBasicParsing -Headers @{"User-Agent"="Lumo-Jellyfin/$Version"}
+        $Head = [System.IO.File]::ReadAllText($Tmp)
+        if ($Head -notmatch '<svg') { throw "Le fichier reçu n'est pas un SVG" }
+        Move-Item $Tmp $Target -Force
     } catch {
-        Write-Warning "Logo $($Entry.Key) non téléchargé: $($_.Exception.Message)"
+        Remove-Item $Tmp -Force -ErrorAction SilentlyContinue
+        if (Test-Path $Target) {
+            Write-Warning "Téléchargement de $($Entry.Key) impossible; logo local existant conservé."
+        } else {
+            Write-Warning "Logo $($Entry.Key) indisponible; Lumo affichera son libellé de secours."
+        }
     }
 }
 
-$Index = Join-Path $WebDir "index.html"
 $Html = Get-Content $Index -Raw -Encoding UTF8
+$Html = [regex]::Replace($Html, '<link[^>]*data-lumo-theme[^>]*>\s*', '', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', 'IgnoreCase')
-$Block = "<script src=`"ui/noctafin-config.js?v=1.4.0`" data-noctafin-config></script>`n<script src=`"ui/noctafin-home.js?v=1.4.0`" data-noctafin-home></script>`n"
+if ($Html -notmatch '</head>') { throw "index.html ne contient pas </head>" }
 if ($Html -notmatch '</body>') { throw "index.html ne contient pas </body>" }
-$Html = [regex]::Replace($Html, '</body>', $Block + '</body>', 'IgnoreCase')
+$Style = "<link rel=`"stylesheet`" href=`"ui/lumo/theme.css?v=$Version`" data-lumo-theme=`"$Version`">`n"
+$Scripts = "<script src=`"ui/noctafin-config.js?v=$Version`" data-noctafin-config></script>`n<script src=`"ui/noctafin-home.js?v=$Version`" data-noctafin-home></script>`n"
+$Html = [regex]::Replace($Html, '</head>', $Style + '</head>', 'IgnoreCase')
+$Html = [regex]::Replace($Html, '</body>', $Scripts + '</body>', 'IgnoreCase')
 Set-Content -Path $Index -Value $Html -Encoding UTF8
 
-Write-Host "Lumo installé dans $WebDir" -ForegroundColor Green
+Write-Host "Lumo $Version installé dans $WebDir" -ForegroundColor Green
+Write-Host "CSS local: $(Join-Path $LumoDir 'theme.css')"
 Write-Host "Logos studios/réseaux: $LogoDir"
 Write-Host "Assets saisonniers: $SeasonDir"
-Write-Host "Ajoute ensuite l'import theme.css dans Dashboard > Général/Branding > Custom CSS."
+Write-Host "IMPORTANT: retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin pour éviter les conflits/cache d'une ancienne version." -ForegroundColor Yellow

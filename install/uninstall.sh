@@ -7,13 +7,15 @@ if [[ -z "$WEB_DIR" ]]; then
   done
 fi
 [[ -n "$WEB_DIR" && -f "$WEB_DIR/index.html" ]] || { echo "Jellyfin web introuvable."; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 est requis."; exit 1; }
 python3 - "$WEB_DIR/index.html" <<'PY'
 import pathlib, re, sys
 path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
+text = re.sub(r'<link[^>]*data-lumo-theme[^>]*>\s*', '', text, flags=re.I)
 text = re.sub(r'<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', text, flags=re.I)
 path.write_text(text, encoding="utf-8")
 PY
 rm -f "$WEB_DIR/ui/noctafin-config.js" "$WEB_DIR/ui/noctafin-home.js"
-rm -rf "$WEB_DIR/ui/noctafin-assets"
-echo "Injection Lumo supprimée. Pense aussi à retirer l'@import du Custom CSS."
+rm -rf "$WEB_DIR/ui/noctafin-assets" "$WEB_DIR/ui/lumo"
+echo "Lumo supprimé de Jellyfin Web. Retire aussi tout ancien @import Lumo/NoctaFin encore présent dans le CSS personnalisé."

@@ -1,12 +1,13 @@
 /*
- * Lumo — Jellyfin 12 theme
- * Standalone visual layer. Dynamic hero/rows are provided by scripts/noctafin-home.js (Lumo engine).
+ * Lumo — Jellyfin 12 theme v1.6.0
+ * Full install injects this stylesheet locally into jellyfin-web.
+ * The GitHub/jsDelivr import remains available as a CSS-only preview.
  */
-@import url("./styles/tokens.css?v=1.4.0");
-@import url("./styles/core.css?v=1.4.0");
-@import url("./styles/header.css?v=1.4.0");
-@import url("./styles/home.css?v=1.4.0");
-@import url("./styles/details.css?v=1.4.0");
-@import url("./styles/player.css?v=1.4.0");
-@import url("./styles/responsive.css?v=1.4.0");
-@import url("./styles/lumo.css?v=1.4.0");
+@import url("./styles/tokens.css?v=1.6.0");
+@import url("./styles/core.css?v=1.6.0");
+@import url("./styles/header.css?v=1.6.0");
+@import url("./styles/home.css?v=1.6.0");
+@import url("./styles/details.css?v=1.6.0");
+@import url("./styles/player.css?v=1.6.0");
+@import url("./styles/responsive.css?v=1.6.0");
+@import url("./styles/lumo-v1.6.css?v=1.6.0");

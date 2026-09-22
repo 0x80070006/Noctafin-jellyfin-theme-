@@ -10,12 +10,15 @@ if (-not $WebDir) {
         if (Test-Path (Join-Path $Candidate "index.html")) { $WebDir = $Candidate; break }
     }
 }
-if (-not $WebDir) { throw "Jellyfin web introuvable." }
-$Index = Join-Path $WebDir "index.html"
+$Index = if ($WebDir) { Join-Path $WebDir "index.html" } else { $null }
+if (-not $WebDir -or -not (Test-Path $Index)) { throw "Jellyfin web introuvable." }
 $Html = Get-Content $Index -Raw -Encoding UTF8
+$Html = [regex]::Replace($Html, '<link[^>]*data-lumo-theme[^>]*>\s*', '', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', 'IgnoreCase')
 Set-Content -Path $Index -Value $Html -Encoding UTF8
-Remove-Item (Join-Path $WebDir "ui\noctafin-config.js") -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $WebDir "ui\noctafin-home.js") -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $WebDir "ui\noctafin-assets") -Recurse -Force -ErrorAction SilentlyContinue
-Write-Host "Injection Lumo supprimée." -ForegroundColor Green
+$Ui = Join-Path $WebDir "ui"
+Remove-Item (Join-Path $Ui "noctafin-config.js") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $Ui "noctafin-home.js") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $Ui "noctafin-assets") -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $Ui "lumo") -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "Lumo supprimé. Retire aussi tout ancien @import Lumo/NoctaFin du CSS personnalisé." -ForegroundColor Green

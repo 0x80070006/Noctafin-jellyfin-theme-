@@ -2,6 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
+  const VERSION = "1.6.0";
   const DEFAULTS = {
     locale: "fr-FR",
     brand: {
@@ -65,7 +66,12 @@
     "ParentIndexNumber",
     "IndexNumber",
     "UserData",
-    "DateCreated"
+    "DateCreated",
+    "ImageTags",
+    "BackdropImageTags",
+    "ParentBackdropImageTags",
+    "ParentBackdropItemId",
+    "SeriesPrimaryImageTag"
   ].join(",");
 
   let auth = null;
@@ -114,7 +120,7 @@
   function headers() {
     if (!auth?.token) return {};
     return {
-      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.4", Token="${auth.token}"`
+      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.6", Token="${auth.token}"`
     };
   }
 
@@ -148,11 +154,25 @@
   }
 
   function navigate(route) {
+    const target = String(route || "").trim();
+    if (!target) return;
     try {
-      window.location.hash = route;
+      if (window.Dashboard && typeof window.Dashboard.navigate === "function") {
+        window.Dashboard.navigate(target);
+        return;
+      }
+    } catch (error) {
+      console.debug(LOG, "Dashboard.navigate indisponible", error);
+    }
+    try {
+      window.location.hash = target.startsWith("#") ? target.slice(1) : target;
     } catch (error) {
       console.warn(LOG, "Navigation impossible", error);
     }
+  }
+
+  function isModernJellyfin() {
+    return Boolean(document.querySelector("header.MuiAppBar-root, #reactRoot [class*='MuiToolbar-root'], #reactRoot [class*='MuiDrawer-paper']"));
   }
 
   function visibleById(id) {
@@ -253,6 +273,67 @@
     }
   }
 
+  function ensureLocalThemeStylesheet() {
+    const href = assetUrl(`ui/lumo/theme.css?v=${VERSION}`);
+    let link = document.querySelector('link[data-lumo-theme]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "stylesheet";
+      document.head?.appendChild(link);
+    }
+    link.setAttribute("data-lumo-theme", VERSION);
+    if (link.getAttribute("href") !== href) link.setAttribute("href", href);
+
+    /* Keep Lumo after Jellyfin/Branding styles. This also neutralises an old
+       jsDelivr import that a browser may still have cached while upgrading. */
+    if (document.head && link.dataset.lumoPositioned !== VERSION) {
+      link.dataset.lumoPositioned = VERSION;
+      document.head.appendChild(link);
+    }
+  }
+
+  function ensureCriticalStyle() {
+    if (document.getElementById("lumo-critical-style")) return;
+    const style = document.createElement("style");
+    style.id = "lumo-critical-style";
+    style.textContent = `
+      html.lumo-ui,html.lumo-ui body{background:#02030a!important}
+      #lumo-background-layer{position:fixed!important;inset:0!important;z-index:0!important;overflow:hidden!important;pointer-events:none!important}
+      #lumo-background-art,#lumo-background-shade{position:absolute!important;pointer-events:none!important}
+      #lumo-background-art{inset:-30px!important;background-color:#02030a!important;will-change:transform,filter,background-position}
+      #lumo-background-shade{inset:0!important;background:linear-gradient(180deg,rgba(1,2,7,.05),rgba(1,2,7,.18) 60%,rgba(1,2,7,.32))!important}
+      html[data-lumo-season="halloween"] #lumo-background-art,html[data-lumo-season="christmas"] #lumo-background-art{background-image:var(--lumo-season-background)!important;background-size:cover!important;background-position:center!important;filter:blur(var(--lumo-season-blur,8px)) brightness(var(--lumo-season-brightness,.56)) saturate(.92)!important;transform:scale(1.07)!important}
+      html[data-lumo-season="default"] #lumo-background-art{background-image:radial-gradient(circle at 13% 17%,rgba(124,92,255,.26),transparent 43%),radial-gradient(circle at 83% 12%,rgba(37,215,255,.20),transparent 44%),radial-gradient(circle at 75% 79%,rgba(255,79,163,.18),transparent 43%),linear-gradient(180deg,#03040a,#010207)!important;background-size:82vmax 82vmax,76vmax 76vmax,84vmax 84vmax,100% 100%!important;background-position:-28vmax -26vmax,68vw -28vmax,62vw 62vh,center!important}
+      html.lumo-ui #reactRoot,html.lumo-ui #root,html.lumo-ui .mainAnimatedPages,html.lumo-ui .page,html.lumo-ui .backgroundContainer,html.lumo-ui main,html.lumo-ui main.MuiBox-root,html.lumo-ui #reactRoot>div,html.lumo-ui #reactRoot>div>.MuiBox-root{background-color:transparent!important;background-image:none!important}
+      html.lumo-ui #reactRoot,html.lumo-ui #root,html.lumo-ui .mainAnimatedPages{position:relative!important;z-index:1!important}
+      [data-lumo-native-brand-hidden="true"]{display:none!important}
+      #lumo-header-brand{appearance:none!important;display:inline-flex!important;align-items:center!important;gap:8px!important;width:auto!important;min-width:88px!important;max-width:150px!important;height:40px!important;margin:0 6px!important;padding:4px 10px 4px 4px!important;overflow:hidden!important;border:0!important;border-radius:10px!important;background:transparent!important;color:#fff!important;box-shadow:none!important;cursor:pointer!important}
+      #lumo-header-brand .lumo-brand-logo{display:block!important;width:31px!important;height:31px!important;min-width:31px!important;max-width:31px!important;object-fit:contain!important;border-radius:7px!important}
+      #lumo-header-brand .lumo-brand-name{display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;font:780 .96rem/1 Inter,"Segoe UI",sans-serif!important}
+      .lumo-native-brand-logo{object-fit:contain!important}
+      .adminDrawerLogo{background-image:none!important}
+      .adminDrawerLogo .lumo-drawer-logo,.adminDrawerLogo img.lumo-native-brand-logo{width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;object-fit:contain!important;border-radius:8px!important}
+    `;
+    document.head?.appendChild(style);
+  }
+
+  function ensureBackgroundLayer() {
+    if (!document.body) return null;
+    let layer = document.getElementById("lumo-background-layer");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.id = "lumo-background-layer";
+      layer.setAttribute("aria-hidden", "true");
+      const art = document.createElement("div");
+      art.id = "lumo-background-art";
+      const shade = document.createElement("div");
+      shade.id = "lumo-background-shade";
+      layer.append(art, shade);
+      document.body.prepend(layer);
+    }
+    return layer;
+  }
+
   function replaceBrandContents(target, name, logoHref, season) {
     if (!target) return false;
     target.classList.add("lumo-brand-button");
@@ -278,81 +359,129 @@
     return true;
   }
 
+  function looksLikeNativeServerBrand(node) {
+    if (!node) return false;
+    const serverName = norm(auth?.serverName || "");
+    const text = norm(node.textContent || "");
+    if (serverName && text === serverName) return true;
+    if (node.matches?.(".headerHomeButton")) return true;
+    if (node.querySelector?.('img[src*="icon-transparent" i], img[src*="jellyfin" i]')) return true;
+    try {
+      const href = node.getAttribute?.("href");
+      if (href) {
+        const url = new URL(href, window.location.href);
+        if (url.pathname === "/" || /\/web\/?$/.test(url.pathname)) return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  }
+
   function ensureLumoHeader(name, logoHref, season) {
-    const headers = $$(".skinHeader, [class*='MuiAppBar-root'], header").filter((el) => {
-      try { return getComputedStyle(el).display !== "none"; } catch { return true; }
+    $$(".lumo-page-title-brand").forEach((node) => {
+      node.classList.remove("lumo-page-title-brand");
+      node.removeAttribute("data-lumo-brand-name");
+      node.style.removeProperty("--lumo-brand-logo");
     });
-    if (!headers.length) return;
+
+    const headers = $$(".skinHeader, header.MuiAppBar-root, header").filter((header, index, list) => {
+      if (!header.isConnected || list.some((other, i) => i < index && other.contains(header))) return false;
+      try { return getComputedStyle(header).display !== "none"; } catch { return true; }
+    });
 
     for (const header of headers) {
-      /* Jellyfin 12 Modern uses a MUI Link/Button to "/" for the server brand.
-         Do not replace its React-managed children: style the existing control instead. */
-      const serverName = String(auth?.serverName || "").trim();
-      const modernServerButton = $$("a[class*='MuiButton-root'], button[class*='MuiButton-root']", header).find((el) => {
-        const href = String(el.getAttribute("href") || "");
-        const text = String(el.textContent || "").trim();
-        let homeHref = href === "/" || href === "./" || /\/web\/?$/.test(href);
-        try {
-          if (href) {
-            const url = new URL(href, window.location.href);
-            homeHref = homeHref || /\/web\/?$/.test(url.pathname) || url.pathname === "/";
-          }
-        } catch { /* ignore malformed hrefs */ }
-        const serverText = serverName && norm(text) === norm(serverName);
-        return homeHref || serverText || el.dataset.lumoBrand === "true";
-      });
-      if (modernServerButton) {
-        modernServerButton.classList.add("lumo-modern-server-button");
-        modernServerButton.dataset.lumoBrand = "true";
-        modernServerButton.dataset.lumoSeason = season;
-        modernServerButton.setAttribute("aria-label", name);
-        modernServerButton.setAttribute("title", name);
-        $("#lumo-header-brand", header)?.remove();
-        continue;
-      }
+      const candidates = [
+        $(".headerHomeButton", header),
+        ...$$("a,button", header).filter(looksLikeNativeServerBrand),
+        ...$$(".pageTitleWithDefaultLogo,.pageTitleWithLogo", header).filter(looksLikeNativeServerBrand)
+      ].filter(Boolean);
+      const nativeBrand = candidates[0] || null;
+      if (nativeBrand && nativeBrand.id !== "lumo-header-brand") nativeBrand.setAttribute("data-lumo-native-brand-hidden", "true");
 
-      /* Classic layout: replacing the home button is safe because it is not a React ServerButton. */
-      const classicHome = $(".headerHomeButton", header);
-      if (classicHome && replaceBrandContents(classicHome, name, logoHref, season)) {
-        $("#lumo-header-brand", header)?.remove();
-        continue;
-      }
+      const host = $(".headerLeft", header)
+        || $("[class*='MuiToolbar-root']", header)
+        || $(".headerTop", header)
+        || header;
 
-      const pageTitle = $(".pageTitleWithDefaultLogo, .pageTitleWithLogo, .pageTitle", header);
-      if (pageTitle) {
-        pageTitle.classList.add("lumo-page-title-brand");
-        pageTitle.style.setProperty("--lumo-brand-logo", `url("${logoHref}")`);
-        pageTitle.setAttribute("aria-label", name);
-        pageTitle.dataset.lumoBrandName = name;
+      let brand = $("#lumo-header-brand", header);
+      if (!brand) {
+        brand = document.createElement("button");
+        brand.type = "button";
+        brand.id = "lumo-header-brand";
+        brand.className = "lumo-header-brand focusable";
+        brand.addEventListener("click", () => navigate(isModernJellyfin() ? "/" : "/home.html"));
+        host.prepend(brand);
       }
-
-      const host = $(".headerLeft", header) || $(".headerTop", header) || $("[class*='MuiToolbar-root']", header) || header;
-      let fallback = $("#lumo-header-brand", header);
-      if (!fallback) {
-        fallback = document.createElement("button");
-        fallback.type = "button";
-        fallback.id = "lumo-header-brand";
-        fallback.className = "lumo-brand-button lumo-brand-fallback focusable";
-        fallback.addEventListener("click", () => navigate("/home.html"));
-        host.prepend(fallback);
-      }
-      replaceBrandContents(fallback, name, logoHref, season);
+      replaceBrandContents(brand, name, logoHref, season);
     }
   }
 
+  function ensureNativeLogos(name, logoHref) {
+    const safeSelectors = [
+      'header img[src*="icon-transparent" i]',
+      'header img[src*="jellyfin" i]',
+      '.adminDrawerLogo img',
+      '[class*="MuiDrawer-paper"] img[src*="icon-transparent" i]',
+      '[class*="MuiDrawer-paper"] img[src*="jellyfin" i]',
+      '.loginLogo img',
+      '.splashLogo img'
+    ].join(",");
+    $$(safeSelectors).forEach((img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      img.classList.add("lumo-native-brand-logo");
+      if (img.getAttribute("src") !== logoHref) img.setAttribute("src", logoHref);
+      img.alt = "";
+      img.draggable = false;
+    });
+
+    /* Some Jellyfin builds render the dashboard mark as a background/div,
+       not an <img>. Add one bounded logo only inside that dedicated wrapper. */
+    $$(".adminDrawerLogo").forEach((node) => {
+      let img = $("img.lumo-drawer-logo", node);
+      if (!img) {
+        const nativeImg = $("img", node);
+        if (nativeImg) {
+          img = nativeImg;
+          img.classList.add("lumo-drawer-logo");
+        } else {
+          img = document.createElement("img");
+          img.className = "lumo-drawer-logo";
+          img.alt = "";
+          img.draggable = false;
+          node.appendChild(img);
+        }
+      }
+      if (img.getAttribute("src") !== logoHref) img.setAttribute("src", logoHref);
+      node.setAttribute("aria-label", name);
+      node.setAttribute("title", name);
+    });
+
+    $$('[class*="MuiDrawer-paper"] a').forEach((node) => {
+      if (!looksLikeNativeServerBrand(node)) return;
+      node.setAttribute("aria-label", name);
+      node.setAttribute("title", name);
+    });
+  }
+
   function syncLumoChrome() {
+    ensureCriticalStyle();
+    ensureLocalThemeStylesheet();
+    ensureBackgroundLayer();
+
     const season = activeSeason();
     const assets = seasonAssets(season);
     const logoHref = assetUrl(assets.logo);
     const root = document.documentElement;
+    root.classList.add("lumo-ui");
     root.dataset.lumoSeason = season;
     root.style.setProperty("--lumo-current-logo", `url("${logoHref}")`);
     root.style.setProperty("--lumo-season-blur", `${Math.max(0, Number(CONFIG.seasonal.backgroundBlurPx) || 0)}px`);
     root.style.setProperty("--lumo-season-brightness", String(Math.max(0.2, Math.min(1, Number(CONFIG.seasonal.backgroundBrightness) || 0.56))));
     if (assets.background) root.style.setProperty("--lumo-season-background", `url("${assetUrl(assets.background)}")`);
     else root.style.removeProperty("--lumo-season-background");
+
     updateDocumentBrand(CONFIG.brand.name || "Lumo", logoHref);
     ensureLumoHeader(CONFIG.brand.name || "Lumo", logoHref, season);
+    ensureNativeLogos(CONFIG.brand.name || "Lumo", logoHref);
   }
 
   function dedupeNativeRows(sections) {
@@ -411,7 +540,10 @@
       Recursive: "true",
       IncludeItemTypes: "Movie,Series",
       Fields: FIELDS,
-      SortBy: "Random"
+      SortBy: "Random",
+      EnableImageTypes: "Primary,Backdrop,Thumb",
+      ImageTypeLimit: "2",
+      EnableTotalRecordCount: "false"
     });
 
     let random = [];
@@ -613,27 +745,32 @@
     const shell = document.createElement("div");
     shell.className = "noctafin-track-shell";
 
+    const track = document.createElement("div");
+    track.className = trackClass;
+    track.setAttribute("role", "group");
+    track.setAttribute("aria-label", label);
+
+    const nav = document.createElement("div");
+    nav.className = "noctafin-section-nav";
+    nav.setAttribute("aria-label", `Navigation ${label}`);
+
     const previous = document.createElement("button");
     previous.type = "button";
     previous.className = "noctafin-track-arrow noctafin-track-arrow--prev focusable";
     previous.setAttribute("aria-label", `Faire défiler ${label} vers la gauche`);
     previous.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>`;
 
-    const track = document.createElement("div");
-    track.className = trackClass;
-    track.setAttribute("role", "group");
-    track.setAttribute("aria-label", label);
-
-    previous.hidden = true;
-
     const next = document.createElement("button");
     next.type = "button";
     next.className = "noctafin-track-arrow noctafin-track-arrow--next focusable";
     next.setAttribute("aria-label", `Faire défiler ${label} vers la droite`);
     next.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>`;
-    next.hidden = true;
 
-    shell.append(previous, track, next);
+    previous.hidden = true;
+    next.hidden = true;
+    nav.hidden = true;
+    nav.append(previous, next);
+    shell.append(track);
 
     const update = () => {
       const max = Math.max(0, track.scrollWidth - track.clientWidth);
@@ -641,21 +778,31 @@
       const atStart = track.scrollLeft <= 6;
       const atEnd = track.scrollLeft >= max - 6;
       shell.classList.toggle("has-overflow", hasOverflow);
+      nav.hidden = !hasOverflow;
+      previous.hidden = !hasOverflow;
+      next.hidden = !hasOverflow;
       previous.disabled = !hasOverflow || atStart;
       next.disabled = !hasOverflow || atEnd;
-      previous.hidden = !hasOverflow || atStart;
-      next.hidden = !hasOverflow || atEnd;
     };
 
     const amount = () => Math.max(260, track.clientWidth * Math.max(0.45, Math.min(0.95, Number(CONFIG.rows.scrollFactor) || 0.82)));
-    previous.addEventListener("click", () => track.scrollBy({ left: -amount(), behavior: "smooth" }));
-    next.addEventListener("click", () => track.scrollBy({ left: amount(), behavior: "smooth" }));
+    previous.addEventListener("click", (event) => {
+      event.preventDefault();
+      track.scrollBy({ left: -amount(), behavior: "smooth" });
+    });
+    next.addEventListener("click", (event) => {
+      event.preventDefault();
+      track.scrollBy({ left: amount(), behavior: "smooth" });
+    });
     track.addEventListener("scroll", update, { passive: true });
 
+    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    resizeObserver?.observe(track);
+    shell._noctafinResizeObserver = resizeObserver;
     shell._noctafinUpdateArrows = update;
     requestAnimationFrame(update);
     setTimeout(update, 180);
-    return { shell, track, previous, next, update };
+    return { shell, track, nav, previous, next, update };
   }
 
   function rowId(prefix, label) {
@@ -667,22 +814,26 @@
     if (!group?._ids?.length) return;
     const id = group._ids.find(Boolean);
     if (!id) return;
+
     const params = new URLSearchParams();
     if (kind === "genre") params.set("genreId", id);
     else params.set("studioId", id);
     params.set("type", kind === "network" ? "Series" : "Movie,Series");
     if (auth?.serverId) params.set("serverId", auth.serverId);
-    params.set("name", group.label || "");
-    navigate(`/list.html?${params.toString()}`);
+    if (group.label) params.set("name", group.label);
+
+    const page = isModernJellyfin() ? "/list" : "/list.html";
+    navigate(`${page}?${params.toString()}`);
   }
 
   function createBrandShelf(title, groups, prefix) {
     const section = document.createElement("section");
     section.className = "noctafin-shelf";
-    section.appendChild(makeHeading("", title));
 
-    const { shell, track, update } = createTrackShell("noctafin-brand-track", title);
-    section.appendChild(shell);
+    const heading = makeHeading("", title);
+    const { shell, track, nav, update } = createTrackShell("noctafin-brand-track", title);
+    heading.appendChild(nav);
+    section.append(heading, shell);
 
     groups.forEach((group) => {
       const button = document.createElement("button");
@@ -701,6 +852,7 @@
       if (group.logo) {
         const frame = document.createElement("span");
         frame.className = "noctafin-brand__logo-frame";
+        frame.style.setProperty("--lumo-brand-logo-filter", group.logoFilter || "none");
         const logo = document.createElement("img");
         logo.className = "noctafin-brand__logo";
         logo.alt = group.label;
@@ -708,7 +860,6 @@
         logo.decoding = "async";
         logo.draggable = false;
         logo.referrerPolicy = "no-referrer";
-        if (group.logoFilter) logo.style.filter = group.logoFilter;
         logo.addEventListener("load", () => button.classList.add("has-logo"), { once: true });
         logo.addEventListener("error", () => {
           button.classList.remove("has-logo");
@@ -737,10 +888,11 @@
     section.id = id;
     section.dataset.noctafinQuery = JSON.stringify(query);
     section.dataset.noctafinLayout = layout;
-    section.appendChild(makeHeading(kicker, title, onTitleClick));
 
-    const { shell, track } = createTrackShell(`noctafin-card-track noctafin-card-track--${layout}`, title);
-    section.appendChild(shell);
+    const heading = makeHeading(kicker, title, onTitleClick);
+    const { shell, track, nav } = createTrackShell(`noctafin-card-track noctafin-card-track--${layout}`, title);
+    heading.appendChild(nav);
+    section.append(heading, shell);
     return section;
   }
 
@@ -750,7 +902,10 @@
         Limit: String(CONFIG.rows.rowLimit),
         Recursive: "true",
         IncludeItemTypes: query.includeTypes || "Movie,Episode",
-        Fields: FIELDS
+        Fields: FIELDS,
+        EnableImageTypes: "Primary,Backdrop,Thumb",
+        ImageTypeLimit: "2",
+        EnableTotalRecordCount: "false"
       });
       return (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
     }
@@ -760,7 +915,10 @@
       Recursive: "true",
       IncludeItemTypes: query.includeTypes || "Movie,Series",
       Fields: FIELDS,
-      SortBy: "Random"
+      SortBy: "Random",
+      EnableImageTypes: "Primary,Backdrop,Thumb",
+      ImageTypeLimit: "2",
+      EnableTotalRecordCount: "false"
     });
     if (query.genreIds?.length) params.set("GenreIds", query.genreIds.join(","));
     if (query.studioIds?.length) params.set("StudioIds", query.studioIds.join(","));
@@ -772,6 +930,54 @@
       params.set("SortOrder", "Descending");
       return (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
     }
+  }
+
+
+  function uniqueUrls(urls) {
+    return [...new Set((urls || []).filter(Boolean))];
+  }
+
+  function landscapeImageCandidates(item) {
+    const candidates = [];
+    const isEpisode = item?.Type === "Episode";
+
+    if (isEpisode) {
+      /* Prefer true landscape art. Episode Primary can be a poster depending
+         on the metadata provider, so it is only a late fallback. */
+      const backdropOwner = item.ParentBackdropItemId || item.SeriesId;
+      if (item.Id) candidates.push(imageUrl(item.Id, "Thumb", null, 760));
+      if (backdropOwner) candidates.push(imageUrl(backdropOwner, "Backdrop", 0, 760));
+      if (item.SeriesId && item.SeriesId !== backdropOwner) candidates.push(imageUrl(item.SeriesId, "Backdrop", 0, 760));
+      if (item.Id) candidates.push(imageUrl(item.Id, "Primary", null, 760));
+      if (item.SeriesId) candidates.push(imageUrl(item.SeriesId, "Primary", null, 600));
+    } else {
+      if (item?.Id) candidates.push(imageUrl(item.Id, "Backdrop", 0, 760));
+      if (item?.Id) candidates.push(imageUrl(item.Id, "Thumb", null, 760));
+      if (item?.Id) candidates.push(imageUrl(item.Id, "Primary", null, 600));
+    }
+
+    return uniqueUrls(candidates);
+  }
+
+  function posterImageCandidates(item) {
+    const isEpisode = item?.Type === "Episode";
+    const artId = isEpisode ? (item.SeriesId || item.Id) : item?.Id;
+    return uniqueUrls([imageUrl(artId, "Primary", null, 480)]);
+  }
+
+  function applyImageCandidates(img, candidates) {
+    const queue = [...(candidates || [])];
+    const loadNext = () => {
+      const next = queue.shift();
+      if (!next) {
+        img.removeAttribute("src");
+        img.classList.add("is-missing");
+        return;
+      }
+      img.src = next;
+    };
+    img.addEventListener("error", loadNext);
+    loadNext();
   }
 
 
@@ -805,14 +1011,9 @@
     const img = $("img", card);
     img.alt = title || "";
     if (layout === "landscape") {
-      img.src = imageUrl(item.Id, "Backdrop", 0, 760);
-      img.addEventListener("error", () => {
-        const fallbackId = isEpisode ? (item.SeriesId || item.Id) : item.Id;
-        img.src = imageUrl(fallbackId, "Primary", null, 600);
-      }, { once: true });
+      applyImageCandidates(img, landscapeImageCandidates(item));
     } else {
-      const artId = isEpisode ? (item.SeriesId || item.Id) : item.Id;
-      img.src = imageUrl(artId, "Primary", null, 480);
+      applyImageCandidates(img, posterImageCandidates(item));
     }
     $(".noctafin-card__title", card).textContent = title || "Sans titre";
     const subtitleNode = $(".noctafin-card__subtitle", card);
@@ -944,6 +1145,7 @@
     heroTimer = null;
     rowObserver?.disconnect();
     rowObserver = null;
+    $$(".noctafin-track-shell").forEach((shell) => shell._noctafinResizeObserver?.disconnect?.());
     heroItems = [];
     heroIndex = 0;
     backgroundIndex = 0;

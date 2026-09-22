@@ -1,35 +1,23 @@
 # Changelog
 
-## 1.4.0
+## 1.6.0
 
-- Correction du branding du header Jellyfin 12 Modern : ciblage du ServerButton natif et habillage CSS Lumo sans casser le DOM React.
-- Ajout d'un fallback pour le header classique Jellyfin.
-- Cache-busting des scripts injectés avec `?v=1.4.0`.
-- Refonte du centrage des logos Studios/Réseaux avec un `logo-frame` dédié.
-- Correction de la course de chargement qui laissait parfois le nom du studio au-dessus du logo.
-- Refonte des flèches de rails : chevrons SVG, boutons ronds, positionnement aux bords du rail ; les boutons inactifs utilisent désormais `hidden` afin d’éliminer définitivement les petites pilules grises.
-- Jaquettes verticales recalculées selon la hauteur de viewport ; ratio 2:3, image complète, aucun scroll vertical interne.
-- Titres, année et note directement visibles sous la jaquette.
-- Navigation Genres/Studios/Réseaux vers la page native Jellyfin `list.html` filtrée par `genreId` / `studioId`.
-- Désactivation de l'ancien navigateur plein écran Lumo qui pouvait se superposer incorrectement à l'accueil.
-- Titres de lignes cliquables et non sélectionnables.
+- Refonte du rail `Continuer de regarder` en cartes 16:9 compactes de style Abyss.
+- Images de reprise : `Thumb` / `Backdrop` prioritaires, image Primary portrait uniquement en fallback.
+- Métadonnées visibles sous la carte sans scroll vertical interne.
+- Flèches remplacées par une paire de chevrons minimalistes dans l'en-tête de chaque rail.
+- Suppression des anciens contrôles gris flottants/pilules.
+- Affiches 2:3 compactes et entièrement contenues.
+- Logos Studios/Réseaux centrés et contenus dans leur tuile.
+- Navigation Genre/Studio/Réseau vers les vues natives Jellyfin.
+- Branding Lumo du header rendu indépendant des titres de pages pour éviter le gros logo dans Paramètres.
+- Logo du drawer/admin borné à une taille sûre ; favicon Lumo.
+- Fond global Lumo désormais disponible également dans le client moderne / Paramètres.
+- Halloween et Noël conservent l'assombrissement et le flou ; fond normal animé sans flou.
+- CSS complet copié dans `jellyfin-web/ui/lumo/` et injecté dans `index.html`.
+- Installation idempotente, backup `index.html.pre-lumo.bak`, validation des SVG téléchargés et conservation des logos existants si le réseau échoue.
+- Anciennes feuilles `lumo.css` / `abyss-rails.css` retirées du paquet afin d'éviter les conflits de cascade.
 
-## 1.3.0
+## 1.5.0
 
-- Centrage initial des logos Studios/Réseaux.
-- Flèches SVG de rails.
-- Affiches non recadrées.
-- Titres de genres simplifiés.
-
-## 1.2.0
-
-- Branding Lumo et saisons automatiques.
-- Fonds Halloween et Noël assombris/floutés.
-- Ligne Continuer de regarder avant les Studios.
-- Masquage des lignes natives Jellyfin sur l'accueil.
-
-## 1.1.0
-
-- Studios, Réseaux TV et Genres dynamiques.
-- Logos de marques locaux.
-- Fond animé Lumo.
+- Correctifs Jellyfin 12 sur le header, les logos, les rails et la navigation native.

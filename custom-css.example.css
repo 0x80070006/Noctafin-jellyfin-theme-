@@ -1,5 +1,6 @@
-/* Lumo v1.4 — dépôt de 0x80070006 */
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.4.0");
+/* Lumo v1.6 — mode CSS-only.
+   Ne pas utiliser cet import en même temps que l'installation complète. */
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.6.0");
 
 /* Personnalisation optionnelle */
 :root {

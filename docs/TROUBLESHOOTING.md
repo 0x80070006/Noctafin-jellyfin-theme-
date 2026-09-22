@@ -1,37 +1,58 @@
-# Dépannage Lumo
+# Dépannage Lumo 1.6
 
-## Le CSS s'applique mais je n'ai ni hero ni lignes supplémentaires
+## Les anciennes flèches grises ou l'ancien gros logo reviennent
 
-Le CSS seul ne peut pas créer les sections. Exécute l'installateur JavaScript :
+La cause la plus fréquente est un ancien `@import` jsDelivr encore présent dans **Dashboard → Branding → CSS personnalisé**.
+
+Avec l'installation complète v1.6, retire cet ancien import. Lumo charge désormais son CSS local via `index.html`.
+
+Vérifie :
+
+```bash
+grep -n "lumo/theme.css?v=1.6.0\|noctafin-home.js?v=1.6.0" /usr/share/jellyfin/web/index.html
+```
+
+Puis fais `Ctrl+F5`.
+
+## Le fond ne change pas dans Paramètres
+
+Vérifie que le CSS local a été copié et injecté :
+
+```bash
+ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
+grep -n "data-lumo-theme" /usr/share/jellyfin/web/index.html
+```
+
+Puis relance :
 
 ```bash
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
-## Rien ne change après mise à jour
+## Continuer de regarder affiche encore des posters verticaux
 
-1. Vérifie que Git contient bien la v1.4.0.
-2. Relance `install/install.sh`.
-3. Vérifie l'import CSS avec `?v=1.4.0`.
-4. Fais `Ctrl+F5`.
-5. Vérifie les deux scripts dans `jellyfin-web/ui/`.
+Vérifie que `noctafin-home.js?v=1.6.0` est injecté, puis fais un rechargement sans cache. La v1.6 privilégie les images `Thumb` / `Backdrop` et impose un cadre 16:9.
 
-## Vérifier les assets Lumo
+## Le titre du serveur affiche encore jellyfin-lucas
+
+Vérifie que le script est chargé :
 
 ```bash
-ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/seasonal/
+grep -n "noctafin-home.js?v=1.6.0" /usr/share/jellyfin/web/index.html
 ```
 
-Tu dois avoir :
+Dans la console navigateur, une erreur avant le chargement de Lumo peut empêcher le remplacement du branding. Recharge sans cache après redémarrage Jellyfin.
 
-- `lumo-blue.png`
-- `lumo-halloween.png`
-- `background-halloween.png`
-- `lumo-christmas.png`
-- `background-christmas.png`
+## Les logos Studios/Réseaux restent en texte
 
-## Tester Halloween ou Noël immédiatement
+```bash
+ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/logos/
+```
+
+L'installateur tente de télécharger les SVG. En cas de panne réseau, il conserve les versions déjà présentes. Si aucun logo n'est disponible, le texte de secours est volontairement affiché.
+
+## Tester Halloween ou Noël
 
 Dans `scripts/noctafin-config.js` :
 
@@ -45,27 +66,7 @@ ou :
 forceSeason: "christmas"
 ```
 
-Relance ensuite l'installateur et recharge Jellyfin. Remets `auto` quand le test est terminé.
-
-## Les sections natives apparaissent encore
-
-Vérifie :
-
-```js
-hideNativeHomeRows: true
-```
-
-et que `noctafin-home.js` v1.4.0 est bien copié dans `jellyfin-web/ui/`.
-
-## Les logos Studios/Réseaux restent en texte
-
-Relance l'installateur. Il télécharge les SVG vers :
-
-```text
-/usr/share/jellyfin/web/ui/noctafin-assets/logos/
-```
-
-Le LXC doit avoir `curl` ou `wget` et un accès Internet pour ces logos. Les assets saisonniers, eux, sont déjà inclus dans le dépôt.
+Relance ensuite l'installateur et recharge le client. Remets `auto` après le test.
 
 ## Mise à jour Jellyfin
 
