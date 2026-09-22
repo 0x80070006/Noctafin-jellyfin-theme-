@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.7.0";
+  const VERSION = "1.8.0";
   const DEFAULTS = {
     locale: "fr-FR",
     brand: {
@@ -28,9 +28,9 @@
       overlayOpacity: 0.54,
       homeOnly: true
     },
-    taxonomyHero: { enabled: true, maxItems: 12 },
+    taxonomyHero: { enabled: true, maxItems: 18 },
     rows: {
-      rowLimit: 20,
+      rowLimit: 12,
       minItems: 2,
       dedupeNativeRows: true,
       hideNativeHomeRows: true,
@@ -1018,25 +1018,37 @@
 
   function findTaxonomyHost() {
     const selectors = [
+      "#reactRoot main[role='main']",
       "#reactRoot main",
       "main[role='main']",
       "main.MuiBox-root",
-      "main",
       ".mainAnimatedPage:not(.hide)",
-      ".page:not(.hide)"
+      ".page:not(.hide)",
+      "main"
     ];
+    const candidates = [];
+    const seen = new Set();
     for (const selector of selectors) {
       for (const node of $$(selector)) {
-        if (!node?.isConnected || node.id === "indexPage" || node.closest?.("#indexPage")) continue;
+        if (!node?.isConnected || seen.has(node)) continue;
+        seen.add(node);
+        if (node.id === "indexPage" || node.closest?.("#indexPage")) continue;
+        if (node.closest?.("header,nav,aside,[role='navigation']")) continue;
         try {
           const style = getComputedStyle(node);
-          if (style.display === "none" || style.visibility === "hidden") continue;
-          if (node.getBoundingClientRect().width < 320) continue;
+          const rect = node.getBoundingClientRect();
+          if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+          if (rect.width < 320 || rect.height < 120) continue;
+          const visibleWidth = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
+          const visibleHeight = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0));
+          const viewportArea = visibleWidth * visibleHeight;
+          const contentBonus = node.querySelector?.("[class*='card'],[class*='grid'],[data-testid],.itemsContainer") ? 1.2 : 1;
+          candidates.push({ node, score: viewportArea * contentBonus + rect.width * 100 });
         } catch { /* ignore */ }
-        return node;
       }
     }
-    return null;
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0]?.node || null;
   }
 
   function clearTaxonomyHero() {
@@ -1049,23 +1061,54 @@
     root.style.removeProperty("--lumo-taxonomy-b");
   }
 
-  async function fetchTaxonomyHeroItem(context) {
-    if (!auth?.userId) return null;
+  function hasBackdropArt(item) {
+    return Boolean(item?.BackdropImageTags?.length || item?.ParentBackdropImageTags?.length);
+  }
+
+  async function fetchTaxonomyCandidates(context, includeTypes, sortBy) {
+    const limit = Math.max(12, Math.min(36, Number(CONFIG.taxonomyHero.maxItems) || 18));
     const params = new URLSearchParams({
-      Limit: String(Math.max(4, Number(CONFIG.taxonomyHero.maxItems) || 12)),
+      Limit: String(limit),
       Recursive: "true",
-      IncludeItemTypes: context.kind === "network" ? "Series" : (context.kind === "genre" ? "Movie" : "Movie,Series"),
+      IncludeItemTypes: includeTypes,
       Fields: FIELDS,
-      SortBy: "Random",
+      SortBy: sortBy,
       EnableImageTypes: "Primary,Backdrop,Thumb,Logo",
-      ImageTypeLimit: "2",
+      ImageTypeLimit: "3",
       EnableTotalRecordCount: "false"
     });
+    if (sortBy !== "Random") params.set("SortOrder", "Descending");
     if (context.kind === "genre") params.set("GenreIds", context.ids.join(","));
     else params.set("StudioIds", context.ids.join(","));
     const result = await fetchJson(`/Users/${auth.userId}/Items?${params}`);
-    const items = result.Items || [];
-    return items.length ? items[Math.floor(Math.random() * items.length)] : null;
+    return Array.isArray(result.Items) ? result.Items : [];
+  }
+
+  async function fetchTaxonomyHeroItem(context) {
+    if (!auth?.userId) return null;
+
+    /* Genres should look cinematic: prefer an actual film with a backdrop.
+       Studio/network pages may use films or series. Random is attempted first,
+       with a deterministic recent-items fallback for Jellyfin builds that do
+       not expose Random sorting on this endpoint. */
+    const typePlans = context.kind === "genre"
+      ? ["Movie", "Movie,Series"]
+      : [context.kind === "network" ? "Series" : "Movie,Series"];
+
+    for (const includeTypes of typePlans) {
+      for (const sortBy of ["Random", "DateCreated"]) {
+        try {
+          const items = await fetchTaxonomyCandidates(context, includeTypes, sortBy);
+          if (!items.length) continue;
+          const preferred = items.filter(hasBackdropArt);
+          const pool = preferred.length ? preferred : items;
+          return pool[Math.floor(Math.random() * pool.length)] || pool[0] || null;
+        } catch (error) {
+          console.debug(LOG, "Hero taxonomie: essai suivant", context.label, includeTypes, sortBy, error);
+        }
+      }
+    }
+    return null;
   }
 
   function taxonomyBackdrop(item) {
@@ -1083,21 +1126,27 @@
     hero.id = "lumo-taxonomy-hero";
     hero.className = `lumo-taxonomy-hero lumo-taxonomy-hero--${context.kind}`;
     hero.dataset.key = `${context.kind}:${context.id}`;
+    hero.dataset.kind = context.kind;
+    hero.dataset.label = context.label || "";
     hero.setAttribute("aria-label", context.label || "Sélection");
 
     const backdrop = taxonomyBackdrop(item);
     const logo = context.logo ? assetUrl(context.logo) : "";
     const itemName = item?.Type === "Episode" ? (item.SeriesName || item.Name) : item?.Name;
+    const showFeatured = context.kind !== "genre" && Boolean(itemName);
     hero.innerHTML = `
-      <div class="lumo-taxonomy-hero__backdrop"></div>
-      <div class="lumo-taxonomy-hero__veil"></div>
+      <div class="lumo-taxonomy-hero__backdrop" aria-hidden="true"></div>
+      <div class="lumo-taxonomy-hero__veil" aria-hidden="true"></div>
       <div class="lumo-taxonomy-hero__content">
         ${logo ? `<img class="lumo-taxonomy-hero__logo" alt="" draggable="false">` : ""}
         <h1 class="lumo-taxonomy-hero__title"></h1>
-        ${itemName ? `<div class="lumo-taxonomy-hero__featured"></div>` : ""}
+        ${showFeatured ? `<div class="lumo-taxonomy-hero__featured"></div>` : ""}
       </div>`;
     const bg = $(".lumo-taxonomy-hero__backdrop", hero);
-    if (backdrop) bg.style.backgroundImage = `url("${backdrop.replace(/"/g, "%22")}")`;
+    if (backdrop) {
+      bg.style.backgroundImage = `url("${backdrop.replace(/"/g, "%22")}")`;
+      hero.classList.add("has-backdrop");
+    }
     const title = $(".lumo-taxonomy-hero__title", hero);
     title.textContent = context.label || "";
     const logoNode = $(".lumo-taxonomy-hero__logo", hero);
@@ -1217,9 +1266,13 @@
   }
 
   async function fetchRowItems(query) {
+    /* Contract: a media rail contains at most twelve items. CSS keeps six
+       visible on desktop; the second six are reached with the rail arrows. */
+    const configuredLimit = Number(query?.limit ?? CONFIG.rows.rowLimit);
+    const rowLimit = Math.max(1, Math.min(12, Number.isFinite(configuredLimit) ? configuredLimit : 12));
     if (query.resume) {
       const params = new URLSearchParams({
-        Limit: String(CONFIG.rows.rowLimit),
+        Limit: String(rowLimit),
         Recursive: "true",
         IncludeItemTypes: query.includeTypes || "Movie,Episode",
         Fields: FIELDS,
@@ -1227,11 +1280,12 @@
         ImageTypeLimit: "2",
         EnableTotalRecordCount: "false"
       });
-      return (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
+      const result = (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
+      return result.slice(0, rowLimit);
     }
 
     const params = new URLSearchParams({
-      Limit: String(CONFIG.rows.rowLimit),
+      Limit: String(rowLimit),
       Recursive: "true",
       IncludeItemTypes: query.includeTypes || "Movie,Series",
       Fields: FIELDS,
@@ -1244,11 +1298,13 @@
     if (query.studioIds?.length) params.set("StudioIds", query.studioIds.join(","));
 
     try {
-      return (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
+      const result = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
+      return result.slice(0, rowLimit);
     } catch {
       params.set("SortBy", "DateCreated");
       params.set("SortOrder", "Descending");
-      return (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
+      const result = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
+      return result.slice(0, rowLimit);
     }
   }
 

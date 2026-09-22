@@ -20,7 +20,7 @@ Le fond vidéo est utilisé uniquement sur l'accueil en saison `default`. Hallow
 ```js
 taxonomyHero: {
   enabled: true,
-  maxItems: 12
+  maxItems: 18
 }
 ```
 
@@ -28,7 +28,7 @@ Lumo conserve la page native Jellyfin filtrée et injecte un hero au-dessus. Le 
 
 ## Rails
 
-Sur desktop, Lumo affiche exactement 6 cartes par viewport de rail. Le responsive passe à 4 puis 2 cartes sur les écrans plus étroits. Le pas des flèches est calculé automatiquement à partir de la largeur réelle des cartes.
+Chaque ligne média demande au serveur **12 éléments maximum**. Sur desktop, Lumo en affiche exactement 6 par viewport : la flèche suivante révèle donc la seconde moitié de la ligne. Le responsive passe à 4 puis 2 cartes sur les écrans plus étroits. Le pas des flèches est calculé automatiquement à partir de la largeur réelle des cartes.
 
 ## Studios / Réseaux
 

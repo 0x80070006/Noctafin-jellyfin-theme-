@@ -2,8 +2,9 @@
 
 Lumo remplace l'accueil Jellyfin par une interface sombre et cinématique avec hero rotatif, **Continuer de regarder** façon Abyss, rails Studios/Réseaux/Genres, branding Lumo et habillage saisonnier.
 
-## Nouveautés 1.7.0
+## Nouveautés 1.8.0
 
+- Chaque ligne média charge **12 films/séries maximum** : 6 restent visibles sur desktop et les 6 suivants sont accessibles avec les flèches.
 - 6 cartes visibles par ligne sur desktop, 4 sur tablette, 2 sur mobile.
 - `Continuer de regarder` en 16:9, titres et métadonnées toujours dans le flux de page.
 - Aucune carte ne possède de scroll vertical interne.
@@ -13,9 +14,10 @@ Lumo remplace l'accueil Jellyfin par une interface sombre et cinématique avec h
 - Bouton `Lecture` du hero en SVG et correctifs des boutons Play natifs Jellyfin.
 - Fond vidéo nocturne japonais sur l'accueil en saison normale, compressé en H.264 1080p/24 fps sans audio (~0,8 Mo) avec overlay sombre.
 - Octobre conserve le fond Halloween, décembre le fond Noël.
-- Pages Genres / Studios / Réseaux : navigation native Jellyfin filtrée + hero cinématique Lumo injecté au-dessus du contenu.
-- Hero Genre : backdrop d'un film aléatoire du genre + nom du genre.
-- Hero Studio/Réseau : backdrop aléatoire + logo ajusté + ambiance de page teintée avec les couleurs configurées.
+- Pages Genres / Studios / Réseaux : la grille et les filtres restent **natifs Jellyfin**, Lumo injecte uniquement un hero cinématique au-dessus.
+- Hero Genre : backdrop prioritairement issu d'un **film aléatoire du genre**, léger flou cinématique et nom du genre en très grand.
+- Hero Studio/Réseau : backdrop aléatoire + **logo officiel local contenu sans débordement** + ambiance de page teintée avec les couleurs configurées.
+- Le hero de taxonomie possède des fallbacks : tri aléatoire puis récent, backdrop puis image principale, fond coloré si aucune image n'est disponible.
 
 ## Installation complète recommandée
 
@@ -68,8 +70,13 @@ background: {
 
 taxonomyHero: {
   enabled: true,
-  maxItems: 12
-}
+  maxItems: 18
+},
+
+rows: {
+  rowLimit: 12, // 12 éléments chargés, 6 visibles sur desktop
+  minItems: 2
+},
 ```
 
 Les aliases Studios/Réseaux/Genres doivent correspondre aux métadonnées présentes dans ta bibliothèque Jellyfin.
@@ -98,5 +105,5 @@ systemctl restart jellyfin
 Disponible uniquement pour prévisualiser l'apparence générale. Les fonctionnalités JavaScript ne seront pas présentes :
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.7.0");
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.8.0");
 ```

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.0
+
+- Les lignes média sont désormais bornées à **12 éléments maximum** côté API et côté rendu ; 6 restent visibles sur desktop et les 6 suivants sont accessibles avec les flèches.
+- Le nombre de 12 est appliqué aussi à `Continuer de regarder` lorsqu'au moins 12 éléments sont disponibles.
+- Renforcement des heroes des pages Genre / Studio / Réseau sans remplacer la page native Jellyfin.
+- Hero Genre : priorité aux **films** possédant un backdrop, sélection aléatoire, fallback sur films/séries récents, léger flou du backdrop et nom du genre en grand.
+- Hero Studio/Réseau : logo officiel local agrandi mais strictement contenu, backdrop aléatoire, fond global teinté par la palette de la marque.
+- Fallback de hero renforcé : si aucune image n'est disponible, Lumo génère un fond coloré plutôt qu'une zone vide.
+- Détection du conteneur de page taxonomie renforcée : sélection du meilleur `main` visible afin de limiter les injections dans un ancien écran conservé par le routeur Jellyfin 12.
+- Les rails restent à 6/4/2 éléments visibles selon la largeur, avec navigation par page basée sur la géométrie réelle des cartes.
+
 ## 1.7.0
 
 - Refonte robuste des rails : exactement 6 cartes visibles sur desktop, 4 sur tablette, 2 sur mobile.

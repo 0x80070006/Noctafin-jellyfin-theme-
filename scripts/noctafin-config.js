@@ -30,10 +30,10 @@ window.NOCTAFIN_CONFIG = {
   },
   taxonomyHero: {
     enabled: true,
-    maxItems: 12
+    maxItems: 18
   },
   rows: {
-    rowLimit: 20,
+    rowLimit: 12,
     minItems: 2,
     scrollFactor: 0.82,
     dedupeNativeRows: true,
