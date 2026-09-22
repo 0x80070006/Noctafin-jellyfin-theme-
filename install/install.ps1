@@ -22,6 +22,10 @@ New-Item -ItemType Directory -Path $Ui -Force | Out-Null
 Copy-Item (Join-Path $Root "scripts\noctafin-config.js") (Join-Path $Ui "noctafin-config.js") -Force
 Copy-Item (Join-Path $Root "scripts\noctafin-home.js") (Join-Path $Ui "noctafin-home.js") -Force
 
+$SeasonDir = Join-Path $Ui "noctafin-assets\seasonal"
+New-Item -ItemType Directory -Path $SeasonDir -Force | Out-Null
+Copy-Item (Join-Path $Root "assets\seasonal\*.png") $SeasonDir -Force
+
 $LogoDir = Join-Path $Ui "noctafin-assets\logos"
 New-Item -ItemType Directory -Path $LogoDir -Force | Out-Null
 $Logos = @{
@@ -56,6 +60,7 @@ if ($Html -notmatch '</body>') { throw "index.html ne contient pas </body>" }
 $Html = [regex]::Replace($Html, '</body>', $Block + '</body>', 'IgnoreCase')
 Set-Content -Path $Index -Value $Html -Encoding UTF8
 
-Write-Host "NoctaFin Home installé dans $WebDir" -ForegroundColor Green
-Write-Host "Logos locaux: $LogoDir"
+Write-Host "Lumo installé dans $WebDir" -ForegroundColor Green
+Write-Host "Logos studios/réseaux: $LogoDir"
+Write-Host "Assets saisonniers: $SeasonDir"
 Write-Host "Ajoute ensuite l'import theme.css dans Dashboard > Général/Branding > Custom CSS."

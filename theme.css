@@ -1,11 +1,12 @@
 /*
- * NoctaFin — Jellyfin 12 theme
- * Standalone visual layer. Dynamic hero/rows are provided by scripts/noctafin-home.js.
+ * Lumo — Jellyfin 12 theme
+ * Standalone visual layer. Dynamic hero/rows are provided by scripts/noctafin-home.js (Lumo engine).
  */
-@import url("./styles/tokens.css");
-@import url("./styles/core.css");
-@import url("./styles/header.css");
-@import url("./styles/home.css");
-@import url("./styles/details.css");
-@import url("./styles/player.css");
-@import url("./styles/responsive.css");
+@import url("./styles/tokens.css?v=1.3.0");
+@import url("./styles/core.css?v=1.3.0");
+@import url("./styles/header.css?v=1.3.0");
+@import url("./styles/home.css?v=1.3.0");
+@import url("./styles/details.css?v=1.3.0");
+@import url("./styles/player.css?v=1.3.0");
+@import url("./styles/responsive.css?v=1.3.0");
+@import url("./styles/lumo.css?v=1.3.0");

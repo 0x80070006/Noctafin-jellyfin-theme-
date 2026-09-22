@@ -1,77 +1,53 @@
-# NoctaFin — thème cinématique pour Jellyfin 12
+# Lumo — thème cinématique pour Jellyfin 12
 
-NoctaFin est un thème sombre et cinématique pour Jellyfin 12, avec une direction artistique violet/cyan/rose, un hero rotatif et une page d'accueil enrichie de rails Genres / Studios / Réseaux TV.
+Lumo transforme la page d'accueil Jellyfin 12 en interface cinématique : gros hero rotatif, ligne `Continuer de regarder`, rails Studios / Réseaux TV / Genres, navigation horizontale avec flèches et branding saisonnier automatique.
 
-Il fonctionne en deux couches :
+Le dépôt garde les noms de scripts `noctafin-*.js` pour rester compatible avec les installations précédentes, mais l'interface visible s'appelle désormais **Lumo**.
 
-- `theme.css` : design chargé par le Custom CSS de Jellyfin ;
-- `scripts/noctafin-home.js` : hero, rails personnalisés, navigation et page complète par genre.
+## Nouveautés v1.3.0
 
-## Nouveautés v1.1
+- Les logos Studios / Réseaux TV sont réellement centrés dans leurs tuiles, avec une taille maximale qui évite tout débordement.
+- Les flèches des rails sont remplacées par des contrôles ronds modernes avec icônes SVG, centrés verticalement aux deux extrémités de chaque ligne.
+- Les jaquettes verticales sont plus compactes et affichées en entier avec `object-fit: contain`, sans recadrage de l'affiche.
+- Les titres, années et notes restent hors de l'image et ne nécessitent aucun défilement vertical.
+- Les titres de genres sont désormais simplement `Aventure`, `Action`, etc. : plus de libellé `Genre` ni de flèche `→` à côté du texte.
+- Le nom du genre lui-même reste cliquable et ouvre le catalogue complet du genre.
+- Les libellés de l'interface Lumo ne sont plus sélectionnables à la souris.
+- Le branding Lumo, le hero, les fonds saisonniers, les Studios / Réseaux TV et la ligne `Continuer de regarder` restent inchangés.
 
-- Correction des affiches : le titre, l'année et la note restent visibles sous la jaquette sans devoir faire défiler verticalement la ligne.
-- Flèches gauche/droite sur les rails Studios, Réseaux TV et médias sur desktop.
-- Fond très sombre avec halos violet/cyan/rose animés lentement.
-- Les titres des lignes de genres sont cliquables et ouvrent une page plein écran contenant tout le genre.
-- Page de genre avec pagination (`Charger plus`).
-- Logos de marque pour Pixar, Marvel Studios, Disney, 20th Century Studios, Columbia Pictures, Paramount Pictures, Apple TV+, Netflix, BBC, Cartoon Network, ABC et MTV.
-- Les logos sont téléchargés localement dans `jellyfin-web/ui/noctafin-assets/logos` lors de l'installation afin d'éviter les restrictions CSP et de ne pas dépendre d'images distantes pendant l'utilisation.
+## Ordre de la page d'accueil
 
-## Fonctionnalités
+1. Hero cinématique rotatif
+2. Continuer de regarder
+3. Studios
+4. Réseaux TV
+5. Genres
+6. Lignes par Studio
+7. Lignes par Réseau TV
 
-- Gros hero cinématique rotatif avec backdrop, logo Jellyfin du média, année, classification, durée, note, genres, synopsis et boutons en français.
-- Conservation des sections natives comme `Continuer de regarder` et `À suivre`.
-- Détection et masquage des doublons de sections natives portant le même titre.
-- Rail `Studios` : Pixar, Marvel, Disney, 20th Century, Columbia, Paramount.
-- Rail `Réseaux TV` : Apple TV+, Netflix, BBC, Cartoon Network, ABC, MTV.
-- Lignes médias par genre : Action, Aventure, Animation, Comédie, Crime, Drame, Fantastique, Horreur, Science-fiction, Thriller.
-- Lignes médias supplémentaires par studio et réseau TV.
-- Navigation souris, clavier et tactile.
-- Chargement paresseux pour les rails afin de limiter les requêtes API.
+Les rails natifs Jellyfin ne sont plus affichés sur la page d'accueil.
 
-## 1. Import CSS
+## Studios et réseaux inclus
 
-Dépôt prévu :
+Studios : Pixar, Marvel, Disney, 20th Century, Columbia, Paramount.
+
+Réseaux TV : Apple TV+, Netflix, BBC, Cartoon Network, ABC, MTV.
+
+## Installation CSS
+
+Dépôt GitHub actuel :
 
 `https://github.com/0x80070006/Noctafin-jellyfin-theme-`
 
 Dans `Jellyfin → Tableau de bord → Général / Branding → Custom CSS` :
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.1.0");
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.3.0");
 ```
 
-Le paramètre `?v=1.1.0` aide à contourner un ancien cache du navigateur/CDN après une mise à jour.
+## Installation dans un LXC Jellyfin / Proxmox
 
-## 2. Installer le JavaScript + les logos
-
-### Linux / LXC / Proxmox
-
-Depuis le dossier du dépôt :
-
-```bash
-chmod +x install/install.sh
-JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
-systemctl restart jellyfin
-```
-
-L'installateur :
-
-1. copie `noctafin-config.js` et `noctafin-home.js` dans `jellyfin-web/ui/` ;
-2. télécharge les logos dans `jellyfin-web/ui/noctafin-assets/logos/` ;
-3. injecte les deux scripts avant `</body>` dans `index.html`.
-
-Après installation, fais un rechargement forcé du navigateur : `Ctrl+F5`.
-
-### Windows PowerShell
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-$env:JELLYFIN_WEB_DIR="C:\Program Files\Jellyfin\Server\jellyfin-web"
-.\install\install.ps1
-```
-
-## 3. Mise à jour depuis GitHub dans un LXC
+Après avoir envoyé cette version sur GitHub :
 
 ```bash
 cd /opt/Noctafin-jellyfin-theme-
@@ -83,26 +59,89 @@ systemctl restart jellyfin
 
 Puis fais `Ctrl+F5` dans le navigateur.
 
-## 4. Configuration
+L'installateur copie :
 
-Édite :
+- `noctafin-config.js` ;
+- `noctafin-home.js` ;
+- les logos Lumo bleu / Halloween / Noël ;
+- les deux fonds saisonniers ;
+- les logos Studios / Réseaux TV.
 
-`scripts/noctafin-config.js`
+Les assets sont placés sous :
 
-Tu peux modifier :
+```text
+/usr/share/jellyfin/web/ui/noctafin-assets/
+```
 
-- la vitesse du hero ;
-- le nombre d'affiches par ligne ;
-- le nombre de médias chargés dans la page complète d'un genre ;
-- les genres, studios, réseaux et leurs alias Jellyfin ;
-- les couleurs de chaque tuile ;
-- les chemins des logos et leurs filtres CSS.
+## Saison automatique
 
-Documentation détaillée : `docs/CONFIGURATION.md`.
+La saison est choisie à partir du mois du navigateur :
+
+- octobre → `halloween` ;
+- décembre → `christmas` ;
+- le reste de l'année → `default`.
+
+Tu peux tester une saison sans changer la date dans `scripts/noctafin-config.js` :
+
+```js
+seasonal: {
+  enabled: true,
+  forceSeason: "halloween", // auto | default | halloween | christmas
+  backgroundBlurPx: 8,
+  backgroundBrightness: 0.56
+}
+```
+
+Remets ensuite :
+
+```js
+forceSeason: "auto"
+```
+
+`backgroundBlurPx` contrôle le flou saisonnier et `backgroundBrightness` l'assombrissement. Le fond normal n'est pas affecté par ces deux réglages.
+
+## Nom et logos Lumo
+
+Toujours dans `scripts/noctafin-config.js` :
+
+```js
+brand: {
+  name: "Lumo",
+  logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
+  logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
+  logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+}
+```
+
+Le script modifie la marque visible de la barre supérieure et le favicon chargé dans la session Web.
+
+## Configuration de la page d'accueil
+
+```js
+rows: {
+  rowLimit: 20,
+  minItems: 2,
+  browsePageLimit: 120,
+  scrollFactor: 0.82,
+  hideNativeHomeRows: true,
+  showResumeRow: true,
+  showStudioRail: true,
+  showNetworkRail: true,
+  showGenreRows: true,
+  showStudioRows: true,
+  showNetworkRows: true
+}
+```
+
+Si tu veux récupérer un jour les sections natives Jellyfin :
+
+```js
+hideNativeHomeRows: false
+```
 
 ## Métadonnées
 
-NoctaFin utilise les Genres et Studios réellement présents dans ta bibliothèque Jellyfin. Si tes métadonnées utilisent un autre nom, ajoute-le à `aliases`.
+Les Genres et Studios proviennent des métadonnées réelles de ta bibliothèque Jellyfin. Si un studio n'apparaît pas, ajoute le nom utilisé par ton fournisseur de métadonnées dans `aliases`.
 
 Exemple :
 
@@ -113,44 +152,32 @@ Exemple :
 }
 ```
 
-## Logos et marques
+## Mise à jour ultérieure
 
-Les fichiers sont récupérés par l'installateur depuis Wikimedia Commons, à partir de fichiers de logos attribués aux détenteurs des marques. Les marques, noms et logos restent la propriété de leurs détenteurs respectifs. Les pages source sont notamment :
+```bash
+cd /opt/Noctafin-jellyfin-theme-
+git pull --ff-only
+JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
+systemctl restart jellyfin
+```
 
-- Pixar : https://commons.wikimedia.org/wiki/File:Pixar_logo.svg
-- Marvel Studios : https://commons.wikimedia.org/wiki/File:Marvel_Studios_2025.svg
-- Disney : https://commons.wikimedia.org/wiki/File:Walt_Disney_Pictures_text_logo.svg
-- 20th Century Studios : https://commons.wikimedia.org/wiki/File:20th_Century_Studios_(2021).svg
-- Columbia Pictures : https://commons.wikimedia.org/wiki/File:Columbia_Pictures.svg
-- Paramount Pictures : https://commons.wikimedia.org/wiki/File:Paramount_Pictures_Logo_2025.svg
-- Apple TV+ : https://commons.wikimedia.org/wiki/File:Apple_TV_Plus_Logo.svg
-- Netflix : https://commons.wikimedia.org/wiki/File:Netflix_2015_logo.svg
-- BBC : https://commons.wikimedia.org/wiki/File:BBC_Logo_2021.svg
-- Cartoon Network : https://commons.wikimedia.org/wiki/File:Cartoon_Network.svg
-- ABC : https://commons.wikimedia.org/wiki/File:ABC-2021-LOGO_(3).svg
-- MTV : https://commons.wikimedia.org/wiki/File:MTV-2021.svg
-
-## Compatibilité
-
-Cible principale : Jellyfin 12 Web. Le thème s'appuie sur `#indexPage`, `#homeTab` et `.sections`, avec plusieurs règles de repli pour l'interface legacy.
-
-Une mise à jour Jellyfin peut remplacer `index.html`. Dans ce cas, relance simplement `install/install.sh`.
+Une mise à jour du paquet Jellyfin peut remplacer `index.html`; il suffit alors de relancer l'installateur.
 
 ## Désinstallation
 
-Linux :
-
 ```bash
+cd /opt/Noctafin-jellyfin-theme-
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/uninstall.sh
 systemctl restart jellyfin
 ```
 
-Puis retire l'`@import` NoctaFin du Custom CSS.
+Retire ensuite l'`@import` Lumo du Custom CSS.
 
 ## Vérification du code
 
 ```bash
 npm run check
+bash -n install/install.sh
 ```
 
 ## Inspirations

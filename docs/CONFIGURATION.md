@@ -1,6 +1,36 @@
-# Configuration NoctaFin
+# Configuration Lumo
 
-La configuration de la page d'accueil se trouve dans `scripts/noctafin-config.js`.
+La configuration principale se trouve dans `scripts/noctafin-config.js`.
+
+## Branding
+
+```js
+brand: {
+  name: "Lumo",
+  logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
+  logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
+  logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+}
+```
+
+## Saisons
+
+```js
+seasonal: {
+  enabled: true,
+  forceSeason: "auto",
+  halloweenMonth: 10,
+  christmasMonth: 12,
+  halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.png",
+  christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.png",
+  backgroundBlurPx: 8,
+  backgroundBrightness: 0.56
+}
+```
+
+`forceSeason` accepte `auto`, `default`, `halloween` ou `christmas`.
+
+Le flou et l'assombrissement ne s'appliquent qu'aux fonds Halloween/Noël. Le fond par défaut conserve les halos animés violet/cyan/rose.
 
 ## Hero
 
@@ -8,54 +38,42 @@ La configuration de la page d'accueil se trouve dans `scripts/noctafin-config.js
 - `rotateEveryMs` : délai entre deux contenus.
 - `maxItems` : nombre maximal de contenus dans la rotation.
 
-Le hero mélange les contenus en reprise et des films/séries de la bibliothèque. Il utilise les Backdrops et Logos Jellyfin quand ils existent.
-
 ## Lignes
 
-- `rowLimit` : nombre d'affiches demandées par ligne.
-- `minItems` : une ligne est cachée si elle contient moins de médias.
-- `browsePageLimit` : nombre d'éléments chargés à chaque fois dans la page complète d'un genre.
-- `scrollFactor` : portion de largeur parcourue par les flèches gauche/droite (`0.82` = 82 % environ).
-- `dedupeNativeRows` : masque les doublons de sections natives portant le même titre.
+- `rowLimit` : nombre de médias demandés par ligne.
+- `minItems` : une ligne standard est cachée si elle contient moins de médias.
+- `browsePageLimit` : nombre d'éléments chargés dans la page complète d'un genre.
+- `scrollFactor` : portion de largeur parcourue par les flèches.
+- `hideNativeHomeRows` : masque les sections natives Jellyfin sur l'accueil.
+- `showResumeRow` : affiche `Continuer de regarder` juste avant les Studios.
 - `showStudioRail` : affiche les grandes tuiles Studios.
 - `showNetworkRail` : affiche les grandes tuiles Réseaux TV.
-- `showGenreRows` : affiche une ligne de médias par genre.
-- `showStudioRows` : affiche une ligne de médias par studio.
+- `showGenreRows` : affiche une ligne par genre.
+- `showStudioRows` : affiche une ligne par studio.
 - `showNetworkRows` : affiche une ligne de séries par réseau TV.
 
 ## Genres cliquables
 
-Le titre d'une ligne de genre est un bouton. Il ouvre une vue plein écran NoctaFin avec tous les médias correspondant au genre. La touche `Échap` ou le bouton retour ferment cette vue.
+Le titre d'une ligne de genre ouvre une vue plein écran Lumo contenant tous les médias du genre. `Échap` ou le bouton retour ferment cette vue.
 
-## Correspondance des métadonnées
+## Métadonnées et alias
 
-NoctaFin ne fabrique pas les métadonnées. Les genres et studios/réseaux sont résolus à partir des valeurs réellement présentes dans Jellyfin. Chaque groupe possède plusieurs `aliases`.
-
-Exemple :
+Lumo utilise les Genres et Studios présents dans Jellyfin. Ajoute des alias quand ton fournisseur de métadonnées utilise un autre nom.
 
 ```js
 { label: "PIXAR", aliases: ["Pixar", "Pixar Animation Studios"] }
 ```
 
-Si un studio n'apparaît pas dans la bibliothèque, sa tuile reste visible mais désactivée, et sa ligne média n'est pas créée.
+## Logos Studios / Réseaux
 
-## Logos
+Les logos de marques sont téléchargés localement lors de l'installation dans :
 
-Une tuile Studio/Réseau peut avoir :
-
-```js
-{
-  label: "PIXAR",
-  logo: "ui/noctafin-assets/logos/pixar.svg",
-  logoFilter: "brightness(0) invert(1)"
-}
+```text
+jellyfin-web/ui/noctafin-assets/logos/
 ```
 
-- `logo` : chemin de l'image affichée dans la tuile.
-- `logoFilter` : filtre CSS optionnel, utile pour convertir un logo noir en blanc.
+Les assets Lumo saisonniers sont copiés depuis le dépôt dans :
 
-L'installateur télécharge les logos configurés dans `jellyfin-web/ui/noctafin-assets/logos`.
-
-## Couleurs
-
-Les couleurs globales sont dans `styles/tokens.css`. Les tuiles Studios/Réseaux utilisent les deux valeurs `colors` de `noctafin-config.js`.
+```text
+jellyfin-web/ui/noctafin-assets/seasonal/
+```

@@ -31,6 +31,10 @@ mkdir -p "$WEB_DIR/ui"
 cp -f "$ROOT/scripts/noctafin-config.js" "$WEB_DIR/ui/noctafin-config.js"
 cp -f "$ROOT/scripts/noctafin-home.js" "$WEB_DIR/ui/noctafin-home.js"
 
+SEASON_DIR="$WEB_DIR/ui/noctafin-assets/seasonal"
+mkdir -p "$SEASON_DIR"
+cp -f "$ROOT/assets/seasonal/"*.png "$SEASON_DIR/"
+
 # Logos de marques : téléchargés localement afin d'éviter les blocages CSP
 # et de ne pas dépendre d'images distantes au moment de l'affichage.
 LOGO_DIR="$WEB_DIR/ui/noctafin-assets/logos"
@@ -56,9 +60,9 @@ fetch_logo() {
   local url="$2"
   if command -v curl >/dev/null 2>&1; then
     curl -L --fail --silent --show-error --connect-timeout 10 --max-time 30 \
-      -A "NoctaFin-Jellyfin/1.1" "$url" -o "$output"
+      -A "Lumo-Jellyfin/1.3" "$url" -o "$output"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q --timeout=30 --user-agent="NoctaFin-Jellyfin/1.1" -O "$output" "$url"
+    wget -q --timeout=30 --user-agent="Lumo-Jellyfin/1.3" -O "$output" "$url"
   else
     return 127
   fi
@@ -90,7 +94,8 @@ text = re.sub(r'</body>', block + '</body>', text, count=1, flags=re.I)
 path.write_text(text, encoding="utf-8")
 PY
 
-echo "NoctaFin Home installé dans: $WEB_DIR"
-echo "Logos locaux: $LOGO_DIR"
+echo "Lumo installé dans: $WEB_DIR"
+echo "Logos studios/réseaux: $LOGO_DIR"
+echo "Assets saisonniers: $SEASON_DIR"
 echo "Ajoute maintenant l'import theme.css dans Dashboard > Général/Branding > Custom CSS."
 echo "Après une mise à jour Jellyfin, il peut être nécessaire de relancer cet installateur."

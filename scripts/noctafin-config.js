@@ -1,6 +1,22 @@
 /* Edit this file to change the home page without touching the engine. */
 window.NOCTAFIN_CONFIG = {
   locale: "fr-FR",
+  brand: {
+    name: "Lumo",
+    logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
+    logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
+    logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+  },
+  seasonal: {
+    enabled: true,
+    forceSeason: "auto",
+    halloweenMonth: 10,
+    christmasMonth: 12,
+    halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.png",
+    christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.png",
+    backgroundBlurPx: 8,
+    backgroundBrightness: 0.56
+  },
   hero: {
     enabled: true,
     rotateEveryMs: 7000,
@@ -12,6 +28,8 @@ window.NOCTAFIN_CONFIG = {
     browsePageLimit: 120,
     scrollFactor: 0.82,
     dedupeNativeRows: true,
+    hideNativeHomeRows: true,
+    showResumeRow: true,
     showStudioRail: true,
     showNetworkRail: true,
     showGenreRows: true,

@@ -1,7 +1,7 @@
 @media (max-width: 1100px) {
   :root {
     --nf-page-x: clamp(14px, 3vw, 34px);
-    --nf-card-width: clamp(132px, 14vw, 166px);
+    --nf-card-width: clamp(120px, 12.5vw, 148px);
     --nf-hero-height: clamp(470px, 68vh, 680px);
   }
 
@@ -21,7 +21,7 @@
 @media (max-width: 760px) {
   :root {
     --nf-page-x: 16px;
-    --nf-card-width: 132px;
+    --nf-card-width: 124px;
     --nf-hero-height: 68vh;
   }
 

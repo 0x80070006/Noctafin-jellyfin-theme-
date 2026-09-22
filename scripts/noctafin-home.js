@@ -1,9 +1,25 @@
 (() => {
   "use strict";
 
-  const LOG = "[NoctaFin]";
+  const LOG = "[Lumo]";
   const DEFAULTS = {
     locale: "fr-FR",
+    brand: {
+      name: "Lumo",
+      logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
+      logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
+      logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+    },
+    seasonal: {
+      enabled: true,
+      forceSeason: "auto",
+      halloweenMonth: 10,
+      christmasMonth: 12,
+      halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.png",
+      christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.png",
+      backgroundBlurPx: 8,
+      backgroundBrightness: 0.56
+    },
     hero: { enabled: true, rotateEveryMs: 7000, maxItems: 8 },
     rows: {
       rowLimit: 20,
@@ -11,6 +27,8 @@
       browsePageLimit: 120,
       scrollFactor: 0.82,
       dedupeNativeRows: true,
+      hideNativeHomeRows: true,
+      showResumeRow: true,
       showStudioRail: true,
       showNetworkRail: true,
       showGenreRows: true,
@@ -26,6 +44,8 @@
   const CONFIG = {
     ...DEFAULTS,
     ...source,
+    brand: { ...DEFAULTS.brand, ...(source.brand || {}) },
+    seasonal: { ...DEFAULTS.seasonal, ...(source.seasonal || {}) },
     hero: { ...DEFAULTS.hero, ...(source.hero || {}) },
     rows: { ...DEFAULTS.rows, ...(source.rows || {}) },
     genres: Array.isArray(source.genres) ? source.genres : [],
@@ -95,7 +115,7 @@
   function headers() {
     if (!auth?.token) return {};
     return {
-      Authorization: `MediaBrowser Client="Jellyfin Web", Device="NoctaFin", DeviceId="noctafin-home", Version="1.0", Token="${auth.token}"`
+      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.3", Token="${auth.token}"`
     };
   }
 
@@ -171,6 +191,121 @@
       .trim();
   }
 
+  function assetUrl(path) {
+    try {
+      return new URL(String(path || ""), document.baseURI).href;
+    } catch {
+      return String(path || "");
+    }
+  }
+
+  function activeSeason() {
+    if (!CONFIG.seasonal.enabled) return "default";
+    const forced = String(CONFIG.seasonal.forceSeason || "auto").toLowerCase();
+    if (["default", "halloween", "christmas"].includes(forced)) return forced;
+    const month = new Date().getMonth() + 1;
+    if (month === Number(CONFIG.seasonal.halloweenMonth || 10)) return "halloween";
+    if (month === Number(CONFIG.seasonal.christmasMonth || 12)) return "christmas";
+    return "default";
+  }
+
+  function seasonAssets(season) {
+    if (season === "halloween") {
+      return {
+        logo: CONFIG.brand.logoHalloween,
+        background: CONFIG.seasonal.halloweenBackground
+      };
+    }
+    if (season === "christmas") {
+      return {
+        logo: CONFIG.brand.logoChristmas,
+        background: CONFIG.seasonal.christmasBackground
+      };
+    }
+    return { logo: CONFIG.brand.logoBlue, background: "" };
+  }
+
+  function updateDocumentBrand(name, logoHref) {
+    document.documentElement.classList.add("lumo-ui");
+    const title = document.title || "";
+    if (!title || /jellyfin/i.test(title)) document.title = title ? title.replace(/jellyfin/ig, name) : name;
+
+    let appName = document.querySelector('meta[name="application-name"]');
+    if (!appName) {
+      appName = document.createElement("meta");
+      appName.name = "application-name";
+      document.head?.appendChild(appName);
+    }
+    appName.content = name;
+
+    if (logoHref) {
+      let icon = document.querySelector('link[rel~="icon"]');
+      if (!icon) {
+        icon = document.createElement("link");
+        icon.rel = "icon";
+        document.head?.appendChild(icon);
+      }
+      icon.href = logoHref;
+    }
+  }
+
+  function ensureLumoHeader(name, logoHref, season) {
+    const header = $(".skinHeader") || $('[class*="MuiAppBar-root"]');
+    if (!header) return;
+
+    let homeButton = $(".headerHomeButton", header);
+    if (homeButton) {
+      if (!homeButton.classList.contains("lumo-brand-button")) {
+        homeButton.classList.add("lumo-brand-button");
+        homeButton.replaceChildren();
+        const img = document.createElement("img");
+        img.className = "lumo-brand-logo";
+        img.alt = "";
+        const label = document.createElement("span");
+        label.className = "lumo-brand-name";
+        homeButton.append(img, label);
+      }
+      const img = $(".lumo-brand-logo", homeButton);
+      const label = $(".lumo-brand-name", homeButton);
+      if (img && img.src !== logoHref) img.src = logoHref;
+      if (label) label.textContent = name;
+      homeButton.setAttribute("aria-label", name);
+      homeButton.title = name;
+      homeButton.dataset.lumoSeason = season;
+      return;
+    }
+
+    const host = $(".headerTop", header) || $('[class*="MuiToolbar-root"]', header) || header;
+    let fallback = $("#lumo-header-brand", header);
+    if (!fallback) {
+      fallback = document.createElement("button");
+      fallback.type = "button";
+      fallback.id = "lumo-header-brand";
+      fallback.className = "lumo-brand-button lumo-brand-fallback focusable";
+      fallback.innerHTML = '<img class="lumo-brand-logo" alt=""><span class="lumo-brand-name"></span>';
+      fallback.addEventListener("click", () => navigate("/home"));
+      host.prepend(fallback);
+    }
+    $(".lumo-brand-logo", fallback).src = logoHref;
+    $(".lumo-brand-name", fallback).textContent = name;
+    fallback.setAttribute("aria-label", name);
+    fallback.dataset.lumoSeason = season;
+  }
+
+  function syncLumoChrome() {
+    const season = activeSeason();
+    const assets = seasonAssets(season);
+    const logoHref = assetUrl(assets.logo);
+    const root = document.documentElement;
+    root.dataset.lumoSeason = season;
+    root.style.setProperty("--lumo-season-blur", `${Math.max(0, Number(CONFIG.seasonal.backgroundBlurPx) || 0)}px`);
+    root.style.setProperty("--lumo-season-brightness", String(Math.max(0.2, Math.min(1, Number(CONFIG.seasonal.backgroundBrightness) || 0.56))));
+    if (assets.background) root.style.setProperty("--lumo-season-background", `url("${assetUrl(assets.background)}")`);
+    else root.style.removeProperty("--lumo-season-background");
+    updateDocumentBrand(CONFIG.brand.name || "Lumo", logoHref);
+    ensureLumoHeader(CONFIG.brand.name || "Lumo", logoHref, season);
+  }
+
   function dedupeNativeRows(sections) {
     if (!CONFIG.rows.dedupeNativeRows) return;
     const seen = new Set();
@@ -184,6 +319,17 @@
       if (seen.has(key)) child.setAttribute("data-noctafin-duplicate", "true");
       else seen.add(key);
     }
+  }
+
+  function syncNativeRows(sections) {
+    if (!sections) return;
+    const native = Array.from(sections.children).filter((el) => !el.classList.contains("noctafin-custom-sections"));
+    native.forEach((el) => el.removeAttribute("data-lumo-native-hidden"));
+    if (CONFIG.rows.hideNativeHomeRows) {
+      native.forEach((el) => el.setAttribute("data-lumo-native-hidden", "true"));
+      return;
+    }
+    dedupeNativeRows(sections);
   }
 
   function createHero() {
@@ -387,16 +533,18 @@
     const text = document.createElement("div");
     text.className = "noctafin-section-heading__text";
 
-    const kickerNode = document.createElement("span");
-    kickerNode.className = "noctafin-section-kicker";
-    kickerNode.textContent = kicker;
-    text.appendChild(kickerNode);
+    if (String(kicker || "").trim()) {
+      const kickerNode = document.createElement("span");
+      kickerNode.className = "noctafin-section-kicker";
+      kickerNode.textContent = kicker;
+      text.appendChild(kickerNode);
+    }
 
     if (typeof onTitleClick === "function") {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "noctafin-section-title noctafin-section-title-button focusable";
-      button.innerHTML = `<span class="noctafin-section-title__label"></span><span class="noctafin-section-title__arrow" aria-hidden="true">→</span>`;
+      button.innerHTML = `<span class="noctafin-section-title__label"></span>`;
       $(".noctafin-section-title__label", button).textContent = title;
       button.setAttribute("aria-label", `${title} — ${actionLabel}`);
       button.addEventListener("click", onTitleClick);
@@ -420,7 +568,7 @@
     previous.type = "button";
     previous.className = "noctafin-track-arrow noctafin-track-arrow--prev focusable";
     previous.setAttribute("aria-label", `Faire défiler ${label} vers la gauche`);
-    previous.innerHTML = `<span aria-hidden="true">‹</span>`;
+    previous.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>`;
 
     const track = document.createElement("div");
     track.className = trackClass;
@@ -431,7 +579,7 @@
     next.type = "button";
     next.className = "noctafin-track-arrow noctafin-track-arrow--next focusable";
     next.setAttribute("aria-label", `Faire défiler ${label} vers la droite`);
-    next.innerHTML = `<span aria-hidden="true">›</span>`;
+    next.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>`;
 
     shell.append(previous, track, next);
 
@@ -460,7 +608,7 @@
   function createBrandShelf(title, groups, prefix) {
     const section = document.createElement("section");
     section.className = "noctafin-shelf";
-    section.appendChild(makeHeading("Explorer", title));
+    section.appendChild(makeHeading("", title));
 
     const { shell, track, update } = createTrackShell("noctafin-brand-track", title);
     section.appendChild(shell);
@@ -506,19 +654,30 @@
     return section;
   }
 
-  function createLazyMediaRow({ kicker, title, id, query, onTitleClick = null }) {
+  function createLazyMediaRow({ kicker, title, id, query, onTitleClick = null, layout = "poster" }) {
     const section = document.createElement("section");
-    section.className = "noctafin-media-row is-loading";
+    section.className = `noctafin-media-row is-loading noctafin-media-row--${layout}`;
     section.id = id;
     section.dataset.noctafinQuery = JSON.stringify(query);
+    section.dataset.noctafinLayout = layout;
     section.appendChild(makeHeading(kicker, title, onTitleClick));
 
-    const { shell, track } = createTrackShell("noctafin-card-track", title);
+    const { shell, track } = createTrackShell(`noctafin-card-track noctafin-card-track--${layout}`, title);
     section.appendChild(shell);
     return section;
   }
 
   async function fetchRowItems(query) {
+    if (query.resume) {
+      const params = new URLSearchParams({
+        Limit: String(CONFIG.rows.rowLimit),
+        Recursive: "true",
+        IncludeItemTypes: query.includeTypes || "Movie,Episode",
+        Fields: FIELDS
+      });
+      return (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
+    }
+
     const params = new URLSearchParams({
       Limit: String(CONFIG.rows.rowLimit),
       Recursive: "true",
@@ -570,7 +729,6 @@
       <header class="noctafin-browser-page__header">
         <button type="button" class="noctafin-browser-page__back focusable" aria-label="Retour">←</button>
         <div>
-          <span class="noctafin-section-kicker">Genre</span>
           <h1 class="noctafin-browser-page__title"></h1>
           <p class="noctafin-browser-page__count">Chargement…</p>
         </div>
@@ -607,7 +765,7 @@
         const data = await fetchBrowseItems(query, startIndex);
         const items = data.Items || [];
         total = Number(data.TotalRecordCount) || items.length;
-        grid.append(...items.map(makeCard));
+        grid.append(...items.map((item) => makeCard(item, "poster")));
         startIndex += items.length;
         count.textContent = `${total.toLocaleString(CONFIG.locale)} titre${total > 1 ? "s" : ""}`;
         more.hidden = !items.length || startIndex >= total;
@@ -626,24 +784,53 @@
     await load();
   }
 
-  function makeCard(item) {
+  function makeCard(item, layout = "poster") {
     const card = document.createElement("button");
     card.type = "button";
-    card.className = "noctafin-card focusable";
+    card.className = `noctafin-card noctafin-card--${layout} focusable`;
     card.dataset.id = item.Id;
-    const title = item.Type === "Episode" ? (item.SeriesName || item.Name) : item.Name;
+    const isEpisode = item.Type === "Episode";
+    const title = isEpisode ? (item.SeriesName || item.Name) : item.Name;
     const rating = Number(item.CommunityRating);
+    const season = Number(item.ParentIndexNumber);
+    const episode = Number(item.IndexNumber);
+    const episodeCode = isEpisode && (Number.isFinite(season) || Number.isFinite(episode))
+      ? `S${Number.isFinite(season) ? season : "?"}:E${Number.isFinite(episode) ? episode : "?"}`
+      : "";
+    const subtitle = isEpisode
+      ? [episodeCode, item.Name && item.Name !== title ? item.Name : ""].filter(Boolean).join(" – ")
+      : "";
+    const progress = Math.max(0, Math.min(100, Number(item.UserData?.PlayedPercentage) || 0));
+
     card.innerHTML = `
-      <span class="noctafin-card__art"><img loading="lazy" alt=""></span>
+      <span class="noctafin-card__art">
+        <img loading="lazy" alt="">
+        <span class="noctafin-card__progress" ${progress > 0 ? "" : "hidden"}><span></span></span>
+      </span>
       <span class="noctafin-card__title"></span>
+      <span class="noctafin-card__subtitle"></span>
       <span class="noctafin-card__meta"><span class="noctafin-card__year"></span><span class="noctafin-card__rating"></span></span>
     `;
     const img = $("img", card);
     img.alt = title || "";
-    img.src = imageUrl(item.Id, "Primary", null, 480);
+    if (layout === "landscape") {
+      img.src = imageUrl(item.Id, "Backdrop", 0, 760);
+      img.addEventListener("error", () => {
+        const fallbackId = isEpisode ? (item.SeriesId || item.Id) : item.Id;
+        img.src = imageUrl(fallbackId, "Primary", null, 600);
+      }, { once: true });
+    } else {
+      const artId = isEpisode ? (item.SeriesId || item.Id) : item.Id;
+      img.src = imageUrl(artId, "Primary", null, 480);
+    }
     $(".noctafin-card__title", card).textContent = title || "Sans titre";
+    const subtitleNode = $(".noctafin-card__subtitle", card);
+    subtitleNode.textContent = subtitle;
+    subtitleNode.hidden = !subtitle;
     $(".noctafin-card__year", card).textContent = item.ProductionYear || "";
     $(".noctafin-card__rating", card).textContent = Number.isFinite(rating) && rating > 0 ? `★ ${rating.toFixed(1)}` : "";
+    const progressBar = $(".noctafin-card__progress > span", card);
+    if (progressBar) progressBar.style.width = `${progress}%`;
     card.addEventListener("click", () => {
       if (card.closest("#noctafin-browser-page")) closeBrowserPage();
       navigate(`/details?id=${encodeURIComponent(detailsId(item))}`);
@@ -658,13 +845,15 @@
       const query = JSON.parse(section.dataset.noctafinQuery || "{}");
       const items = await fetchRowItems(query);
       if (!section.isConnected) return;
-      if (items.length < CONFIG.rows.minItems) {
+      const minItems = Number.isFinite(Number(query.minItems)) ? Number(query.minItems) : CONFIG.rows.minItems;
+      if (items.length < minItems) {
         section.classList.remove("is-loading");
         section.classList.add("is-empty");
         return;
       }
       const track = $(".noctafin-card-track", section);
-      track.replaceChildren(...items.map(makeCard));
+      const layout = section.dataset.noctafinLayout || "poster";
+      track.replaceChildren(...items.map((item) => makeCard(item, layout)));
       section.classList.remove("is-loading");
       const shell = track.closest(".noctafin-track-shell");
       requestAnimationFrame(() => shell?._noctafinUpdateArrows?.());
@@ -701,13 +890,22 @@
       const networks = CONFIG.networks.map((group) => ({ ...group, _ids: resolveIds(taxonomy.studios, group.aliases) }));
 
       const fragment = document.createDocumentFragment();
+      if (CONFIG.rows.showResumeRow) {
+        fragment.appendChild(createLazyMediaRow({
+          kicker: "",
+          title: "Continuer de regarder",
+          id: "noctafin-resume",
+          query: { resume: true, includeTypes: "Movie,Episode", minItems: 1 },
+          layout: "landscape"
+        }));
+      }
       if (CONFIG.rows.showStudioRail) fragment.appendChild(createBrandShelf("Studios", studios, "studio"));
       if (CONFIG.rows.showNetworkRail) fragment.appendChild(createBrandShelf("Réseaux TV", networks, "network"));
 
       if (CONFIG.rows.showGenreRows) {
         genres.filter((group) => group._ids.length).forEach((group) => {
           fragment.appendChild(createLazyMediaRow({
-            kicker: "Genre",
+            kicker: "",
             title: group.label,
             id: rowId("genre", group.label),
             query: { genreIds: group._ids, includeTypes: "Movie,Series" },
@@ -719,7 +917,7 @@
       if (CONFIG.rows.showStudioRows) {
         studios.filter((group) => group._ids.length).forEach((group) => {
           fragment.appendChild(createLazyMediaRow({
-            kicker: "Studio",
+            kicker: "",
             title: group.label,
             id: rowId("studio", group.label),
             query: { studioIds: group._ids, includeTypes: "Movie,Series" }
@@ -730,7 +928,7 @@
       if (CONFIG.rows.showNetworkRows) {
         networks.filter((group) => group._ids.length).forEach((group) => {
           fragment.appendChild(createLazyMediaRow({
-            kicker: "Réseau TV",
+            kicker: "",
             title: group.label,
             id: rowId("network", group.label),
             query: { studioIds: group._ids, includeTypes: "Series" }
@@ -746,10 +944,7 @@
   }
 
   function insertCustomRoot(sections, root) {
-    const native = Array.from(sections.children).filter((el) => el !== root && !el.classList.contains("noctafin-custom-sections"));
-    const anchor = native[1] || native[0] || null;
-    if (anchor?.nextSibling) sections.insertBefore(root, anchor.nextSibling);
-    else sections.appendChild(root);
+    sections.insertBefore(root, sections.firstChild || null);
   }
 
   function cleanupTransient() {
@@ -763,11 +958,12 @@
   }
 
   async function mount() {
+    syncLumoChrome();
     const found = locateHome();
     if (!found) return;
 
     if (currentHome?.homeTab === found.homeTab && $("#noctafin-custom-sections", found.homeTab)) {
-      dedupeNativeRows(found.sections);
+      syncNativeRows(found.sections);
       return;
     }
 
@@ -792,7 +988,7 @@
     root.id = "noctafin-custom-sections";
     root.className = "noctafin-custom-sections";
     insertCustomRoot(found.sections, root);
-    dedupeNativeRows(found.sections);
+    syncNativeRows(found.sections);
     initCustomRows(root);
   }
 
@@ -806,6 +1002,7 @@
   }
 
   function boot() {
+    syncLumoChrome();
     scheduleMount();
     const observer = new MutationObserver(scheduleMount);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -819,7 +1016,10 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && $("#noctafin-browser-page")) closeBrowserPage();
     });
-    setInterval(scheduleMount, 2500);
+    setInterval(() => {
+      syncLumoChrome();
+      scheduleMount();
+    }, 2500);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
