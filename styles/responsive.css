@@ -1,0 +1,78 @@
+@media (max-width: 1100px) {
+  :root {
+    --nf-page-x: clamp(14px, 3vw, 34px);
+    --nf-card-width: clamp(132px, 14vw, 166px);
+    --nf-hero-height: clamp(470px, 68vh, 680px);
+  }
+
+  .noctafin-hero__content {
+    width: min(620px, 60vw);
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --nf-page-x: 16px;
+    --nf-card-width: 132px;
+    --nf-hero-height: 68vh;
+  }
+
+  .noctafin-hero {
+    min-height: 460px;
+  }
+
+  .noctafin-hero__veil {
+    background:
+      linear-gradient(0deg, var(--nf-bg) 0%, rgba(3,5,10,.94) 17%, rgba(3,5,10,.48) 55%, rgba(3,5,10,.12) 100%),
+      linear-gradient(90deg, rgba(3,5,10,.78), transparent 70%);
+  }
+
+  .noctafin-hero__content {
+    left: 16px;
+    right: 16px;
+    bottom: 54px;
+    width: auto;
+    gap: 10px;
+  }
+
+  .noctafin-hero__logo {
+    width: min(330px, 70vw);
+    max-height: 100px;
+  }
+
+  .noctafin-hero__title {
+    font-size: clamp(2.1rem, 10vw, 3.4rem);
+  }
+
+  .noctafin-hero__overview {
+    -webkit-line-clamp: 3;
+    font-size: .92rem;
+  }
+
+  .noctafin-hero__dots {
+    right: 16px;
+    bottom: 28px;
+  }
+
+  .noctafin-brand {
+    flex-basis: 180px;
+    height: 92px;
+  }
+
+  #homeTab .verticalSection,
+  #indexPage .verticalSection {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "noctafin-jellyfin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cinematic Jellyfin 12 theme with dynamic hero, genre, studio and TV network rows.",
+  "scripts": {
+    "check": "node --check scripts/noctafin-config.js && node --check scripts/noctafin-home.js"
+  }
+}

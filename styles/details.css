@@ -1,0 +1,41 @@
+.detailPagePrimaryContainer,
+.detailPageContent {
+  position: relative;
+}
+
+.detailPagePrimaryContainer {
+  padding-top: clamp(18vh, 25vw, 36vh) !important;
+}
+
+.detailPageWrapperContainer .backdropImage,
+.itemBackdrop,
+.backdropImage {
+  filter: saturate(1.08) contrast(1.02) brightness(.74) !important;
+}
+
+.detailPageWrapperContainer::after,
+.itemBackdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, var(--nf-bg) 3%, rgba(3,5,10,.78) 24%, transparent 62%);
+}
+
+.detailLogo {
+  filter: drop-shadow(0 10px 34px rgba(0,0,0,.45));
+}
+
+.detailButton,
+.mainDetailButtons .emby-button {
+  border: 1px solid rgba(255,255,255,.10) !important;
+  background: rgba(255,255,255,.09) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.detailButton-primary,
+.mainDetailButtons .button-flat:first-child {
+  background: linear-gradient(105deg, var(--nf-violet), var(--nf-purple)) !important;
+  color: white !important;
+}

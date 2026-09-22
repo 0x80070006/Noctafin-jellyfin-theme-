@@ -1,0 +1,10 @@
+/* Remplace VOTRE_GITHUB et NoctaFin si tu utilises un autre nom de dépôt. */
+@import url("https://cdn.jsdelivr.net/gh/VOTRE_GITHUB/NoctaFin@main/theme.css");
+
+/* Exemples de personnalisation locale : */
+:root {
+  --nf-violet: #7c5cff;
+  --nf-purple: #b54cff;
+  --nf-pink: #ff4fa3;
+  --nf-cyan: #25d7ff;
+}

@@ -1,0 +1,112 @@
+html,
+body,
+.backgroundContainer,
+.mainAnimatedPages,
+.page {
+  background: var(--nf-bg) !important;
+  color: var(--nf-text) !important;
+}
+
+html,
+body {
+  font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  scrollbar-color: rgba(124, 92, 255, .55) rgba(255, 255, 255, .04);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(950px 520px at 12% -10%, rgba(181, 76, 255, .18), transparent 68%),
+    radial-gradient(850px 520px at 88% 0%, rgba(37, 215, 255, .13), transparent 70%),
+    linear-gradient(180deg, #050711 0%, #03050a 48%, #020307 100%);
+}
+
+::selection {
+  background: rgba(124, 92, 255, .6);
+  color: #fff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+.emby-button,
+.button-submit,
+.raised {
+  border-radius: 999px !important;
+  transition: transform var(--nf-speed) ease, background var(--nf-speed) ease, box-shadow var(--nf-speed) ease !important;
+}
+
+button:hover,
+.emby-button:hover,
+.raised:hover {
+  transform: translateY(-1px);
+}
+
+.button-submit,
+.raised.button-submit,
+.btnSubmit {
+  background: linear-gradient(100deg, var(--nf-violet), var(--nf-purple), var(--nf-pink)) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 34px rgba(124, 92, 255, .28) !important;
+}
+
+.paperList,
+.dialog,
+.formDialogHeader,
+.formDialogFooter,
+.actionSheet,
+.visualCardBox,
+.cardBox,
+[class*="MuiPaper-root"] {
+  background-color: var(--nf-surface-strong) !important;
+  border-color: var(--nf-line) !important;
+}
+
+input,
+textarea,
+select,
+.emby-input,
+.emby-textarea,
+.emby-select {
+  color: var(--nf-text) !important;
+  background: rgba(255,255,255,.065) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: var(--nf-radius-sm) !important;
+}
+
+.secondaryText,
+.fieldDescription,
+.cardText-secondary,
+.overview,
+.itemMiscInfo,
+.mediaInfoItem {
+  color: var(--nf-muted) !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--nf-violet), var(--nf-cyan));
+  border-radius: 999px;
+  border: 2px solid var(--nf-bg);
+}
+
+.focusable:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--nf-cyan) !important;
+  outline-offset: 3px !important;
+}

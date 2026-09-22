@@ -1,0 +1,22 @@
+.videoOsdBottom,
+.videoOsdHeader,
+.nowPlayingBar,
+.upNextContainer {
+  background: linear-gradient(180deg, rgba(3,5,10,.08), rgba(3,5,10,.84)) !important;
+}
+
+.videoOsdHeader {
+  background: linear-gradient(180deg, rgba(3,5,10,.86), transparent) !important;
+}
+
+.osdControls .emby-button,
+.videoOsdBottom .emby-button {
+  color: #fff !important;
+}
+
+.sliderBubble,
+.mdl-slider-background-lower,
+.playbackProgress > div,
+.itemProgressBarForeground {
+  background: linear-gradient(90deg, var(--nf-violet), var(--nf-pink), var(--nf-cyan)) !important;
+}

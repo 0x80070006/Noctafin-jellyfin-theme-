@@ -1,0 +1,64 @@
+.skinHeader,
+.headerTop,
+.headerTabs,
+[class*="MuiAppBar-root"] {
+  background: linear-gradient(180deg, rgba(3, 5, 10, .92), rgba(3, 5, 10, .58) 72%, transparent) !important;
+  box-shadow: none !important;
+  border-bottom: 0 !important;
+  backdrop-filter: blur(18px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+}
+
+.skinHeader {
+  padding-top: 4px !important;
+}
+
+.headerTabs,
+.emby-tabs,
+[class*="MuiTabs-root"] {
+  border: 1px solid rgba(255,255,255,.09) !important;
+  border-radius: 999px !important;
+  background: rgba(11, 14, 23, .7) !important;
+  padding: 4px !important;
+}
+
+.emby-tab-button,
+.headerTabs .emby-button,
+[class*="MuiTab-root"] {
+  border-radius: 999px !important;
+  color: rgba(247,248,255,.72) !important;
+  text-transform: none !important;
+  font-weight: 650 !important;
+}
+
+.emby-tab-button-active,
+.emby-tab-button.show-focus,
+[class*="MuiTab-root"][aria-selected="true"] {
+  color: #fff !important;
+  background: linear-gradient(100deg, rgba(124,92,255,.86), rgba(181,76,255,.72)) !important;
+  box-shadow: 0 8px 30px rgba(124,92,255,.2) !important;
+}
+
+.headerButton,
+.headerUserButton,
+.navMenuOption,
+[class*="MuiIconButton-root"] {
+  color: var(--nf-text) !important;
+}
+
+.drawer-open,
+.mainDrawer,
+.navDrawer,
+[class*="MuiDrawer-paper"] {
+  background: rgba(7, 9, 15, .94) !important;
+  backdrop-filter: blur(22px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(130%) !important;
+  border-right: 1px solid rgba(255,255,255,.08) !important;
+}
+
+.navMenuOption-selected,
+.navMenuOption:hover,
+[class*="MuiListItemButton-root"][aria-current="page"] {
+  background: linear-gradient(90deg, rgba(124,92,255,.26), rgba(37,215,255,.08)) !important;
+  color: #fff !important;
+}

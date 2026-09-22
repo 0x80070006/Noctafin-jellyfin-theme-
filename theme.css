@@ -1,0 +1,11 @@
+/*
+ * NoctaFin — Jellyfin 12 theme
+ * Standalone visual layer. Dynamic hero/rows are provided by scripts/noctafin-home.js.
+ */
+@import url("./styles/tokens.css");
+@import url("./styles/core.css");
+@import url("./styles/header.css");
+@import url("./styles/home.css");
+@import url("./styles/details.css");
+@import url("./styles/player.css");
+@import url("./styles/responsive.css");

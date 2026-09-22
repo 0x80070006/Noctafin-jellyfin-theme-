@@ -1,0 +1,443 @@
+#indexPage,
+#homeTab {
+  background: transparent !important;
+}
+
+#homeTab > .sections,
+#indexPage .sections {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+#homeTab .verticalSection,
+#indexPage .verticalSection {
+  padding-left: var(--nf-page-x) !important;
+  padding-right: var(--nf-page-x) !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 2.2rem !important;
+}
+
+#homeTab .sectionTitle,
+#indexPage .sectionTitle,
+#homeTab .sectionTitleTextButton,
+#indexPage .sectionTitleTextButton {
+  color: var(--nf-text) !important;
+  font-weight: 760 !important;
+  letter-spacing: -.025em !important;
+  font-size: clamp(1.2rem, 1.4vw, 1.55rem) !important;
+  text-transform: none !important;
+}
+
+.cardBox,
+.visualCardBox,
+.cardScalable,
+.cardPadder,
+.cardImageContainer {
+  border-radius: var(--nf-radius-sm) !important;
+}
+
+.cardImageContainer,
+.cardScalable {
+  overflow: hidden !important;
+}
+
+.cardBox {
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), filter 260ms ease !important;
+}
+
+.cardBox:hover,
+.card.show-focus .cardBox,
+.card:focus-within .cardBox {
+  transform: translateY(-7px) scale(1.025) !important;
+  filter: brightness(1.08) saturate(1.08) !important;
+  z-index: 4 !important;
+}
+
+.cardImageContainer {
+  border: 1px solid rgba(255,255,255,.08) !important;
+  box-shadow: 0 12px 34px rgba(0,0,0,.26) !important;
+}
+
+.card:hover .cardImageContainer,
+.card.show-focus .cardImageContainer {
+  border-color: rgba(124,92,255,.58) !important;
+  box-shadow: var(--nf-glow) !important;
+}
+
+.itemProgressBar,
+.playedIndicator,
+.mdl-slider-background-lower {
+  background: linear-gradient(90deg, var(--nf-violet), var(--nf-pink), var(--nf-cyan)) !important;
+}
+
+/* Dynamic NoctaFin home ----------------------------------------------------- */
+.noctafin-hero {
+  position: relative;
+  width: 100%;
+  height: var(--nf-hero-height);
+  min-height: 500px;
+  overflow: hidden;
+  isolation: isolate;
+  margin: 0 0 12px;
+  background: #060810;
+}
+
+.noctafin-hero__bg,
+.noctafin-hero__veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.noctafin-hero__bg {
+  z-index: -3;
+  background-size: cover;
+  background-position: center 24%;
+  opacity: 0;
+  transform: scale(1.035);
+  transition: opacity 850ms ease, transform 8s linear;
+}
+
+.noctafin-hero__bg.is-active {
+  opacity: 1;
+  transform: scale(1.09);
+}
+
+.noctafin-hero__veil {
+  z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(3,5,10,.98) 0%, rgba(3,5,10,.86) 27%, rgba(3,5,10,.42) 54%, rgba(3,5,10,.08) 77%),
+    linear-gradient(0deg, var(--nf-bg) 0%, rgba(3,5,10,.84) 9%, transparent 38%),
+    linear-gradient(180deg, rgba(3,5,10,.35), transparent 22%);
+}
+
+.noctafin-hero__content {
+  position: absolute;
+  left: var(--nf-page-x);
+  bottom: clamp(70px, 10vh, 115px);
+  width: min(650px, 46vw);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  z-index: 2;
+}
+
+.noctafin-hero__logo {
+  width: min(420px, 34vw);
+  max-height: 150px;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 8px 22px rgba(0,0,0,.45));
+}
+
+.noctafin-hero__title {
+  margin: 0;
+  font-size: clamp(2.3rem, 4.6vw, 5.1rem);
+  line-height: .98;
+  letter-spacing: -.055em;
+  font-weight: 850;
+  text-wrap: balance;
+  text-shadow: 0 9px 32px rgba(0,0,0,.45);
+}
+
+.noctafin-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.noctafin-hero__pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  color: #e9ecf7;
+  background: rgba(8,10,17,.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: .82rem;
+  font-weight: 650;
+}
+
+.noctafin-hero__overview {
+  margin: 0;
+  max-width: 62ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: rgba(247,248,255,.84);
+  font-size: clamp(.95rem, 1.04vw, 1.08rem);
+  line-height: 1.55;
+  text-shadow: 0 4px 18px rgba(0,0,0,.55);
+}
+
+.noctafin-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+}
+
+.noctafin-hero__button {
+  appearance: none;
+  border: 0;
+  min-height: 46px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #fff;
+  background: rgba(255,255,255,.13);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 760;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.noctafin-hero__button--primary {
+  color: #070812;
+  background: linear-gradient(105deg, #fff, #e9eaff 55%, #c7f6ff);
+  box-shadow: 0 14px 38px rgba(255,255,255,.12);
+}
+
+.noctafin-hero__button:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.noctafin-hero__dots {
+  position: absolute;
+  right: var(--nf-page-x);
+  bottom: 88px;
+  display: flex;
+  gap: 6px;
+  z-index: 3;
+}
+
+.noctafin-hero__dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.35);
+  cursor: pointer;
+  transition: width 240ms ease, background 240ms ease, transform 240ms ease !important;
+}
+
+.noctafin-hero__dot.is-active {
+  width: 26px;
+  background: linear-gradient(90deg, var(--nf-violet), var(--nf-cyan));
+}
+
+.noctafin-custom-sections {
+  width: 100%;
+  display: block;
+}
+
+.noctafin-shelf,
+.noctafin-media-row {
+  position: relative;
+  width: 100%;
+  margin: 0 0 2.25rem;
+  padding: 0 var(--nf-page-x);
+}
+
+.noctafin-section-heading {
+  margin: 0 0 13px;
+  color: var(--nf-text);
+  font-size: clamp(1.22rem, 1.45vw, 1.58rem);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+
+.noctafin-section-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--nf-muted);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.noctafin-brand-track,
+.noctafin-card-track {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x proximity;
+  padding: 4px 2px 18px;
+  scrollbar-width: none;
+}
+
+.noctafin-brand-track::-webkit-scrollbar,
+.noctafin-card-track::-webkit-scrollbar {
+  display: none;
+}
+
+.noctafin-brand {
+  --brand-a: #7c5cff;
+  --brand-b: #25d7ff;
+  position: relative;
+  flex: 0 0 clamp(190px, 15vw, 270px);
+  height: clamp(92px, 7vw, 126px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--nf-radius) !important;
+  overflow: hidden;
+  color: white;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255,255,255,.30), transparent 30%),
+    linear-gradient(135deg, var(--brand-a), var(--brand-b));
+  box-shadow: 0 14px 34px rgba(0,0,0,.24);
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.noctafin-brand::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.14), transparent 35%, rgba(0,0,0,.22));
+}
+
+.noctafin-brand::after {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  right: -42px;
+  bottom: -58px;
+  border: 18px solid rgba(255,255,255,.12);
+  border-radius: 50%;
+}
+
+.noctafin-brand:hover,
+.noctafin-brand:focus-visible {
+  transform: translateY(-6px) scale(1.025) !important;
+  box-shadow: 0 22px 54px color-mix(in srgb, var(--brand-a) 35%, transparent) !important;
+}
+
+.noctafin-brand__name {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 16px;
+  z-index: 2;
+  font-size: clamp(1.05rem, 1.38vw, 1.5rem);
+  font-weight: 900;
+  letter-spacing: -.035em;
+  text-shadow: 0 4px 20px rgba(0,0,0,.35);
+}
+
+.noctafin-brand[aria-disabled="true"] {
+  opacity: .48;
+  filter: grayscale(.35);
+  cursor: default;
+}
+
+.noctafin-media-row.is-loading .noctafin-card-track::before {
+  content: "Chargement…";
+  color: var(--nf-muted);
+  padding: 24px 0;
+}
+
+.noctafin-media-row.is-empty {
+  display: none;
+}
+
+.noctafin-card {
+  appearance: none;
+  flex: 0 0 var(--nf-card-width);
+  width: var(--nf-card-width);
+  padding: 0;
+  border: 0;
+  color: var(--nf-text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transform-origin: center bottom;
+}
+
+.noctafin-card__art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: var(--nf-radius-sm);
+  background:
+    radial-gradient(circle at 30% 15%, rgba(181,76,255,.25), transparent 36%),
+    linear-gradient(145deg, #131827, #080a11);
+  box-shadow: 0 14px 34px rgba(0,0,0,.30);
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), border-color 260ms ease, box-shadow 260ms ease;
+}
+
+.noctafin-card__art::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 44%;
+  background: linear-gradient(transparent, rgba(2,3,8,.48));
+  pointer-events: none;
+}
+
+.noctafin-card__art img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 500ms cubic-bezier(.2,.8,.2,1), filter 260ms ease;
+}
+
+.noctafin-card:hover .noctafin-card__art,
+.noctafin-card:focus-visible .noctafin-card__art {
+  transform: translateY(-7px) scale(1.035);
+  border-color: rgba(124,92,255,.62);
+  box-shadow: var(--nf-glow);
+}
+
+.noctafin-card:hover .noctafin-card__art img,
+.noctafin-card:focus-visible .noctafin-card__art img {
+  transform: scale(1.05);
+  filter: saturate(1.08) brightness(1.05);
+}
+
+.noctafin-card__title {
+  display: block;
+  margin-top: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--nf-text);
+  font-size: .9rem;
+  font-weight: 720;
+}
+
+.noctafin-card__meta {
+  display: flex;
+  gap: 7px;
+  margin-top: 3px;
+  color: var(--nf-muted);
+  font-size: .76rem;
+}
+
+.noctafin-card__rating {
+  color: var(--nf-yellow);
+}
+
+[data-noctafin-duplicate="true"] {
+  display: none !important;
+}
