@@ -1,3 +1,16 @@
+> [!WARNING]
+> ### 🚧 Thème encore en développement
+>
+> **Le thème Lumo est actuellement en cours de développement actif.**
+>
+> Certaines fonctionnalités peuvent encore présenter des **bugs**, de légères **latences** ou des comportements inattendus selon l'appareil.
+>
+> Le projet évolue régulièrement afin d'améliorer la **stabilité**.
+>
+> Merci de garder à l'esprit qu'il ne s'agit pas encore d'une version totalement stable.
+
+
+
 # Lumo pour Jellyfin 12
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
