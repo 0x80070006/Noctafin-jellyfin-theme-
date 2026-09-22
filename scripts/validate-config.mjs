@@ -41,7 +41,7 @@ for (const [label, id] of expected) {
 if (!cfg.background?.image || !String(cfg.background.image).endsWith('lumo-space.webp')) {
   throw new Error('background.image doit pointer vers lumo-space.webp');
 }
-if ('video' in (cfg.background || {})) throw new Error('Le fond vidéo doit rester supprimé en v1.10+');
+if ('video' in (cfg.background || {})) throw new Error('Le fond vidéo doit rester supprimé en v1.11+');
 
 const themeRoot = new URL('../', import.meta.url);
 for (const relative of [
@@ -56,13 +56,22 @@ for (const relative of [
 }
 
 const runtimeSource = fs.readFileSync(new URL('./noctafin-home.js', import.meta.url), 'utf8');
-for (const needle of ['findTaxonomyHost', 'scheduleTaxonomyRetry', 'lumo-taxonomy-hero', 'GenreIds', 'StudioIds']) {
+for (const needle of ['findTaxonomyHost', 'scheduleTaxonomyRetry', 'lumo-taxonomy-hero', 'GenreIds', 'StudioIds', 'syncDetailPage', 'buildMovieDetailPage', 'buildSeriesDetailPage', 'fetchSeriesSeasons', 'fetchSeasonEpisodes']) {
   if (!runtimeSource.includes(needle)) throw new Error(`Runtime incomplet: ${needle}`);
 }
 
 if (Number(cfg.rows?.rowLimit) !== 12) throw new Error('rows.rowLimit doit rester à 12');
 if (Number(cfg.rows?.dailyPoolLimit) < 48) throw new Error('rows.dailyPoolLimit doit être >= 48');
 if (!cfg.taxonomyHero?.enabled) throw new Error('taxonomyHero doit rester activé');
+if (!cfg.details?.enabled) throw new Error('details doit rester activé');
+if (Number(cfg.details?.episodePageSize) < 20) throw new Error('details.episodePageSize doit rester >= 20');
 if (!cfg.navigation?.serverIdFallback) throw new Error('serverIdFallback absent');
 
-console.log(`Configuration valide: ${groups.length} studios/réseaux exacts, ${cfg.genres?.length || 0} genres accueil, 12 médias/rail, fond spatial statique et hero universel.`);
+const detailCss = new URL('../styles/lumo-v1.11.css', import.meta.url);
+if (!fs.existsSync(detailCss)) throw new Error('styles/lumo-v1.11.css manquant');
+const detailCssSource = fs.readFileSync(detailCss, 'utf8');
+for (const needle of ['#lumo-detail-page', '.lumo-movie-detail-hero', '.lumo-series-detail__shell', '.lumo-season-panel']) {
+  if (!detailCssSource.includes(needle)) throw new Error(`CSS détail incomplet: ${needle}`);
+}
+
+console.log(`Configuration valide: ${groups.length} studios/réseaux exacts, ${cfg.genres?.length || 0} genres accueil, 12 médias/rail, heroes taxonomie et fiches cinématiques.`);

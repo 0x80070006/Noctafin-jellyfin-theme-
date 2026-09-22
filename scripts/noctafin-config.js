@@ -38,6 +38,11 @@ window.NOCTAFIN_CONFIG = {
     enabled: true,
     maxItems: 24
   },
+  details: {
+    enabled: true,
+    autoExpandFirstSeason: true,
+    episodePageSize: 60
+  },
   rows: {
     rowLimit: 12,
     dailyPoolLimit: 96,

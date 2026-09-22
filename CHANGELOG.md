@@ -1,27 +1,31 @@
 # Changelog
 
+## 1.11.0
+
+- Refonte complète des fiches Films/Séries pour supprimer définitivement le grand espace vide provoqué par les règles de détail héritées.
+- Les routes `#/details?id=...` sont maintenant détectées avant les anciennes vues Jellyfin conservées dans le DOM.
+- Nouvelle fiche Film cinématique plein écran : backdrop, logo Jellyfin du média (ou titre en fallback), métadonnées, bouton Lecture, synopsis et genres.
+- Nouvelle fiche Série cinématique : backdrop assombri/flouté, grande jaquette, logo/titre, métadonnées, lecture du prochain épisode disponible, synopsis et genres.
+- Toutes les saisons d'une série sont visibles avec leur jaquette dans des panneaux accordéon.
+- Les panneaux Saison se déplient/replient avec un petit chevron ; les épisodes sont chargés uniquement à l'ouverture pour réduire les requêtes et accélérer la page.
+- La première saison peut être ouverte automatiquement (`details.autoExpandFirstSeason`).
+- Cartes épisodes 16:9 avec titre, durée, note, résumé et lecture directe.
+- Cache local court pour fiches, saisons et épisodes afin de limiter les appels API pendant les remounts React de Jellyfin 12.
+- Les vues natives sous-jacentes sont rendues `inert` uniquement pendant une fiche Lumo et sont restaurées à la navigation.
+- Suppression de la règle `padding-top` native qui pouvait casser une fiche si le runtime JavaScript n'était pas encore prêt.
+- Boutons Lecture / Plus d'infos du Hero d'accueil durcis : dimensions explicites, SVG isolés, états hover/active/disabled et lecture série via Next Up avec fallback.
+- Ajout d'un fondu noir en haut du Hero d'accueil pour une transition plus douce avec le header.
+- Le Hero d'accueil repose désormais sur un canvas noir opaque de mêmes dimensions : le fond spatial ne transparaît plus derrière lui.
+- Conservation de toutes les fonctions v1.10 : fond spatial, Halloween/Noël automatiques, Heroes Studio/Genre, 12 médias par rail / 6 visibles, sélection quotidienne, studios/réseaux et branding Lumo.
+
 ## 1.10.0
 
-- Suppression complète du fond vidéo Lumo et de son coût de décodage.
-- Nouveau fond spatial statique fourni par l'utilisateur, compressé en WebP.
-- Conversion des logos/fonds saisonniers en WebP pour alléger les transferts et le stockage.
-- Halloween et Noël restent activés automatiquement aux mois configurés.
-- Refonte de la détection des pages Studio/Genre pour Jellyfin 12 legacy + React/MUI.
-- Suppression de l'exclusion `#indexPage` qui pouvait empêcher l'apparition du Hero sur les pages `#/list?...`.
-- Détection basée sur les contenus réellement visibles et exclusion des anciennes vues hors écran/inertes.
-- Hero placeholder injecté immédiatement sur toute route `studioId`/`genreId`, puis hydraté avec un média dès que l'API répond.
-- Retry progressif si la page native Jellyfin n'est pas encore montée.
-- Réinsertion automatique si React remonte la page.
-- Résolution de nom universelle : mapping local pour les studios connus, API Jellyfin pour tous les autres, titre natif en dernier fallback.
-- Palette générée pour tout studio inconnu ; couleurs configurées conservées pour les studios/réseaux connus.
-- Hero de genre stable pour la journée afin d'éviter les changements visuels durant les remounts.
-- Variables RGB ajoutées pour éviter de dépendre de `color-mix()` dans l'ambiance de page.
-- Les pages Studio/Genre gardent leur grille native Jellyfin et reçoivent uniquement l'habillage Lumo.
-- Les rails 12/6 et la sélection quotidienne restent inchangés.
+- Fond spatial statique WebP et suppression du fond vidéo.
+- Heroes Studio/Genre renforcés pour Jellyfin 12 legacy + React/MUI.
+- Résolution universelle des studios/genres et retry lors des remounts React.
+- Les rails gardent 12 médias avec 6 visibles sur desktop.
 
 ## 1.9.0
 
 - IDs exacts ajoutés pour Pixar, Paramount, Marvel, Walt Disney, Columbia, 20th Century Fox, Apple TV+, Netflix, BBC, Cartoon Network, ABC et MTV.
 - Navigation native Jellyfin vers les routes `studioId` / `genreId`.
-- Hero universel initial pour les pages Studio/Genre.
-- 12 médias maximum par rail, 6 visibles sur desktop.

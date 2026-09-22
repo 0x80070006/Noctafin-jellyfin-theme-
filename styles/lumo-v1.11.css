@@ -1,0 +1,740 @@
+/* ========================================================================== 
+   Lumo v1.11.0 — isolated cinematic details + home hero hardening
+   Loaded after v1.10 so it can safely neutralize legacy layout side-effects.
+   ========================================================================== */
+
+:root {
+  --lumo-detail-header-safe: 54px;
+  --lumo-detail-max: 1520px;
+}
+
+/* --------------------------------------------------------------------------
+   Home hero — opaque black canvas, soft header transition and self-contained
+   controls. This prevents the global custom wallpaper from bleeding through.
+   -------------------------------------------------------------------------- */
+.noctafin-hero {
+  background: #000 !important;
+  isolation: isolate !important;
+}
+
+.noctafin-hero::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 0 auto !important;
+  height: clamp(74px, 9vh, 118px) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  background: linear-gradient(180deg, #000 0%, rgba(0,0,0,.88) 22%, rgba(0,0,0,.42) 58%, transparent 100%) !important;
+}
+
+.noctafin-hero__content,
+.noctafin-hero__dots {
+  z-index: 3 !important;
+}
+
+.noctafin-hero__actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  min-height: 48px !important;
+}
+
+.noctafin-hero__button {
+  all: unset !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  min-width: 124px !important;
+  min-height: 46px !important;
+  padding: 0 18px !important;
+  border: 1px solid rgba(255,255,255,.13) !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  background: rgba(255,255,255,.12) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.24) !important;
+  font: 750 .94rem/1 Inter,"Segoe UI",sans-serif !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  -webkit-backdrop-filter: blur(14px) saturate(125%) !important;
+  backdrop-filter: blur(14px) saturate(125%) !important;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, opacity 160ms ease !important;
+}
+
+.noctafin-hero__button--primary {
+  color: #080a12 !important;
+  background: #fff !important;
+  border-color: rgba(255,255,255,.86) !important;
+  box-shadow: 0 12px 34px rgba(255,255,255,.10), 0 12px 30px rgba(0,0,0,.30) !important;
+}
+
+.noctafin-hero__button:hover:not(:disabled),
+.noctafin-hero__button:focus-visible:not(:disabled) {
+  transform: translateY(-2px) scale(1.018) !important;
+  border-color: rgba(255,255,255,.28) !important;
+}
+
+.noctafin-hero__button:active:not(:disabled) {
+  transform: translateY(0) scale(.985) !important;
+}
+
+.noctafin-hero__button:disabled {
+  opacity: .55 !important;
+  cursor: wait !important;
+}
+
+.noctafin-hero__button-icon {
+  display: block !important;
+  width: 19px !important;
+  min-width: 19px !important;
+  height: 19px !important;
+  overflow: visible !important;
+}
+
+.noctafin-hero__button[data-action="play"] .noctafin-hero__button-icon path {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+.noctafin-hero__button[data-action="info"] .noctafin-hero__button-icon circle,
+.noctafin-hero__button[data-action="info"] .noctafin-hero__button-icon path {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.9 !important;
+  stroke-linecap: round !important;
+}
+
+/* --------------------------------------------------------------------------
+   Detail page isolation. Lumo owns the viewport only while #/details?id=...
+   is active. Native content stays mounted underneath for Jellyfin's router,
+   but is inert and cannot distort this layout.
+   -------------------------------------------------------------------------- */
+body.lumo-detail-active {
+  overflow: hidden !important;
+}
+
+body.lumo-detail-active .skinHeader,
+body.lumo-detail-active header.MuiAppBar-root,
+body.lumo-detail-active header[class*="MuiAppBar-root"] {
+  z-index: 100 !important;
+}
+
+#lumo-detail-page {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 40 !important;
+  display: block !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  color: #f7f8ff !important;
+  background: #03050a !important;
+  scrollbar-gutter: stable !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  isolation: isolate !important;
+}
+
+#lumo-detail-page img {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+.lumo-detail-page--loading {
+  display: grid !important;
+  place-items: center !important;
+}
+
+.lumo-detail-loading {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.lumo-detail-loading span {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,.72) !important;
+  animation: lumo-detail-pulse 900ms ease-in-out infinite alternate !important;
+}
+
+.lumo-detail-loading span:nth-child(2) { animation-delay: 120ms !important; }
+.lumo-detail-loading span:nth-child(3) { animation-delay: 240ms !important; }
+
+@keyframes lumo-detail-pulse {
+  from { opacity: .22; transform: translateY(2px) scale(.82); }
+  to { opacity: 1; transform: translateY(-2px) scale(1); }
+}
+
+.lumo-detail-error {
+  max-width: 520px !important;
+  margin: auto !important;
+  padding: 24px !important;
+  color: rgba(247,248,255,.78) !important;
+  text-align: center !important;
+}
+
+/* Shared detail chrome ------------------------------------------------------ */
+.lumo-detail-meta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: inherit !important;
+  flex-wrap: wrap !important;
+  gap: 8px 14px !important;
+  color: rgba(247,248,255,.86) !important;
+  font-size: clamp(.82rem, .9vw, .95rem) !important;
+  line-height: 1 !important;
+}
+
+.lumo-detail-meta__item {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 26px !important;
+}
+
+.lumo-detail-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+.lumo-detail-action {
+  all: unset !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  min-width: 128px !important;
+  min-height: 44px !important;
+  padding: 0 18px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  background: rgba(255,255,255,.09) !important;
+  box-shadow: 0 12px 34px rgba(0,0,0,.24) !important;
+  font: 760 .94rem/1 Inter,"Segoe UI",sans-serif !important;
+  cursor: pointer !important;
+  backdrop-filter: blur(14px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
+  transition: transform 160ms ease, background 160ms ease, opacity 160ms ease !important;
+}
+
+.lumo-detail-action--primary {
+  color: #080a10 !important;
+  background: #f6f7fb !important;
+  border-color: rgba(255,255,255,.9) !important;
+}
+
+.lumo-detail-action:hover:not(:disabled),
+.lumo-detail-action:focus-visible:not(:disabled) {
+  transform: translateY(-2px) scale(1.018) !important;
+}
+
+.lumo-detail-action:active:not(:disabled) { transform: scale(.985) !important; }
+.lumo-detail-action:disabled { opacity: .52 !important; cursor: wait !important; }
+
+.lumo-detail-action svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.lumo-detail-action[data-kind="play"] svg path {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+.lumo-detail-overview {
+  margin: 0 !important;
+  max-width: 78ch !important;
+  color: rgba(247,248,255,.80) !important;
+  font-size: clamp(.93rem, 1vw, 1.03rem) !important;
+  line-height: 1.58 !important;
+  text-wrap: pretty !important;
+}
+
+.lumo-detail-tagline {
+  margin: 0 0 7px !important;
+  color: rgba(247,248,255,.9) !important;
+  font-size: clamp(1rem, 1.15vw, 1.22rem) !important;
+  font-style: italic !important;
+}
+
+.lumo-detail-genres {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  margin-top: 14px !important;
+}
+
+.lumo-detail-genres span {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 27px !important;
+  padding: 0 10px !important;
+  border: 1px solid rgba(255,255,255,.11) !important;
+  border-radius: 999px !important;
+  color: rgba(247,248,255,.78) !important;
+  background: rgba(5,8,14,.38) !important;
+  font-size: .78rem !important;
+}
+
+/* Movie / episode — large cinematic hero ----------------------------------- */
+.lumo-movie-detail-hero {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  background: #02040a !important;
+}
+
+.lumo-movie-detail-hero__backdrop,
+.lumo-movie-detail-hero__veil {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+.lumo-movie-detail-hero__backdrop {
+  z-index: -3 !important;
+  background-size: cover !important;
+  background-position: center 28% !important;
+  background-repeat: no-repeat !important;
+  transform: scale(1.012) !important;
+  filter: saturate(1.04) contrast(1.02) brightness(.72) !important;
+}
+
+.lumo-movie-detail-hero__veil {
+  z-index: -2 !important;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.62) 0%, rgba(0,0,0,.08) 18%, rgba(1,3,8,.12) 47%, rgba(2,5,12,.82) 83%, #03050a 100%),
+    linear-gradient(90deg, rgba(1,3,8,.34), transparent 28%, transparent 72%, rgba(1,3,8,.28)) !important;
+}
+
+.lumo-movie-detail-hero__content {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(920px, 88vw) !important;
+  min-height: 72vh !important;
+  margin: 0 auto !important;
+  padding: clamp(96px, 14vh, 150px) 0 40px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 18px !important;
+  text-align: center !important;
+}
+
+.lumo-movie-detail-hero__logo {
+  display: block !important;
+  width: min(590px, 56vw) !important;
+  max-height: clamp(130px, 22vh, 260px) !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  filter: drop-shadow(0 14px 42px rgba(0,0,0,.56)) !important;
+}
+
+.lumo-movie-detail-hero__title {
+  margin: 0 !important;
+  max-width: 900px !important;
+  color: #fff !important;
+  font-size: clamp(2.65rem, 6vw, 6.5rem) !important;
+  line-height: .94 !important;
+  font-weight: 860 !important;
+  letter-spacing: -.055em !important;
+  text-wrap: balance !important;
+  text-shadow: 0 12px 40px rgba(0,0,0,.62) !important;
+}
+
+.lumo-movie-detail-hero__content .lumo-detail-meta {
+  justify-content: center !important;
+}
+
+.lumo-movie-detail-hero__overview-wrap {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(var(--lumo-detail-max), calc(100% - 2 * var(--nf-page-x))) !important;
+  margin: 0 auto !important;
+  padding: 0 0 clamp(40px, 6vh, 78px) !important;
+}
+
+/* Series — poster + logo/info + lazy accordion seasons --------------------- */
+.lumo-detail-page--series {
+  min-height: 100vh !important;
+  background: #03050a !important;
+}
+
+.lumo-series-detail__backdrop,
+.lumo-series-detail__veil {
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+.lumo-series-detail__backdrop {
+  z-index: -3 !important;
+  background-size: cover !important;
+  background-position: center 22% !important;
+  background-repeat: no-repeat !important;
+  filter: blur(18px) brightness(.28) saturate(.86) !important;
+  transform: scale(1.055) !important;
+}
+
+.lumo-series-detail__veil {
+  z-index: -2 !important;
+  background:
+    radial-gradient(circle at 54% 32%, rgba(124,92,255,.13), transparent 34%),
+    linear-gradient(180deg, rgba(2,4,9,.28), rgba(2,4,9,.88) 74%, #03050a 100%) !important;
+}
+
+.lumo-series-detail__shell {
+  position: relative !important;
+  z-index: 2 !important;
+  display: grid !important;
+  grid-template-columns: minmax(230px, 340px) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: clamp(34px, 5vw, 82px) !important;
+  width: min(var(--lumo-detail-max), calc(100% - 2 * var(--nf-page-x))) !important;
+  min-height: min(78vh, 780px) !important;
+  margin: 0 auto !important;
+  padding: clamp(92px, 12vh, 132px) 0 clamp(42px, 7vh, 78px) !important;
+}
+
+.lumo-series-detail__poster {
+  width: 100% !important;
+  aspect-ratio: 2 / 3 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: clamp(14px, 1.4vw, 22px) !important;
+  background: rgba(255,255,255,.04) !important;
+  box-shadow: 0 28px 80px rgba(0,0,0,.52) !important;
+}
+
+.lumo-series-detail__poster img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.lumo-series-detail__info {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 17px !important;
+}
+
+.lumo-series-detail__logo {
+  display: block !important;
+  width: min(560px, 52vw) !important;
+  max-height: 180px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  filter: drop-shadow(0 12px 36px rgba(0,0,0,.52)) !important;
+}
+
+.lumo-series-detail__title {
+  margin: 0 !important;
+  max-width: 900px !important;
+  color: #fff !important;
+  font-size: clamp(2.55rem, 5.5vw, 6rem) !important;
+  line-height: .95 !important;
+  font-weight: 860 !important;
+  letter-spacing: -.055em !important;
+  text-wrap: balance !important;
+}
+
+.lumo-series-seasons {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(var(--lumo-detail-max), calc(100% - 2 * var(--nf-page-x))) !important;
+  margin: 0 auto !important;
+  padding: 0 0 90px !important;
+}
+
+.lumo-series-seasons > h2 {
+  margin: 0 0 16px !important;
+  color: #fff !important;
+  font-size: clamp(1.45rem, 1.8vw, 2rem) !important;
+  line-height: 1 !important;
+  font-weight: 820 !important;
+  letter-spacing: -.035em !important;
+}
+
+.lumo-series-seasons__list {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.lumo-series-seasons__loading,
+.lumo-season-panel__empty {
+  margin: 0 !important;
+  padding: 18px !important;
+  color: rgba(247,248,255,.62) !important;
+}
+
+.lumo-season-panel {
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  border-radius: 16px !important;
+  background: rgba(10,13,21,.72) !important;
+  box-shadow: 0 18px 54px rgba(0,0,0,.22) !important;
+  backdrop-filter: blur(18px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(120%) !important;
+  content-visibility: auto !important;
+  contain-intrinsic-size: auto 132px !important;
+}
+
+.lumo-season-panel__toggle {
+  all: unset !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: 72px minmax(0, 1fr) 38px !important;
+  align-items: center !important;
+  gap: 15px !important;
+  width: 100% !important;
+  min-height: 108px !important;
+  padding: 10px 14px !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  transition: background 160ms ease !important;
+}
+
+.lumo-season-panel__toggle:hover,
+.lumo-season-panel__toggle:focus-visible,
+.lumo-season-panel.is-open .lumo-season-panel__toggle {
+  background: rgba(255,255,255,.055) !important;
+}
+
+.lumo-season-panel__poster {
+  display: block !important;
+  width: 62px !important;
+  aspect-ratio: 2 / 3 !important;
+  overflow: hidden !important;
+  border-radius: 9px !important;
+  background: rgba(255,255,255,.05) !important;
+}
+
+.lumo-season-panel__poster img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.lumo-season-panel__copy {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.lumo-season-panel__copy strong {
+  overflow: hidden !important;
+  color: #fff !important;
+  font-size: 1.04rem !important;
+  line-height: 1.18 !important;
+  font-weight: 780 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.lumo-season-panel__status {
+  color: rgba(247,248,255,.58) !important;
+  font-size: .82rem !important;
+}
+
+.lumo-season-panel__arrow {
+  display: grid !important;
+  place-items: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  color: rgba(255,255,255,.82) !important;
+  background: rgba(255,255,255,.06) !important;
+  transition: transform 180ms ease, background 180ms ease !important;
+}
+
+.lumo-season-panel__arrow svg {
+  width: 18px !important;
+  height: 18px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.lumo-season-panel.is-open .lumo-season-panel__arrow {
+  transform: rotate(180deg) !important;
+  background: rgba(124,92,255,.22) !important;
+}
+
+.lumo-season-panel__body {
+  display: grid !important;
+  gap: 8px !important;
+  padding: 0 12px 12px !important;
+}
+
+.lumo-season-panel__body[hidden] {
+  display: none !important;
+}
+
+.lumo-episode-card {
+  all: unset !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: clamp(180px, 22vw, 310px) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 18px !important;
+  width: 100% !important;
+  padding: 8px !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  transition: background 160ms ease !important;
+}
+
+.lumo-episode-card:hover,
+.lumo-episode-card:focus-visible {
+  background: rgba(255,255,255,.055) !important;
+}
+
+.lumo-episode-card__art {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  aspect-ratio: 16 / 9 !important;
+  overflow: hidden !important;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.04) !important;
+}
+
+.lumo-episode-card__art img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  transition: transform 240ms cubic-bezier(.2,.8,.2,1), filter 240ms ease !important;
+}
+
+.lumo-episode-card:hover .lumo-episode-card__art img,
+.lumo-episode-card:focus-visible .lumo-episode-card__art img {
+  transform: scale(1.035) !important;
+  filter: brightness(1.06) !important;
+}
+
+.lumo-episode-card__play {
+  position: absolute !important;
+  inset: 50% auto auto 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  color: #0b0d12 !important;
+  background: rgba(255,255,255,.90) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.32) !important;
+  transform: translate(-50%,-50%) !important;
+  opacity: .92 !important;
+}
+
+.lumo-episode-card__play svg {
+  width: 19px !important;
+  height: 19px !important;
+  fill: currentColor !important;
+}
+
+.lumo-episode-card__text {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.lumo-episode-card__text strong {
+  color: #fff !important;
+  font-size: .98rem !important;
+  line-height: 1.2 !important;
+  font-weight: 760 !important;
+}
+
+.lumo-episode-card__meta {
+  color: rgba(247,248,255,.62) !important;
+  font-size: .82rem !important;
+}
+
+.lumo-episode-card__overview {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  color: rgba(247,248,255,.68) !important;
+  font-size: .86rem !important;
+  line-height: 1.38 !important;
+  -webkit-line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive safeguards.
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .lumo-series-detail__shell {
+    grid-template-columns: minmax(150px, 230px) minmax(0, 1fr) !important;
+    gap: 28px !important;
+  }
+  .lumo-series-detail__logo { width: min(430px, 58vw) !important; }
+}
+
+@media (max-width: 700px) {
+  :root { --lumo-detail-header-safe: 48px; }
+
+  .lumo-movie-detail-hero__content {
+    width: calc(100% - 34px) !important;
+    min-height: 68vh !important;
+    padding-top: 86px !important;
+  }
+  .lumo-movie-detail-hero__logo { width: min(430px, 82vw) !important; }
+  .lumo-movie-detail-hero__overview-wrap { width: calc(100% - 34px) !important; }
+
+  .lumo-series-detail__shell {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+    width: calc(100% - 34px) !important;
+    padding-top: 82px !important;
+  }
+  .lumo-series-detail__poster {
+    width: min(230px, 62vw) !important;
+    margin: 0 auto !important;
+  }
+  .lumo-series-detail__info { align-items: center !important; text-align: center !important; }
+  .lumo-series-detail__logo { width: min(430px, 82vw) !important; object-position: center !important; }
+  .lumo-series-detail__info .lumo-detail-meta { justify-content: center !important; }
+  .lumo-series-detail__info .lumo-detail-actions { justify-content: center !important; }
+  .lumo-series-seasons { width: calc(100% - 34px) !important; }
+  .lumo-episode-card { grid-template-columns: 1fr !important; gap: 10px !important; }
+}
+
+@media (max-width: 460px) {
+  .noctafin-hero__button { min-width: 0 !important; padding: 0 14px !important; }
+  .lumo-detail-action { min-width: 0 !important; padding: 0 15px !important; }
+  .lumo-season-panel__toggle { grid-template-columns: 58px minmax(0, 1fr) 34px !important; gap: 10px !important; }
+  .lumo-season-panel__poster { width: 52px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lumo-detail-loading span,
+  .lumo-episode-card__art img,
+  .lumo-season-panel__arrow,
+  .noctafin-hero__button,
+  .lumo-detail-action {
+    animation: none !important;
+    transition: none !important;
+  }
+}

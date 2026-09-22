@@ -5,7 +5,7 @@
 Vérifie que **CSS personnalisé Jellyfin est vide**. Ne mélange pas l'installation complète locale et un ancien `@import` jsDelivr.
 
 ```bash
-grep -n "1.10.0" /usr/share/jellyfin/web/index.html
+grep -n "1.11.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ```
@@ -34,7 +34,7 @@ Vérifie d'abord que l'URL contient bien `studioId=` ou `genreId=` puis ouvre la
 Vérifie la version réellement chargée :
 
 ```bash
-grep -n "noctafin-home.js?v=1.10.0" /usr/share/jellyfin/web/index.html
+grep -n "noctafin-home.js?v=1.11.0" /usr/share/jellyfin/web/index.html
 ```
 
 Après une mise à jour du paquet Jellyfin, relance toujours `install/install.sh`, car `index.html` peut être remplacé.

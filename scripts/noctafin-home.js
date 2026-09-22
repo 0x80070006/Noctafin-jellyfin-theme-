@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.10.0";
+  const VERSION = "1.11.0";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -32,6 +32,11 @@
       overlayOpacity: 0.50
     },
     taxonomyHero: { enabled: true, maxItems: 18 },
+    details: {
+      enabled: true,
+      autoExpandFirstSeason: true,
+      episodePageSize: 60
+    },
     rows: {
       rowLimit: 12,
       dailyPoolLimit: 96,
@@ -60,6 +65,7 @@
     hero: { ...DEFAULTS.hero, ...(source.hero || {}) },
     background: { ...DEFAULTS.background, ...(source.background || {}) },
     taxonomyHero: { ...DEFAULTS.taxonomyHero, ...(source.taxonomyHero || {}) },
+    details: { ...DEFAULTS.details, ...(source.details || {}) },
     rows: { ...DEFAULTS.rows, ...(source.rows || {}) },
     genres: Array.isArray(source.genres) ? source.genres : [],
     studios: Array.isArray(source.studios) ? source.studios : [],
@@ -84,7 +90,10 @@
     "BackdropImageTags",
     "ParentBackdropImageTags",
     "ParentBackdropItemId",
-    "SeriesPrimaryImageTag"
+    "SeriesPrimaryImageTag",
+    "ChildCount",
+    "MediaSources",
+    "Taglines"
   ].join(",");
 
   let auth = null;
@@ -104,6 +113,14 @@
   let taxonomyRetryCount = 0;
   const taxonomyHeroItemCache = new Map();
   const taxonomyContextCache = new Map();
+  const detailItemCache = new Map();
+  const seasonCache = new Map();
+  const episodeCache = new Map();
+  let detailPageKey = "";
+  let detailRequest = 0;
+  let detailRetryTimer = null;
+  let detailRetryCount = 0;
+  let detailFallbackUntil = 0;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -692,9 +709,22 @@
 
     const id = detailsId(item);
     info.onclick = () => navigate(`/details?id=${encodeURIComponent(id)}`);
-    play.onclick = () => {
-      if (item.Type === "Series") navigate(`/details?id=${encodeURIComponent(item.Id)}`);
-      else navigate(`/video?id=${encodeURIComponent(item.Id)}`);
+    play.onclick = async (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      if (!item?.Id) return;
+      play.disabled = true;
+      try {
+        if (item.Type === "Series") {
+          const episode = await firstPlayableEpisode(item.Id).catch(() => null);
+          if (episode?.Id) navigate(`/video?id=${encodeURIComponent(episode.Id)}`);
+          else navigate(`/details?id=${encodeURIComponent(item.Id)}`);
+        } else {
+          navigate(`/video?id=${encodeURIComponent(item.Id)}`);
+        }
+      } finally {
+        play.disabled = false;
+      }
     };
 
     const dots = $(".noctafin-hero__dots", hero);
@@ -1048,6 +1078,27 @@
     const genreId = routeParamId(params, ["genreId", "GenreId", "genreIds", "GenreIds"]);
     const studioId = routeParamId(params, ["studioId", "StudioId", "studioIds", "StudioIds"]);
     return Boolean(genreId || studioId);
+  }
+
+  function currentRoutePath() {
+    const hash = String(window.location.hash || "");
+    if (hash) {
+      const raw = hash.replace(/^#/, "").split("?")[0] || "/";
+      return raw.startsWith("/") ? raw.toLowerCase() : `/${raw.toLowerCase()}`;
+    }
+    return String(window.location.pathname || "").toLowerCase();
+  }
+
+  function detailRouteId() {
+    if (!CONFIG.details.enabled) return "";
+    const path = currentRoutePath();
+    if (!/(^|\/)details(?:\.html)?$/.test(path)) return "";
+    const params = getRouteParams();
+    return routeParamId(params, ["id", "Id", "itemId", "ItemId"]);
+  }
+
+  function isDetailRoute() {
+    return Boolean(detailRouteId());
   }
 
   function taxonomyPalette(label) {
@@ -1490,6 +1541,568 @@
     syncBackgroundMedia();
   }
 
+  function detailBackdrop(item, width = 2400) {
+    if (!item) return "";
+    if (item.BackdropImageTags?.length) return imageUrl(item.Id, "Backdrop", 0, width);
+    if (item.ParentBackdropImageTags?.length && (item.ParentBackdropItemId || item.SeriesId)) {
+      return imageUrl(item.ParentBackdropItemId || item.SeriesId, "Backdrop", 0, width);
+    }
+    const owner = item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id;
+    return imageUrl(owner, "Primary", null, Math.min(width, 1500));
+  }
+
+  function detailLogoUrl(item) {
+    if (!item) return "";
+    const owner = item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id;
+    return imageUrl(owner, "Logo", null, 1100);
+  }
+
+  function detailPosterUrl(item, width = 640) {
+    if (!item) return "";
+    const owner = item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id;
+    return imageUrl(owner, "Primary", null, width);
+  }
+
+  function setNativeDetailInert(active) {
+    const selectors = ["#reactRoot main", ".mainAnimatedPages"];
+    selectors.forEach((selector) => {
+      $$(selector).forEach((node) => {
+        if (!node?.isConnected || node.id === "lumo-detail-page" || node.contains?.($("#lumo-detail-page"))) return;
+        if (active) {
+          if (!node.hasAttribute("inert") && !node.hasAttribute("data-lumo-detail-inert")) {
+            node.setAttribute("data-lumo-detail-inert", "true");
+            node.setAttribute("inert", "");
+          }
+        } else if (node.hasAttribute("data-lumo-detail-inert")) {
+          node.removeAttribute("data-lumo-detail-inert");
+          node.removeAttribute("inert");
+        }
+      });
+    });
+  }
+
+  function clearDetailPage() {
+    if (!detailPageKey && !$("#lumo-detail-page") && !document.body?.classList.contains("lumo-detail-active")) return;
+    detailPageKey = "";
+    detailRequest += 1;
+    if (detailRetryTimer) clearTimeout(detailRetryTimer);
+    detailRetryTimer = null;
+    detailRetryCount = 0;
+    $("#lumo-detail-page")?.remove();
+    document.body?.classList.remove("lumo-detail-active");
+    delete document.documentElement.dataset.lumoDetailType;
+    setNativeDetailInert(false);
+  }
+
+  function scheduleDetailRetry() {
+    if (detailRetryTimer || !isDetailRoute()) return;
+    detailRetryCount += 1;
+    if (detailRetryCount >= 4) {
+      detailFallbackUntil = Date.now() + 20_000;
+      detailPageKey = "";
+      $("#lumo-detail-page")?.remove();
+      document.body?.classList.remove("lumo-detail-active");
+      delete document.documentElement.dataset.lumoDetailType;
+      setNativeDetailInert(false);
+      return;
+    }
+    const delay = Math.min(1800, 180 * (2 ** Math.max(0, detailRetryCount - 1)));
+    detailRetryTimer = setTimeout(() => {
+      detailRetryTimer = null;
+      scheduleMount();
+    }, delay);
+  }
+
+  async function fetchDetailItem(itemId) {
+    const id = String(itemId || "").trim();
+    if (!id) return null;
+    const cached = detailItemCache.get(id);
+    if (cached && Date.now() - cached.ts < 5 * 60_000) return cached.item;
+    const params = new URLSearchParams({ Fields: FIELDS });
+    const item = await fetchJson(`/Users/${auth.userId}/Items/${encodeURIComponent(id)}?${params}`);
+    if (item?.Id) detailItemCache.set(id, { ts: Date.now(), item });
+    return item || null;
+  }
+
+  async function fetchSeriesSeasons(seriesId) {
+    const id = String(seriesId || "").trim();
+    if (!id) return [];
+    const cached = seasonCache.get(id);
+    if (cached && Date.now() - cached.ts < 10 * 60_000) return cached.items;
+    const params = new URLSearchParams({
+      UserId: auth.userId,
+      Fields: FIELDS,
+      EnableImages: "true",
+      EnableTotalRecordCount: "false"
+    });
+    const data = await fetchJson(`/Shows/${encodeURIComponent(id)}/Seasons?${params}`);
+    const items = Array.isArray(data.Items) ? data.Items.slice() : [];
+    items.sort((a, b) => (Number(a.IndexNumber) || 0) - (Number(b.IndexNumber) || 0));
+    seasonCache.set(id, { ts: Date.now(), items });
+    return items;
+  }
+
+  async function fetchSeasonEpisodes(seriesId, seasonId) {
+    const key = `${seriesId}:${seasonId}`;
+    const cached = episodeCache.get(key);
+    if (cached && Date.now() - cached.ts < 10 * 60_000) return cached.items;
+
+    const pageSize = Math.max(20, Math.min(200, Number(CONFIG.details.episodePageSize) || 60));
+    const items = [];
+    const seenIds = new Set();
+    let startIndex = 0;
+    let total = Infinity;
+    let guard = 0;
+
+    while (startIndex < total && guard < 20) {
+      const params = new URLSearchParams({
+        UserId: auth.userId,
+        SeasonId: seasonId,
+        Fields: FIELDS,
+        EnableImages: "true",
+        EnableTotalRecordCount: "true",
+        StartIndex: String(startIndex),
+        Limit: String(pageSize)
+      });
+      const data = await fetchJson(`/Shows/${encodeURIComponent(seriesId)}/Episodes?${params}`);
+      const batch = Array.isArray(data.Items) ? data.Items : [];
+      let newCount = 0;
+      batch.forEach((episode) => {
+        const id = String(episode?.Id || "");
+        if (!id || seenIds.has(id)) return;
+        seenIds.add(id);
+        items.push(episode);
+        newCount += 1;
+      });
+      total = Number.isFinite(Number(data.TotalRecordCount)) ? Number(data.TotalRecordCount) : items.length;
+      if (!batch.length || batch.length < pageSize || newCount === 0) break;
+      startIndex += batch.length;
+      guard += 1;
+    }
+
+    const unique = uniqueItems(items);
+    unique.sort((a, b) => (Number(a.IndexNumber) || 0) - (Number(b.IndexNumber) || 0));
+    episodeCache.set(key, { ts: Date.now(), items: unique });
+    return unique;
+  }
+
+  async function firstPlayableEpisode(seriesId) {
+    const nextParams = new URLSearchParams({
+      UserId: auth.userId,
+      SeriesId: seriesId,
+      Limit: "1",
+      Fields: FIELDS,
+      EnableTotalRecordCount: "false"
+    });
+    try {
+      const next = await fetchJson(`/Shows/NextUp?${nextParams}`);
+      if (next?.Items?.[0]?.Id) return next.Items[0];
+    } catch (error) {
+      console.debug(LOG, "NextUp indisponible pour la série", error);
+    }
+    const seasons = await fetchSeriesSeasons(seriesId).catch(() => []);
+    for (const season of seasons) {
+      const episodes = await fetchSeasonEpisodes(seriesId, season.Id).catch(() => []);
+      if (episodes[0]?.Id) return episodes[0];
+    }
+    return null;
+  }
+
+  function detailMetaValues(item) {
+    const values = [];
+    if (item?.ProductionYear) values.push(String(item.ProductionYear));
+    const runtime = formatRuntime(item?.RunTimeTicks);
+    if (runtime) values.push(runtime);
+    if (item?.OfficialRating) values.push(item.OfficialRating);
+    if (Number(item?.CommunityRating) > 0) values.push(`★ ${Number(item.CommunityRating).toFixed(1)}`);
+    return values;
+  }
+
+  function appendDetailMeta(container, item) {
+    detailMetaValues(item).forEach((value) => {
+      const span = document.createElement("span");
+      span.className = "lumo-detail-meta__item";
+      span.textContent = value;
+      container.appendChild(span);
+    });
+  }
+
+  function makeDetailAction(label, kind, onClick, primary = false) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `lumo-detail-action${primary ? " lumo-detail-action--primary" : ""}`;
+    button.dataset.kind = kind;
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    if (kind === "play") path.setAttribute("d", "M8 5.6v12.8L18.7 12 8 5.6Z");
+    else if (kind === "back") path.setAttribute("d", "M14.5 5.5 8 12l6.5 6.5");
+    else path.setAttribute("d", "M12 6v12M6 12h12");
+    icon.appendChild(path);
+    const text = document.createElement("span");
+    text.textContent = label;
+    button.append(icon, text);
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function setDetailLogoOrTitle(logo, title, item) {
+    const src = detailLogoUrl(item);
+    title.textContent = item?.Type === "Episode" ? (item.SeriesName || item.Name || "") : (item?.Name || "");
+    if (!src) {
+      logo.hidden = true;
+      title.hidden = false;
+      return;
+    }
+    logo.hidden = false;
+    title.hidden = false;
+    logo.onload = () => {
+      logo.hidden = false;
+      title.hidden = true;
+    };
+    logo.onerror = () => {
+      logo.hidden = true;
+      title.hidden = false;
+    };
+    logo.src = src;
+  }
+
+  function createDetailRoot(item) {
+    const root = document.createElement("section");
+    root.id = "lumo-detail-page";
+    root.dataset.itemId = item.Id;
+    root.dataset.itemType = item.Type || "Unknown";
+    root.dataset.detailState = "ready";
+    root.setAttribute("aria-label", item.Name || "Détails");
+    return root;
+  }
+
+  function buildMovieDetailPage(item) {
+    const root = createDetailRoot(item);
+    root.className = "lumo-detail-page lumo-detail-page--movie";
+    const hero = document.createElement("div");
+    hero.className = "lumo-movie-detail-hero";
+    const backdrop = document.createElement("div");
+    backdrop.className = "lumo-movie-detail-hero__backdrop";
+    const backdropUrl = detailBackdrop(item);
+    if (backdropUrl) backdrop.style.backgroundImage = `url("${backdropUrl.replace(/"/g, "%22")}")`;
+    const veil = document.createElement("div");
+    veil.className = "lumo-movie-detail-hero__veil";
+    const content = document.createElement("div");
+    content.className = "lumo-movie-detail-hero__content";
+    const logo = document.createElement("img");
+    logo.className = "lumo-movie-detail-hero__logo";
+    logo.alt = "";
+    logo.decoding = "async";
+    logo.draggable = false;
+    const title = document.createElement("h1");
+    title.className = "lumo-movie-detail-hero__title";
+    setDetailLogoOrTitle(logo, title, item);
+    const meta = document.createElement("div");
+    meta.className = "lumo-detail-meta";
+    appendDetailMeta(meta, item);
+    const actions = document.createElement("div");
+    actions.className = "lumo-detail-actions";
+    actions.appendChild(makeDetailAction("Lecture", "play", () => navigate(`/video?id=${encodeURIComponent(item.Id)}`), true));
+    const overviewWrap = document.createElement("div");
+    overviewWrap.className = "lumo-movie-detail-hero__overview-wrap";
+    if (Array.isArray(item.Taglines) && item.Taglines[0]) {
+      const tagline = document.createElement("p");
+      tagline.className = "lumo-detail-tagline";
+      tagline.textContent = item.Taglines[0];
+      overviewWrap.appendChild(tagline);
+    }
+    if (item.Overview) {
+      const overview = document.createElement("p");
+      overview.className = "lumo-detail-overview";
+      overview.textContent = item.Overview;
+      overviewWrap.appendChild(overview);
+    }
+    const genres = document.createElement("div");
+    genres.className = "lumo-detail-genres";
+    (item.Genres || []).slice(0, 5).forEach((name) => {
+      const chip = document.createElement("span");
+      chip.textContent = name;
+      genres.appendChild(chip);
+    });
+    content.append(logo, title, meta, actions);
+    overviewWrap.appendChild(genres);
+    hero.append(backdrop, veil, content, overviewWrap);
+    root.appendChild(hero);
+    return root;
+  }
+
+  function episodeThumbCandidates(episode, series) {
+    const candidates = [];
+    if (episode?.Id) candidates.push(imageUrl(episode.Id, "Thumb", null, 760));
+    if (episode?.Id) candidates.push(imageUrl(episode.Id, "Primary", null, 760));
+    if (series?.Id) candidates.push(imageUrl(series.Id, "Backdrop", 0, 760));
+    return uniqueUrls(candidates);
+  }
+
+  function makeEpisodeCard(episode, series) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "lumo-episode-card";
+    card.setAttribute("aria-label", `Lire ${episode.Name || "l'épisode"}`);
+    const art = document.createElement("span");
+    art.className = "lumo-episode-card__art";
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.alt = "";
+    img.draggable = false;
+    applyImageCandidates(img, episodeThumbCandidates(episode, series));
+    const play = document.createElement("span");
+    play.className = "lumo-episode-card__play";
+    play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8L18.7 12 8 5.6Z"/></svg>';
+    art.append(img, play);
+    const text = document.createElement("span");
+    text.className = "lumo-episode-card__text";
+    const heading = document.createElement("strong");
+    const index = Number(episode.IndexNumber);
+    heading.textContent = `${Number.isFinite(index) ? `${index}. ` : ""}${episode.Name || "Épisode"}`;
+    const meta = document.createElement("span");
+    meta.className = "lumo-episode-card__meta";
+    const bits = [];
+    const runtime = formatRuntime(episode.RunTimeTicks);
+    if (runtime) bits.push(runtime);
+    if (Number(episode.CommunityRating) > 0) bits.push(`★ ${Number(episode.CommunityRating).toFixed(1)}`);
+    meta.textContent = bits.join("   ");
+    const overview = document.createElement("span");
+    overview.className = "lumo-episode-card__overview";
+    overview.textContent = episode.Overview || "";
+    text.append(heading, meta, overview);
+    card.append(art, text);
+    card.addEventListener("click", () => navigate(`/video?id=${encodeURIComponent(episode.Id)}`));
+    return card;
+  }
+
+  async function hydrateSeasonPanel(panel, series, season) {
+    if (!panel?.isConnected || panel.dataset.loaded === "true") return;
+    panel.dataset.loaded = "true";
+    const body = $(".lumo-season-panel__body", panel);
+    const status = $(".lumo-season-panel__status", panel);
+    try {
+      const episodes = await fetchSeasonEpisodes(series.Id, season.Id);
+      if (!panel.isConnected) return;
+      body.replaceChildren(...episodes.map((episode) => makeEpisodeCard(episode, series)));
+      if (!episodes.length) {
+        const empty = document.createElement("p");
+        empty.className = "lumo-season-panel__empty";
+        empty.textContent = "Aucun épisode disponible.";
+        body.appendChild(empty);
+      }
+      if (status) status.textContent = `${episodes.length} épisode${episodes.length > 1 ? "s" : ""}`;
+    } catch (error) {
+      console.warn(LOG, "Épisodes indisponibles", season.Name, error);
+      const errorNode = document.createElement("p");
+      errorNode.className = "lumo-season-panel__empty";
+      errorNode.textContent = "Impossible de charger les épisodes pour le moment.";
+      body.replaceChildren(errorNode);
+      panel.dataset.loaded = "false";
+    }
+  }
+
+  function makeSeasonPanel(series, season, open = false) {
+    const panel = document.createElement("section");
+    panel.className = "lumo-season-panel";
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "lumo-season-panel__toggle";
+    header.setAttribute("aria-expanded", open ? "true" : "false");
+    const poster = document.createElement("span");
+    poster.className = "lumo-season-panel__poster";
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.alt = season.Name || "Saison";
+    img.draggable = false;
+    applyImageCandidates(img, uniqueUrls([
+      imageUrl(season.Id, "Primary", null, 320),
+      detailPosterUrl(series, 320)
+    ]));
+    poster.appendChild(img);
+    const copy = document.createElement("span");
+    copy.className = "lumo-season-panel__copy";
+    const name = document.createElement("strong");
+    name.textContent = season.Name || (Number.isFinite(Number(season.IndexNumber)) ? `Saison ${season.IndexNumber}` : "Saison");
+    const status = document.createElement("span");
+    status.className = "lumo-season-panel__status";
+    status.textContent = Number(season.ChildCount) > 0 ? `${season.ChildCount} épisode${Number(season.ChildCount) > 1 ? "s" : ""}` : "Voir les épisodes";
+    copy.append(name, status);
+    const arrow = document.createElement("span");
+    arrow.className = "lumo-season-panel__arrow";
+    arrow.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"/></svg>';
+    header.append(poster, copy, arrow);
+    const body = document.createElement("div");
+    body.className = "lumo-season-panel__body";
+    body.hidden = !open;
+    panel.append(header, body);
+    const setOpen = async (nextOpen) => {
+      header.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+      body.hidden = !nextOpen;
+      panel.classList.toggle("is-open", nextOpen);
+      if (nextOpen) await hydrateSeasonPanel(panel, series, season);
+    };
+    header.addEventListener("click", () => setOpen(header.getAttribute("aria-expanded") !== "true"));
+    if (open) requestAnimationFrame(() => setOpen(true));
+    return panel;
+  }
+
+  async function buildSeriesDetailPage(item) {
+    const root = createDetailRoot(item);
+    root.className = "lumo-detail-page lumo-detail-page--series";
+    const backdrop = document.createElement("div");
+    backdrop.className = "lumo-series-detail__backdrop";
+    const backdropUrl = detailBackdrop(item);
+    if (backdropUrl) backdrop.style.backgroundImage = `url("${backdropUrl.replace(/"/g, "%22")}")`;
+    const veil = document.createElement("div");
+    veil.className = "lumo-series-detail__veil";
+    const shell = document.createElement("div");
+    shell.className = "lumo-series-detail__shell";
+    const poster = document.createElement("div");
+    poster.className = "lumo-series-detail__poster";
+    const posterImg = document.createElement("img");
+    posterImg.alt = item.Name || "Série";
+    posterImg.decoding = "async";
+    posterImg.draggable = false;
+    applyImageCandidates(posterImg, [detailPosterUrl(item, 700)]);
+    poster.appendChild(posterImg);
+    const info = document.createElement("div");
+    info.className = "lumo-series-detail__info";
+    const logo = document.createElement("img");
+    logo.className = "lumo-series-detail__logo";
+    logo.alt = "";
+    logo.decoding = "async";
+    logo.draggable = false;
+    const title = document.createElement("h1");
+    title.className = "lumo-series-detail__title";
+    setDetailLogoOrTitle(logo, title, item);
+    const meta = document.createElement("div");
+    meta.className = "lumo-detail-meta";
+    appendDetailMeta(meta, item);
+    const actions = document.createElement("div");
+    actions.className = "lumo-detail-actions";
+    const play = makeDetailAction("Lecture", "play", async () => {
+      play.disabled = true;
+      try {
+        const episode = await firstPlayableEpisode(item.Id);
+        if (episode?.Id) navigate(`/video?id=${encodeURIComponent(episode.Id)}`);
+      } finally {
+        play.disabled = false;
+      }
+    }, true);
+    actions.appendChild(play);
+    const overview = document.createElement("p");
+    overview.className = "lumo-detail-overview";
+    overview.textContent = item.Overview || "";
+    const genres = document.createElement("div");
+    genres.className = "lumo-detail-genres";
+    (item.Genres || []).slice(0, 5).forEach((name) => {
+      const chip = document.createElement("span");
+      chip.textContent = name;
+      genres.appendChild(chip);
+    });
+    info.append(logo, title, meta, actions, overview, genres);
+    shell.append(poster, info);
+    const seasonsWrap = document.createElement("section");
+    seasonsWrap.className = "lumo-series-seasons";
+    const seasonsHeading = document.createElement("h2");
+    seasonsHeading.textContent = "Saisons";
+    const seasonsList = document.createElement("div");
+    seasonsList.className = "lumo-series-seasons__list";
+    const loading = document.createElement("p");
+    loading.className = "lumo-series-seasons__loading";
+    loading.textContent = "Chargement des saisons…";
+    seasonsList.appendChild(loading);
+    seasonsWrap.append(seasonsHeading, seasonsList);
+    root.append(backdrop, veil, shell, seasonsWrap);
+
+    fetchSeriesSeasons(item.Id).then((seasons) => {
+      if (!root.isConnected) return;
+      if (!seasons.length) {
+        loading.textContent = "Aucune saison disponible.";
+        return;
+      }
+      seasonsList.replaceChildren(...seasons.map((season, index) => makeSeasonPanel(
+        item,
+        season,
+        Boolean(CONFIG.details.autoExpandFirstSeason && index === 0)
+      )));
+    }).catch((error) => {
+      console.warn(LOG, "Saisons indisponibles", error);
+      if (loading.isConnected) loading.textContent = "Impossible de charger les saisons pour le moment.";
+    });
+    return root;
+  }
+
+  function detailOverlayHost() {
+    return $("#reactRoot") || $("#root") || document.body;
+  }
+
+  async function syncDetailPage() {
+    const itemId = detailRouteId();
+    if (Date.now() < detailFallbackUntil) {
+      document.body?.classList.remove("lumo-detail-active");
+      setNativeDetailInert(false);
+      return;
+    }
+    if (!itemId || !auth?.token || !auth?.userId) {
+      if (!itemId) clearDetailPage();
+      return;
+    }
+
+    document.body?.classList.add("lumo-detail-active");
+    setNativeDetailInert(true);
+    const existing = $("#lumo-detail-page");
+    if (existing?.isConnected && detailPageKey === itemId && existing.dataset.itemId === itemId && existing.dataset.detailState !== "error") return;
+
+    const requestId = ++detailRequest;
+    detailPageKey = itemId;
+    existing?.remove();
+
+    const loading = document.createElement("section");
+    loading.id = "lumo-detail-page";
+    loading.className = "lumo-detail-page lumo-detail-page--loading";
+    loading.dataset.itemId = itemId;
+    loading.dataset.detailState = "loading";
+    loading.innerHTML = '<div class="lumo-detail-loading"><span></span><span></span><span></span></div>';
+    (detailOverlayHost() || document.body).appendChild(loading);
+
+    try {
+      const item = await fetchDetailItem(itemId);
+      if (requestId !== detailRequest || detailRouteId() !== itemId || !item?.Id) return;
+      if (!["Movie", "Series", "Episode"].includes(String(item.Type || ""))) {
+        detailPageKey = "";
+        loading.remove();
+        document.body?.classList.remove("lumo-detail-active");
+        setNativeDetailInert(false);
+        return;
+      }
+      const root = item.Type === "Series" ? await buildSeriesDetailPage(item) : buildMovieDetailPage(item);
+      if (requestId !== detailRequest || detailRouteId() !== itemId) return;
+      detailRetryCount = 0;
+      detailFallbackUntil = 0;
+      document.documentElement.dataset.lumoDetailType = String(item.Type || "unknown").toLowerCase();
+      const current = $("#lumo-detail-page");
+      if (current?.isConnected) current.replaceWith(root);
+      else (detailOverlayHost() || document.body).appendChild(root);
+      try { root.scrollTo({ top: 0, behavior: "instant" }); } catch { root.scrollTop = 0; }
+    } catch (error) {
+      console.warn(LOG, "Page détail Lumo indisponible", error);
+      if (requestId !== detailRequest || detailRouteId() !== itemId) return;
+      loading.dataset.detailState = "error";
+      loading.innerHTML = "";
+      const fallback = document.createElement("div");
+      fallback.className = "lumo-detail-error";
+      fallback.textContent = "Impossible de charger cette fiche pour le moment.";
+      loading.appendChild(fallback);
+      scheduleDetailRetry();
+    }
+  }
+
   function createBrandShelf(title, groups, prefix) {
     const section = document.createElement("section");
     section.className = "noctafin-shelf";
@@ -1886,9 +2499,21 @@
     auth = getAuth() || auth;
     syncLumoChrome();
 
-    /* Jellyfin keeps previous pages mounted in the DOM. Route parameters are
-       therefore authoritative: a studio/genre list must never be mistaken for
-       the still-mounted home page. */
+    /* Route parameters are authoritative because Jellyfin 12 keeps previous
+       pages mounted. Details are handled first so a stale home/list subtree can
+       never leak through or receive layout CSS while a film/series is open. */
+    if (isDetailRoute()) {
+      currentHome = null;
+      clearTaxonomyHero();
+      if (heroTimer) clearTimeout(heroTimer);
+      heroTimer = null;
+      await syncDetailPage();
+      syncBackgroundMedia();
+      return;
+    }
+
+    clearDetailPage();
+
     if (isTaxonomyRoute()) {
       currentHome = null;
       if (heroTimer) clearTimeout(heroTimer);

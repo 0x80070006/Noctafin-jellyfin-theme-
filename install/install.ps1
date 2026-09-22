@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.10.0"
+$Version = "1.11.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 

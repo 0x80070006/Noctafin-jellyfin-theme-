@@ -1,25 +1,17 @@
+/* Native fallback detail styling.
+ * Lumo v1.11 renders film/series details in its own isolated layer. These
+ * rules deliberately avoid changing native layout dimensions so a temporary
+ * JS/API failure can never create the oversized blank gap seen in v1.10.
+ */
 .detailPagePrimaryContainer,
 .detailPageContent {
   position: relative;
 }
 
-.detailPagePrimaryContainer {
-  padding-top: clamp(18vh, 25vw, 36vh) !important;
-}
-
 .detailPageWrapperContainer .backdropImage,
 .itemBackdrop,
 .backdropImage {
-  filter: saturate(1.08) contrast(1.02) brightness(.74) !important;
-}
-
-.detailPageWrapperContainer::after,
-.itemBackdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(0deg, var(--nf-bg) 3%, rgba(3,5,10,.78) 24%, transparent 62%);
+  filter: saturate(1.05) contrast(1.02) brightness(.72) !important;
 }
 
 .detailLogo {
