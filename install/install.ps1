@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.9.0"
+$Version = "1.10.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -35,8 +35,10 @@ Copy-Item (Join-Path $Root "scripts\noctafin-home.js") (Join-Path $Ui "noctafin-
 Copy-Item (Join-Path $Root "theme.css") (Join-Path $LumoDir "theme.css") -Force
 Get-ChildItem $LumoStyles -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Copy-Item (Join-Path $Root "styles\*.css") $LumoStyles -Force
-Copy-Item (Join-Path $Root "assets\seasonal\*.png") $SeasonDir -Force
-Copy-Item (Join-Path $Root "assets\background\lumo-japan-night-1080p.mp4") (Join-Path $BackgroundDir "lumo-japan-night-1080p.mp4") -Force
+Get-ChildItem $SeasonDir -Filter "*.png" -File -ErrorAction SilentlyContinue | Remove-Item -Force
+Copy-Item (Join-Path $Root "assets\seasonal\*.webp") $SeasonDir -Force
+Copy-Item (Join-Path $Root "assets\background\lumo-space.webp") (Join-Path $BackgroundDir "lumo-space.webp") -Force
+Remove-Item (Join-Path $BackgroundDir "lumo-japan-night-1080p.mp4") -Force -ErrorAction SilentlyContinue
 
 $Logos = @{
     "pixar.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pixar_logo.svg"
@@ -87,5 +89,5 @@ Write-Host "Lumo $Version installé dans $WebDir" -ForegroundColor Green
 Write-Host "CSS local: $(Join-Path $LumoDir 'theme.css')"
 Write-Host "Logos studios/réseaux: $LogoDir"
 Write-Host "Assets saisonniers: $SeasonDir"
-Write-Host "Fond vidéo Lumo: $(Join-Path $BackgroundDir 'lumo-japan-night-1080p.mp4')"
+Write-Host "Fond spatial Lumo: $(Join-Path $BackgroundDir 'lumo-space.webp')"
 Write-Host "IMPORTANT: retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin pour éviter les conflits/cache d'une ancienne version." -ForegroundColor Yellow

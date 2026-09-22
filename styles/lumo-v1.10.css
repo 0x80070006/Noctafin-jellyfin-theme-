@@ -1,0 +1,1649 @@
+/* ========================================================================== 
+   Lumo v1.10.0 — robust Jellyfin 12 home / branding compatibility layer
+   Loaded last. This file intentionally avoids generated Emotion class names.
+   ========================================================================== */
+
+:root {
+  --lumo-resume-card-w: clamp(220px, 18vw, 300px);
+  --lumo-resume-radius: 12px;
+  --lumo-poster-h: clamp(150px, 16.5vh, 205px);
+  --lumo-poster-w: calc(var(--lumo-poster-h) * .6666667);
+  --lumo-brand-card-w: clamp(190px, 16vw, 275px);
+  --lumo-brand-card-h: clamp(92px, 8.2vw, 126px);
+  --lumo-arrow-size: 30px;
+  --lumo-default-bg:
+    radial-gradient(circle at 13% 17%, rgba(124,92,255,.26) 0, rgba(124,92,255,.11) 18%, transparent 43%),
+    radial-gradient(circle at 83% 12%, rgba(37,215,255,.20) 0, rgba(37,215,255,.08) 20%, transparent 44%),
+    radial-gradient(circle at 75% 79%, rgba(255,79,163,.18) 0, rgba(255,79,163,.07) 18%, transparent 43%),
+    radial-gradient(circle at 22% 86%, rgba(66,103,255,.15) 0, transparent 39%),
+    linear-gradient(180deg, #03040a 0%, #020309 50%, #010207 100%);
+}
+
+/* --------------------------------------------------------------------------
+   Global Lumo background.
+   The JS creates one fixed layer so this also works in Jellyfin 12's dashboard,
+   where Dashboard > Branding custom CSS is not guaranteed to be loaded.
+   -------------------------------------------------------------------------- */
+html.lumo-ui,
+html.lumo-ui body {
+  background-color: #02030a !important;
+}
+
+#lumo-background-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  contain: strict !important;
+}
+
+#lumo-background-art,
+#lumo-background-shade {
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+#lumo-background-art {
+  inset: -30px !important;
+  background-color: #02030a !important;
+  background-image: var(--lumo-default-bg) !important;
+  background-repeat: no-repeat !important;
+  background-size: 82vmax 82vmax, 76vmax 76vmax, 84vmax 84vmax, 70vmax 70vmax, 100% 100% !important;
+  background-position: -28vmax -26vmax, 68vw -28vmax, 62vw 62vh, -20vmax 70vh, center !important;
+  transform: scale(1.02) !important;
+  animation: lumo-ambient-drift-v16 30s ease-in-out infinite alternate !important;
+  will-change: background-position, transform, filter;
+}
+
+#lumo-background-shade {
+  inset: 0 !important;
+  background: linear-gradient(180deg, rgba(1,2,7,.04), rgba(1,2,7,.13) 56%, rgba(1,2,7,.26)) !important;
+}
+
+html[data-lumo-season="halloween"] #lumo-background-art,
+html[data-lumo-season="christmas"] #lumo-background-art {
+  background-image: var(--lumo-season-background) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  filter: blur(var(--lumo-season-blur, 8px)) brightness(var(--lumo-season-brightness, .56)) saturate(.92) !important;
+  transform: scale(1.07) !important;
+  animation: lumo-season-drift-v16 32s ease-in-out infinite alternate !important;
+}
+
+html[data-lumo-season="halloween"] #lumo-background-shade,
+html[data-lumo-season="christmas"] #lumo-background-shade {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(0,0,0,.02), rgba(0,0,0,.18) 45%, transparent 70%),
+    linear-gradient(180deg, rgba(1,2,6,.18), rgba(1,2,6,.32) 58%, rgba(1,2,6,.50)) !important;
+}
+
+/* Keep app content above the fixed ambience while removing only major opaque
+   page canvases. Cards/dialogs/papers retain their own surfaces. */
+html.lumo-ui #reactRoot,
+html.lumo-ui #root,
+html.lumo-ui .mainAnimatedPages,
+html.lumo-ui .page,
+html.lumo-ui .backgroundContainer,
+html.lumo-ui main,
+html.lumo-ui main.MuiBox-root,
+html.lumo-ui #reactRoot > .MuiBox-root,
+html.lumo-ui #reactRoot > div,
+html.lumo-ui #reactRoot > div > .MuiBox-root,
+html.lumo-ui #reactRoot > div > div:first-child {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html.lumo-ui #reactRoot,
+html.lumo-ui #root,
+html.lumo-ui .mainAnimatedPages {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+@keyframes lumo-ambient-drift-v16 {
+  0%   { background-position: -28vmax -26vmax, 68vw -28vmax, 62vw 62vh, -20vmax 70vh, center; transform: scale(1.02); }
+  38%  { background-position: -16vmax -12vmax, 54vw -16vmax, 74vw 52vh, -8vmax 62vh, center; transform: scale(1.035); }
+  72%  { background-position: -22vmax 4vmax, 62vw -6vmax, 52vw 66vh, 4vmax 72vh, center; transform: scale(1.025); }
+  100% { background-position: -8vmax -18vmax, 48vw -22vmax, 70vw 44vh, -14vmax 56vh, center; transform: scale(1.04); }
+}
+
+@keyframes lumo-season-drift-v16 {
+  0%   { background-position: 48% 50%; transform: scale(1.07); }
+  50%  { background-position: 52% 48%; transform: scale(1.085); }
+  100% { background-position: 50% 53%; transform: scale(1.075); }
+}
+
+/* --------------------------------------------------------------------------
+   Branding — only dedicated header/drawer/login nodes are affected.
+   Never style .pageTitle or arbitrary settings headings as a logo.
+   -------------------------------------------------------------------------- */
+[data-lumo-native-brand-hidden="true"] {
+  display: none !important;
+}
+
+#lumo-header-brand,
+.lumo-header-brand,
+.lumo-brand-button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 88px !important;
+  max-width: 150px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  margin: 0 6px !important;
+  padding: 4px 10px 4px 4px !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transform: none !important;
+}
+
+#lumo-header-brand:hover,
+#lumo-header-brand:focus-visible,
+.lumo-header-brand:hover,
+.lumo-header-brand:focus-visible {
+  background: rgba(255,255,255,.07) !important;
+}
+
+.lumo-brand-logo,
+.lumo-native-brand-logo,
+.lumo-drawer-logo {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 31px !important;
+  min-width: 31px !important;
+  max-width: 31px !important;
+  height: 31px !important;
+  min-height: 31px !important;
+  max-height: 31px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+}
+
+.lumo-brand-name {
+  display: block !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #fff !important;
+  font-size: .96rem !important;
+  line-height: 1 !important;
+  font-weight: 780 !important;
+  letter-spacing: -.02em !important;
+}
+
+/* Dashboard branding is deliberately scoped. Never turn a page heading into
+   a logo: only Jellyfin's dedicated drawer/login wrappers are touched. */
+.adminDrawerLogo {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 48px !important;
+  background-image: none !important;
+}
+
+.adminDrawerLogo img.lumo-native-brand-logo,
+.adminDrawerLogo img.lumo-drawer-logo {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  object-fit: contain !important;
+  border-radius: 8px !important;
+}
+
+.loginLogo img.lumo-native-brand-logo,
+.splashLogo img.lumo-native-brand-logo {
+  width: auto !important;
+  height: auto !important;
+  max-width: 160px !important;
+  max-height: 64px !important;
+  object-fit: contain !important;
+  border-radius: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Home structure and non-selectable chrome.
+   -------------------------------------------------------------------------- */
+.noctafin-custom-sections,
+.noctafin-custom-sections *,
+.noctafin-hero,
+.noctafin-hero * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+.noctafin-custom-sections img,
+.noctafin-hero img {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+#homeTab .sections > [data-lumo-native-hidden="true"],
+#indexPage #homeTab .sections > [data-lumo-native-hidden="true"] {
+  display: none !important;
+}
+
+#noctafin-custom-sections {
+  position: relative !important;
+  z-index: 2 !important;
+  padding-top: .2rem !important;
+}
+
+.noctafin-shelf,
+.noctafin-media-row {
+  width: 100% !important;
+  margin: 0 0 2.15rem !important;
+  padding: 0 var(--nf-page-x) !important;
+  overflow: visible !important;
+}
+
+/* --------------------------------------------------------------------------
+   Headings + Abyss-style arrow pair. Controls live in the heading itself,
+   so they cannot drift into a vertical pill at the edge of the artwork.
+   -------------------------------------------------------------------------- */
+.noctafin-section-heading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  width: 100% !important;
+  min-height: 38px !important;
+  margin: 0 0 9px !important;
+}
+
+.noctafin-section-heading__text {
+  min-width: 0 !important;
+}
+
+.noctafin-section-kicker {
+  display: none !important;
+}
+
+.noctafin-section-title,
+.noctafin-section-title-button {
+  color: var(--nf-text) !important;
+  font-size: clamp(1.16rem, 1.35vw, 1.48rem) !important;
+  line-height: 1.15 !important;
+  font-weight: 780 !important;
+  letter-spacing: -.028em !important;
+}
+
+.noctafin-section-title-button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 2px 0 3px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transform: none !important;
+}
+
+.noctafin-section-title-button::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 100% !important;
+  bottom: -2px !important;
+  height: 2px !important;
+  border-radius: 99px !important;
+  background: linear-gradient(90deg, var(--nf-violet), var(--nf-cyan)) !important;
+  transition: right 180ms ease !important;
+}
+
+.noctafin-section-title-button:hover::after,
+.noctafin-section-title-button:focus-visible::after {
+  right: 0 !important;
+}
+
+.noctafin-section-title__arrow {
+  display: none !important;
+}
+
+.noctafin-section-nav {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 2px !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+}
+
+.noctafin-track-arrow {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  position: static !important;
+  inset: auto !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--lumo-arrow-size) !important;
+  min-width: var(--lumo-arrow-size) !important;
+  max-width: var(--lumo-arrow-size) !important;
+  height: var(--lumo-arrow-size) !important;
+  min-height: var(--lumo-arrow-size) !important;
+  max-height: var(--lumo-arrow-size) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  color: rgba(247,248,255,.88) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none !important;
+  opacity: .82 !important;
+  visibility: visible !important;
+  cursor: pointer !important;
+}
+
+.noctafin-track-arrow[hidden] {
+  display: none !important;
+}
+
+.noctafin-track-arrow:disabled {
+  opacity: .22 !important;
+  pointer-events: none !important;
+}
+
+.noctafin-track-arrow:hover:not(:disabled),
+.noctafin-track-arrow:focus-visible:not(:disabled) {
+  color: #fff !important;
+  background: rgba(255,255,255,.075) !important;
+  opacity: 1 !important;
+  transform: translateY(-1px) !important;
+}
+
+.noctafin-track-arrow svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.15 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  pointer-events: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Tracks — horizontal only. Never allow a nested vertical scrollbar.
+   -------------------------------------------------------------------------- */
+.noctafin-track-shell {
+  position: relative !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.noctafin-card-track,
+.noctafin-brand-track {
+  display: flex !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 2px 2px 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain !important;
+  overscroll-behavior-y: none !important;
+  scroll-snap-type: x proximity !important;
+  scroll-behavior: smooth !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.noctafin-card-track::-webkit-scrollbar,
+.noctafin-brand-track::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Continue Watching — horizontal 16:9 cards like Abyss/Jellyfin native rails.
+   The complete artwork and all labels fit in the same viewport row.
+   -------------------------------------------------------------------------- */
+#noctafin-resume {
+  margin-top: .15rem !important;
+  margin-bottom: 2.05rem !important;
+}
+
+#noctafin-resume .noctafin-card-track--landscape {
+  gap: 12px !important;
+}
+
+.noctafin-card--landscape {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  flex: 0 0 var(--lumo-resume-card-w) !important;
+  width: var(--lumo-resume-card-w) !important;
+  min-width: var(--lumo-resume-card-w) !important;
+  max-width: var(--lumo-resume-card-w) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: left !important;
+  scroll-snap-align: start !important;
+  transform: none !important;
+}
+
+.noctafin-card--landscape .noctafin-card__art {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  aspect-ratio: 16 / 9 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  border-radius: var(--lumo-resume-radius) !important;
+  background: #0a0d15 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.26) !important;
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1), border-color 180ms ease, box-shadow 180ms ease !important;
+}
+
+.noctafin-card--landscape .noctafin-card__art img {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  object-fit: cover !important;
+  object-position: center 28% !important;
+  transform: none !important;
+}
+
+.noctafin-card--landscape:hover .noctafin-card__art,
+.noctafin-card--landscape:focus-visible .noctafin-card__art {
+  transform: translateY(-2px) scale(1.012) !important;
+  border-color: rgba(255,255,255,.17) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.33) !important;
+}
+
+.noctafin-card__title,
+.noctafin-card__subtitle,
+.noctafin-card__meta {
+  width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+}
+
+.noctafin-card--landscape .noctafin-card__title {
+  display: block !important;
+  min-height: 17px !important;
+  margin: 6px 0 0 !important;
+  color: var(--nf-text) !important;
+  font-size: clamp(.78rem, .78vw, .91rem) !important;
+  line-height: 1.18 !important;
+  font-weight: 680 !important;
+}
+
+.noctafin-card--landscape .noctafin-card__subtitle {
+  display: block !important;
+  min-height: 15px !important;
+  margin: 2px 0 0 !important;
+  color: var(--nf-muted) !important;
+  font-size: clamp(.68rem, .65vw, .76rem) !important;
+  line-height: 1.15 !important;
+}
+
+.noctafin-card__subtitle[hidden] {
+  display: none !important;
+}
+
+.noctafin-card--landscape .noctafin-card__meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-height: 15px !important;
+  margin: 2px 0 0 !important;
+  color: var(--nf-muted) !important;
+  font-size: clamp(.66rem, .62vw, .73rem) !important;
+  line-height: 1.15 !important;
+}
+
+.noctafin-card__rating {
+  color: #ffd85a !important;
+}
+
+.noctafin-card__progress {
+  position: absolute !important;
+  left: 10px !important;
+  right: 10px !important;
+  bottom: 7px !important;
+  z-index: 3 !important;
+  height: 3px !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  background: rgba(0,0,0,.52) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06) !important;
+}
+
+.noctafin-card__progress > span {
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, var(--nf-violet), var(--nf-cyan), var(--nf-pink)) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Poster rows — compact and complete. The poster is never vertically scrollable.
+   -------------------------------------------------------------------------- */
+.noctafin-card-track--poster {
+  gap: 11px !important;
+}
+
+.noctafin-card--poster {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: block !important;
+  flex: 0 0 var(--lumo-poster-w) !important;
+  width: var(--lumo-poster-w) !important;
+  min-width: var(--lumo-poster-w) !important;
+  max-width: var(--lumo-poster-w) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: left !important;
+  scroll-snap-align: start !important;
+  transform: none !important;
+}
+
+.noctafin-card--poster .noctafin-card__art {
+  position: relative !important;
+  display: block !important;
+  width: var(--lumo-poster-w) !important;
+  min-width: var(--lumo-poster-w) !important;
+  max-width: var(--lumo-poster-w) !important;
+  height: var(--lumo-poster-h) !important;
+  min-height: var(--lumo-poster-h) !important;
+  max-height: var(--lumo-poster-h) !important;
+  aspect-ratio: 2 / 3 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  border-radius: 10px !important;
+  background: #0a0d15 !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,.22) !important;
+}
+
+.noctafin-card--poster .noctafin-card__art img {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transform: none !important;
+}
+
+.noctafin-card--poster .noctafin-card__title {
+  display: block !important;
+  min-height: 17px !important;
+  margin: 5px 0 0 !important;
+  color: var(--nf-text) !important;
+  font-size: .78rem !important;
+  line-height: 1.18 !important;
+  font-weight: 650 !important;
+}
+
+.noctafin-card--poster .noctafin-card__subtitle {
+  display: block !important;
+  min-height: 14px !important;
+  margin: 1px 0 0 !important;
+  color: var(--nf-muted) !important;
+  font-size: .67rem !important;
+  line-height: 1.12 !important;
+}
+
+.noctafin-card--poster .noctafin-card__meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 14px !important;
+  margin: 1px 0 0 !important;
+  color: var(--nf-muted) !important;
+  font-size: .66rem !important;
+  line-height: 1.12 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Studio / network cards — one contained logo only; no duplicate watermark.
+   -------------------------------------------------------------------------- */
+.noctafin-brand-track {
+  gap: 12px !important;
+}
+
+.noctafin-brand {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 var(--lumo-brand-card-w) !important;
+  width: var(--lumo-brand-card-w) !important;
+  min-width: var(--lumo-brand-card-w) !important;
+  max-width: var(--lumo-brand-card-w) !important;
+  height: var(--lumo-brand-card-h) !important;
+  min-height: var(--lumo-brand-card-h) !important;
+  max-height: var(--lumo-brand-card-h) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  border-radius: 16px !important;
+  color: #fff !important;
+  background:
+    radial-gradient(circle at 88% 82%, rgba(255,255,255,.12), transparent 36%),
+    linear-gradient(125deg, var(--brand-a), var(--brand-b)) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22) !important;
+  cursor: pointer !important;
+  scroll-snap-align: start !important;
+  transform: none !important;
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1), border-color 180ms ease, filter 180ms ease !important;
+}
+
+.noctafin-brand:hover:not([aria-disabled="true"]),
+.noctafin-brand:focus-visible:not([aria-disabled="true"]) {
+  transform: translateY(-2px) scale(1.012) !important;
+  border-color: rgba(255,255,255,.24) !important;
+  filter: brightness(1.05) saturate(1.04) !important;
+}
+
+.noctafin-brand[aria-disabled="true"] {
+  cursor: default !important;
+  opacity: .58 !important;
+}
+
+.noctafin-brand__logo-frame {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 16px 22px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  background: transparent !important;
+}
+
+.noctafin-brand__logo {
+  position: static !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 76% !important;
+  max-height: 58% !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transform: none !important;
+  transform-origin: center !important;
+  filter: var(--lumo-brand-logo-filter, none) !important;
+}
+
+.noctafin-brand__name {
+  position: relative !important;
+  z-index: 1 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 80% !important;
+  height: 100% !important;
+  margin: 0 auto !important;
+  color: currentColor !important;
+  font-size: clamp(.92rem, 1.1vw, 1.18rem) !important;
+  line-height: 1.05 !important;
+  font-weight: 850 !important;
+  text-align: center !important;
+}
+
+.noctafin-brand.has-logo .noctafin-brand__name {
+  display: none !important;
+}
+
+/* Empty/loading custom rows do not leave large blank blocks. */
+.noctafin-media-row.is-empty,
+.noctafin-shelf.is-empty {
+  display: none !important;
+}
+
+/* Never resurrect the old full-screen custom browser from cached v1.3 files. */
+#noctafin-browser-page {
+  display: none !important;
+}
+body.noctafin-browser-open {
+  overflow: auto !important;
+}
+
+@media (min-width: 1500px) {
+  :root {
+    --lumo-resume-card-w: clamp(245px, 17vw, 315px);
+    --lumo-poster-h: clamp(165px, 17vh, 215px);
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --lumo-resume-card-w: min(72vw, 300px);
+    --lumo-poster-h: clamp(146px, 20vh, 184px);
+    --lumo-brand-card-w: clamp(164px, 38vw, 220px);
+    --lumo-brand-card-h: 92px;
+  }
+
+  .noctafin-shelf,
+  .noctafin-media-row {
+    padding-left: max(14px, var(--nf-page-x)) !important;
+    padding-right: max(14px, var(--nf-page-x)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .noctafin-section-nav {
+    display: none !important;
+  }
+
+  #lumo-header-brand,
+  .lumo-header-brand,
+  .lumo-brand-button {
+    min-width: 40px !important;
+    width: 40px !important;
+    max-width: 40px !important;
+    padding: 4px !important;
+    justify-content: center !important;
+  }
+
+  .lumo-brand-name {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #lumo-background-art {
+    animation: none !important;
+  }
+  .noctafin-card-track,
+  .noctafin-brand-track {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================================================== 
+   Lumo v1.10.0 — rail geometry, video ambience and taxonomy heroes
+   ========================================================================== */
+
+:root {
+  --lumo-rail-gap: clamp(10px, .8vw, 15px);
+  --lumo-visible-count: 6;
+  --lumo-arrow-size: 30px;
+}
+
+/* --- Robust six-card rails --------------------------------------------- */
+.noctafin-card-track,
+.noctafin-brand-track {
+  gap: var(--lumo-rail-gap) !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: clip !important;
+  overscroll-behavior-x: contain !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+  scroll-snap-type: x proximity !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding: 5px 0 10px !important;
+}
+
+@supports not (overflow: clip) {
+  .noctafin-card-track,
+  .noctafin-brand-track { overflow-y: hidden !important; }
+}
+
+.noctafin-card-track::-webkit-scrollbar,
+.noctafin-brand-track::-webkit-scrollbar { display: none !important; }
+
+.noctafin-card--landscape,
+.noctafin-card--poster,
+.noctafin-brand {
+  box-sizing: border-box !important;
+  flex: 0 0 calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  width: calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  min-width: calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  max-width: calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  scroll-snap-align: start !important;
+}
+
+.noctafin-card--poster .noctafin-card__art {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  aspect-ratio: 2 / 3 !important;
+  overflow: hidden !important;
+}
+
+.noctafin-card--landscape .noctafin-card__art {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9 !important;
+  overflow: hidden !important;
+}
+
+.noctafin-card--poster,
+.noctafin-card--landscape {
+  overflow: hidden !important;
+  contain: layout style !important;
+}
+
+.noctafin-card--poster .noctafin-card__art img,
+.noctafin-card--landscape .noctafin-card__art img {
+  transform: scale(1) !important;
+  transition: transform 210ms cubic-bezier(.2,.8,.2,1), filter 210ms ease !important;
+  transform-origin: center !important;
+}
+
+.noctafin-card--poster:hover .noctafin-card__art img,
+.noctafin-card--poster:focus-visible .noctafin-card__art img,
+.noctafin-card--landscape:hover .noctafin-card__art img,
+.noctafin-card--landscape:focus-visible .noctafin-card__art img {
+  transform: scale(1.045) !important;
+  filter: brightness(1.06) saturate(1.04) !important;
+}
+
+/* Keep all textual metadata in-flow. No card is ever a nested scroller. */
+.noctafin-card__title,
+.noctafin-card__subtitle,
+.noctafin-card__meta {
+  position: static !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.noctafin-card__title { margin-top: 7px !important; }
+
+/* --- Brand cards: zoom the content, never the card --------------------- */
+.noctafin-brand {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  aspect-ratio: 2.15 / 1 !important;
+  transform: none !important;
+  overflow: hidden !important;
+  contain: paint layout style !important;
+}
+
+.noctafin-brand:hover:not([aria-disabled="true"]),
+.noctafin-brand:focus-visible:not([aria-disabled="true"]) {
+  transform: none !important;
+  filter: brightness(1.06) saturate(1.04) !important;
+}
+
+.noctafin-brand__logo-frame {
+  inset: 0 !important;
+  padding: clamp(11px, 1vw, 18px) clamp(16px, 1.6vw, 30px) !important;
+  overflow: hidden !important;
+}
+
+.noctafin-brand__logo {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: scale(.82) !important;
+  transition: transform 210ms cubic-bezier(.2,.8,.2,1), filter 210ms ease !important;
+}
+
+.noctafin-brand:hover .noctafin-brand__logo,
+.noctafin-brand:focus-visible .noctafin-brand__logo {
+  transform: scale(.88) !important;
+}
+
+/* --- Abyss-like rail controls, actually functional --------------------- */
+.noctafin-section-nav {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 5px !important;
+  min-width: calc(var(--lumo-arrow-size) * 2 + 5px) !important;
+}
+
+.noctafin-section-nav[hidden] { display: none !important; }
+
+.noctafin-track-arrow {
+  position: static !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--lumo-arrow-size) !important;
+  min-width: var(--lumo-arrow-size) !important;
+  max-width: var(--lumo-arrow-size) !important;
+  height: var(--lumo-arrow-size) !important;
+  min-height: var(--lumo-arrow-size) !important;
+  max-height: var(--lumo-arrow-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  color: rgba(248,250,255,.90) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: .9 !important;
+  transform: scale(1) !important;
+  transition: transform 130ms ease, color 130ms ease, background 130ms ease, opacity 130ms ease !important;
+  cursor: pointer !important;
+}
+
+.noctafin-track-arrow:disabled {
+  display: grid !important;
+  opacity: .24 !important;
+  cursor: default !important;
+}
+
+.noctafin-track-arrow:not(:disabled):hover,
+.noctafin-track-arrow:not(:disabled):focus-visible {
+  color: #fff !important;
+  background: rgba(255,255,255,.075) !important;
+  opacity: 1 !important;
+  transform: scale(1.08) !important;
+}
+
+.noctafin-track-arrow:not(:disabled):active,
+.noctafin-track-arrow.is-clicked:not(:disabled) {
+  transform: scale(1.18) !important;
+  background: rgba(255,255,255,.12) !important;
+}
+
+.noctafin-track-arrow svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke-width: 2.15 !important;
+}
+
+/* --- Play buttons: never inherit artwork or malformed card geometry ---- */
+.noctafin-hero__button {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 18px !important;
+  line-height: 1 !important;
+  background-image: none !important;
+}
+
+.noctafin-hero__button-icon {
+  display: block !important;
+  flex: 0 0 20px !important;
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+}
+
+.noctafin-hero__button--primary .noctafin-hero__button-icon path { stroke: none !important; }
+
+.cardOverlayButton,
+.cardOverlayFab-primary,
+.cardOverlayButtonIcon {
+  background-image: none !important;
+  background-size: auto !important;
+  background-position: center !important;
+}
+
+.cardOverlayContainer > .cardOverlayFab-primary {
+  box-sizing: border-box !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  margin: -22px 0 0 -22px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: rgba(3,5,12,.78) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transform: none !important;
+}
+
+.cardOverlayContainer > .cardOverlayFab-primary:hover,
+.cardOverlayContainer > .cardOverlayFab-primary:focus-visible {
+  transform: scale(1.08) !important;
+}
+
+.cardOverlayButtonIcon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1.55em !important;
+  height: 1.55em !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+/* --- Cinematic hero on genre / studio / network native list pages ----- */
+.lumo-taxonomy-hero {
+  position: relative !important;
+  isolation: isolate !important;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+  width: calc(100% + 0px) !important;
+  min-height: clamp(300px, 42vh, 520px) !important;
+  margin: 0 0 clamp(18px, 2.3vw, 36px) !important;
+  overflow: hidden !important;
+  border-radius: 0 0 24px 24px !important;
+  background: #050710 !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,.24) !important;
+}
+
+.lumo-taxonomy-hero__backdrop,
+.lumo-taxonomy-hero__veil {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+.lumo-taxonomy-hero__backdrop {
+  z-index: -2 !important;
+  background-size: cover !important;
+  background-position: center 28% !important;
+  transform: scale(1.035) !important;
+  filter: saturate(.96) contrast(1.02) !important;
+}
+
+.lumo-taxonomy-hero__veil {
+  z-index: -1 !important;
+  background:
+    linear-gradient(90deg, rgba(2,3,9,.94) 0%, rgba(2,3,9,.74) 31%, rgba(2,3,9,.34) 61%, rgba(2,3,9,.15) 100%),
+    linear-gradient(0deg, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 28%, #02030a) 0%, transparent 58%) !important;
+}
+
+.lumo-taxonomy-hero__content {
+  position: absolute !important;
+  left: var(--nf-page-x) !important;
+  bottom: clamp(34px, 6vh, 72px) !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  width: min(680px, 58vw) !important;
+}
+
+.lumo-taxonomy-hero__logo {
+  display: block !important;
+  width: min(390px, 34vw) !important;
+  height: clamp(70px, 9vw, 140px) !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  filter: drop-shadow(0 10px 28px rgba(0,0,0,.52)) !important;
+}
+
+.lumo-taxonomy-hero__title {
+  margin: 0 !important;
+  color: #fff !important;
+  font-size: clamp(2.8rem, 6vw, 6.4rem) !important;
+  line-height: .92 !important;
+  letter-spacing: -.055em !important;
+  font-weight: 900 !important;
+  text-shadow: 0 10px 30px rgba(0,0,0,.52) !important;
+}
+
+.lumo-taxonomy-hero.has-logo .lumo-taxonomy-hero__title {
+  font-size: clamp(1.25rem, 2.1vw, 2rem) !important;
+  letter-spacing: -.025em !important;
+  opacity: .88 !important;
+}
+
+.lumo-taxonomy-hero__featured {
+  max-width: 44ch !important;
+  color: rgba(245,247,255,.74) !important;
+  font-size: clamp(.86rem, 1vw, 1rem) !important;
+  font-weight: 620 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html.lumo-ui[data-lumo-taxonomy-kind] #lumo-background-art {
+  opacity: 1 !important;
+  background-image:
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 38%, transparent), transparent 42%),
+    radial-gradient(circle at 82% 26%, color-mix(in srgb, var(--lumo-taxonomy-b,#25d7ff) 28%, transparent), transparent 48%),
+    linear-gradient(180deg, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 12%, #02030a), #010207 72%) !important;
+  filter: none !important;
+  animation: lumo-taxonomy-drift-v18 26s ease-in-out infinite alternate !important;
+}
+html.lumo-ui[data-lumo-taxonomy-kind] #lumo-background-shade {
+  background: linear-gradient(180deg, rgba(1,2,7,.12), rgba(1,2,7,.42)) !important;
+}
+
+@keyframes lumo-taxonomy-drift-v18 {
+  from { background-position: 0% 0%, 100% 15%, center; transform: scale(1.02); }
+  to   { background-position: 8% 6%, 92% 23%, center; transform: scale(1.04); }
+}
+
+/* Desktop: six items exactly. Tablet/mobile keep readable physical sizes. */
+@media (max-width: 1180px) {
+  :root { --lumo-visible-count: 4; }
+}
+
+@media (max-width: 760px) {
+  :root { --lumo-visible-count: 2; --lumo-rail-gap: 10px; }
+  .noctafin-section-nav { display: inline-flex !important; }
+  .lumo-taxonomy-hero { min-height: 280px !important; border-radius: 0 0 18px 18px !important; }
+  .lumo-taxonomy-hero__content { width: calc(100% - 36px) !important; left: 18px !important; bottom: 28px !important; }
+  .lumo-taxonomy-hero__logo { width: min(280px, 72vw) !important; height: 92px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+html.lumo-ui[data-lumo-taxonomy-kind] #lumo-background-art { animation: none !important; }
+  .noctafin-card--poster .noctafin-card__art img,
+  .noctafin-card--landscape .noctafin-card__art img,
+  .noctafin-brand__logo { transition: none !important; transform: none !important; }
+}
+
+/* Final containment guard: hover must never move the card box itself. */
+.noctafin-card--landscape:hover .noctafin-card__art,
+.noctafin-card--landscape:focus-visible .noctafin-card__art,
+.noctafin-card--poster:hover .noctafin-card__art,
+.noctafin-card--poster:focus-visible .noctafin-card__art {
+  transform: none !important;
+}
+
+.noctafin-brand__logo-frame {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.lumo-taxonomy-hero__logo {
+  filter: var(--lumo-taxonomy-logo-filter, brightness(1)) drop-shadow(0 10px 28px rgba(0,0,0,.52)) !important;
+}
+
+/* ========================================================================== 
+   Lumo v1.10.0 — 12-item rails + hardened taxonomy heroes
+   ========================================================================== */
+
+/* Six cards remain visible on desktop. Each media rail is populated with a
+   maximum of 12 items by JS, so one arrow press reveals the second page. */
+:root {
+  --lumo-visible-count: 6;
+}
+
+.noctafin-card-track {
+  scroll-padding-inline: 0 !important;
+  overscroll-behavior-inline: contain !important;
+}
+
+.noctafin-card--poster,
+.noctafin-card--landscape {
+  scroll-snap-stop: always !important;
+}
+
+/* Taxonomy pages stay native Jellyfin pages; Lumo only prepends a bounded
+   cinematic hero. This avoids replacing Jellyfin's own grid/filter logic. */
+.lumo-taxonomy-hero {
+  min-height: clamp(360px, 50vh, 610px) !important;
+  max-height: 680px !important;
+  contain: layout paint style !important;
+}
+
+.lumo-taxonomy-hero__backdrop {
+  inset: -8px !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center 30% !important;
+  transform: scale(1.045) !important;
+  will-change: transform, filter !important;
+}
+
+/* Genre: random film backdrop, softly blurred, with the genre itself as the
+   dominant typographic element. Scaling hides blur edges cleanly. */
+.lumo-taxonomy-hero--genre .lumo-taxonomy-hero__backdrop {
+  inset: -18px !important;
+  transform: scale(1.075) !important;
+  filter: blur(2.4px) saturate(.92) contrast(1.04) brightness(.80) !important;
+}
+
+.lumo-taxonomy-hero--genre .lumo-taxonomy-hero__veil {
+  background:
+    linear-gradient(90deg, rgba(2,3,9,.92) 0%, rgba(2,3,9,.66) 35%, rgba(2,3,9,.23) 72%, rgba(2,3,9,.12) 100%),
+    linear-gradient(0deg, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 24%, #02030a) 0%, transparent 62%) !important;
+}
+
+.lumo-taxonomy-hero--genre .lumo-taxonomy-hero__title {
+  max-width: min(900px, 78vw) !important;
+  font-size: clamp(3.6rem, 8vw, 8.2rem) !important;
+  line-height: .88 !important;
+  letter-spacing: -.065em !important;
+  text-wrap: balance !important;
+}
+
+/* Studio / network: use the official local logo as the hero identity. The
+   image is always contained so wide/tall source SVGs cannot overflow. */
+.lumo-taxonomy-hero--studio .lumo-taxonomy-hero__logo,
+.lumo-taxonomy-hero--network .lumo-taxonomy-hero__logo {
+  width: min(500px, 42vw) !important;
+  height: clamp(96px, 12vw, 180px) !important;
+  max-width: 72vw !important;
+  max-height: 180px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+}
+
+.lumo-taxonomy-hero--studio.has-logo .lumo-taxonomy-hero__title,
+.lumo-taxonomy-hero--network.has-logo .lumo-taxonomy-hero__title {
+  font-size: clamp(1rem, 1.25vw, 1.3rem) !important;
+  letter-spacing: .02em !important;
+  font-weight: 700 !important;
+  opacity: .72 !important;
+}
+
+/* A missing backdrop never becomes a white/transparent hole. */
+.lumo-taxonomy-hero:not(.has-backdrop) .lumo-taxonomy-hero__backdrop {
+  background:
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 46%, transparent), transparent 44%),
+    radial-gradient(circle at 78% 32%, color-mix(in srgb, var(--lumo-taxonomy-b,#25d7ff) 34%, transparent), transparent 48%),
+    linear-gradient(135deg, #080a14, #02030a) !important;
+  filter: none !important;
+}
+
+@media (max-width: 1180px) {
+  :root { --lumo-visible-count: 4; }
+}
+
+@media (max-width: 760px) {
+  :root { --lumo-visible-count: 2; }
+  .lumo-taxonomy-hero { min-height: 300px !important; }
+  .lumo-taxonomy-hero--genre .lumo-taxonomy-hero__title {
+    max-width: 90vw !important;
+    font-size: clamp(2.8rem, 13vw, 5rem) !important;
+  }
+  .lumo-taxonomy-hero--studio .lumo-taxonomy-hero__logo,
+  .lumo-taxonomy-hero--network .lumo-taxonomy-hero__logo {
+    width: min(320px, 76vw) !important;
+    height: 110px !important;
+    max-width: 76vw !important;
+  }
+}
+
+/* ========================================================================== 
+   Lumo v1.10.0 — exact 12/6 rails + universal taxonomy page treatment
+   ========================================================================== */
+
+/* Six cards exactly fill the usable rail width on desktop. JS supplies up to
+   12 media items, creating exactly two pages when the taxonomy has enough
+   content. Vertical wheel gestures remain owned by the page. */
+.noctafin-card-track,
+.noctafin-brand-track {
+  overscroll-behavior-inline: contain !important;
+  overscroll-behavior-block: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+  scroll-snap-type: x mandatory !important;
+}
+
+.noctafin-card-track > .noctafin-card,
+.noctafin-brand-track > .noctafin-brand {
+  scroll-snap-align: start !important;
+  scroll-snap-stop: normal !important;
+}
+
+/* Arrow interaction stays entirely in the heading and never overlaps media. */
+.noctafin-section-nav {
+  position: relative !important;
+  z-index: 5 !important;
+  pointer-events: auto !important;
+}
+
+.noctafin-track-arrow {
+  pointer-events: auto !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.noctafin-track-arrow:not(:disabled):active,
+.noctafin-track-arrow.is-clicked:not(:disabled) {
+  transform: scale(.90) !important;
+}
+
+/* Taxonomy pages use the same ambient layer on every genre/studio ID, not
+   only the hand-picked home shortcuts. Keep Jellyfin's native list/grid on a
+   transparent canvas so the contextual page colour remains visible. */
+html.lumo-ui[data-lumo-taxonomy-kind] body,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot,
+html.lumo-ui[data-lumo-taxonomy-kind] #root,
+html.lumo-ui[data-lumo-taxonomy-kind] main,
+html.lumo-ui[data-lumo-taxonomy-kind] main.MuiBox-root,
+html.lumo-ui[data-lumo-taxonomy-kind] .mainAnimatedPages,
+html.lumo-ui[data-lumo-taxonomy-kind] .mainAnimatedPage,
+html.lumo-ui[data-lumo-taxonomy-kind] .page,
+html.lumo-ui[data-lumo-taxonomy-kind] .backgroundContainer {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html.lumo-ui[data-lumo-taxonomy-kind] #lumo-background-art {
+  opacity: 1 !important;
+  background-color: #02030a !important;
+  background-image:
+    radial-gradient(circle at 13% 11%, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 46%, transparent) 0%, transparent 44%),
+    radial-gradient(circle at 88% 24%, color-mix(in srgb, var(--lumo-taxonomy-b,#25d7ff) 38%, transparent) 0%, transparent 48%),
+    radial-gradient(circle at 54% 92%, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 18%, transparent) 0%, transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--lumo-taxonomy-a,#7c5cff) 14%, #02030a), #010207 72%) !important;
+  background-size: 74vmax 74vmax, 72vmax 72vmax, 84vmax 84vmax, 100% 100% !important;
+  filter: none !important;
+}
+
+/* Hero is a first-class full-width child even if Jellyfin changes the parent
+   to grid/flex in a future 12.x build. */
+#lumo-taxonomy-hero {
+  grid-column: 1 / -1 !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Unknown studios do not have a bundled official logo. They still receive the
+   same cinematic hero and use the native Jellyfin studio name as large type. */
+.lumo-taxonomy-hero--studio:not(.has-logo) .lumo-taxonomy-hero__title,
+.lumo-taxonomy-hero--network:not(.has-logo) .lumo-taxonomy-hero__title {
+  max-width: min(940px, 78vw) !important;
+  font-size: clamp(3rem, 6.6vw, 7rem) !important;
+  line-height: .9 !important;
+  letter-spacing: -.055em !important;
+  text-wrap: balance !important;
+}
+
+/* Known home studios/networks keep their official local logo fully contained. */
+.lumo-taxonomy-hero--studio .lumo-taxonomy-hero__logo,
+.lumo-taxonomy-hero--network .lumo-taxonomy-hero__logo {
+  box-sizing: border-box !important;
+  width: min(520px, 44vw) !important;
+  height: clamp(100px, 13vw, 190px) !important;
+  max-width: min(72vw, 520px) !important;
+  max-height: 190px !important;
+  padding: 4px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  overflow: hidden !important;
+}
+
+/* Genre artwork is deliberately soft so the genre word remains dominant. */
+.lumo-taxonomy-hero--genre .lumo-taxonomy-hero__backdrop {
+  filter: blur(3px) saturate(.90) contrast(1.04) brightness(.74) !important;
+}
+
+@media (max-width: 1180px) {
+  :root { --lumo-visible-count: 4; }
+}
+
+@media (max-width: 760px) {
+  :root { --lumo-visible-count: 2; }
+  .lumo-taxonomy-hero--studio:not(.has-logo) .lumo-taxonomy-hero__title,
+  .lumo-taxonomy-hero--network:not(.has-logo) .lumo-taxonomy-hero__title {
+    max-width: 92vw !important;
+    font-size: clamp(2.5rem, 13vw, 5rem) !important;
+  }
+}
+
+/* Jellyfin 12 may wrap list pages in one or two opaque MUI Boxes. Only the
+   outer list canvas is cleared; cards, menus and dialogs keep their surfaces. */
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main > .MuiBox-root,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main > .MuiContainer-root,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main > div > .MuiBox-root {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* ========================================================================== 
+   Lumo v1.10.0 — static space ambience + universal taxonomy hero hardening
+   ========================================================================== */
+
+/* The animated MP4 background was removed in v1.10. A single compressed WebP
+   is cheaper to decode, does not consume a video decoder and stays perfectly
+   smooth while scrolling long home pages. */
+#lumo-background-video {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+html.lumo-ui #lumo-background-art,
+html.lumo-ui[data-lumo-season="default"] #lumo-background-art {
+  inset: 0 !important;
+  opacity: 1 !important;
+  background-color: #02030a !important;
+  background-image: var(--lumo-default-background) !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  filter: brightness(var(--lumo-background-brightness, .72)) saturate(.94) !important;
+  transform: none !important;
+  animation: none !important;
+  will-change: auto !important;
+}
+
+html.lumo-ui[data-lumo-season="default"] #lumo-background-shade {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(92,66,210,.08), transparent 38%),
+    linear-gradient(180deg,
+      rgba(1,2,7,.18) 0%,
+      rgba(1,2,7,var(--lumo-background-overlay,.50)) 48%,
+      rgba(1,2,7,.72) 100%) !important;
+}
+
+/* Seasonal art remains automatic and intentionally keeps the soft Gaussian
+   blur requested for October/December. */
+html.lumo-ui[data-lumo-season="halloween"] #lumo-background-art,
+html.lumo-ui[data-lumo-season="christmas"] #lumo-background-art {
+  inset: -20px !important;
+  opacity: 1 !important;
+  background-image: var(--lumo-season-background) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  filter: blur(var(--lumo-season-blur,8px)) brightness(var(--lumo-season-brightness,.56)) saturate(.92) !important;
+  transform: scale(1.045) !important;
+  animation: none !important;
+  will-change: auto !important;
+}
+
+/* Taxonomy pages always get their own colour atmosphere, irrespective of
+   whether Jellyfin mounted them through the legacy ViewManager or React/MUI. */
+html.lumo-ui[data-lumo-taxonomy-kind] #lumo-background-art,
+html.lumo-ui[data-lumo-season="default"][data-lumo-taxonomy-kind] #lumo-background-art {
+  inset: 0 !important;
+  opacity: 1 !important;
+  background-image:
+    radial-gradient(circle at 13% 13%, rgba(var(--lumo-taxonomy-a-rgb,124,92,255),.50), transparent 44%),
+    radial-gradient(circle at 88% 22%, rgba(var(--lumo-taxonomy-b-rgb,37,215,255),.40), transparent 48%),
+    radial-gradient(circle at 52% 92%, rgba(var(--lumo-taxonomy-a-rgb,124,92,255),.20), transparent 48%),
+    linear-gradient(180deg, rgba(var(--lumo-taxonomy-a-rgb,124,92,255),.15), rgba(1,2,7,.98) 72%) !important;
+  background-size: 76vmax 76vmax, 72vmax 72vmax, 82vmax 82vmax, 100% 100% !important;
+  background-position: -20vmax -20vmax, 66vw -16vmax, 40vw 62vh, center !important;
+  filter: none !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+html.lumo-ui[data-lumo-taxonomy-kind] #lumo-background-shade {
+  background: linear-gradient(180deg, rgba(1,2,7,.10), rgba(1,2,7,.34) 55%, rgba(1,2,7,.64)) !important;
+}
+
+html.lumo-ui[data-lumo-taxonomy-kind] [data-role="page"],
+html.lumo-ui[data-lumo-taxonomy-kind] .libraryPage,
+html.lumo-ui[data-lumo-taxonomy-kind] .mainAnimatedPage,
+html.lumo-ui[data-lumo-taxonomy-kind] .page,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main > div,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main > .MuiBox-root,
+html.lumo-ui[data-lumo-taxonomy-kind] #reactRoot main > .MuiContainer-root {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Universal hero: survives both flex and grid parents and is deliberately
+   bounded so an unknown studio name or a very wide logo cannot break layout. */
+#lumo-taxonomy-hero {
+  position: relative !important;
+  z-index: 2 !important;
+  display: block !important;
+  order: -999 !important;
+  grid-column: 1 / -1 !important;
+  flex: 0 0 auto !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: clamp(360px, 50vh, 610px) !important;
+  margin: 0 0 clamp(18px, 2.4vw, 38px) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  contain: layout paint style !important;
+  isolation: isolate !important;
+}
+
+#lumo-taxonomy-hero[data-loading="true"]::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: auto 0 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, transparent, var(--lumo-taxonomy-a,#7c5cff), var(--lumo-taxonomy-b,#25d7ff), transparent) !important;
+  opacity: .65 !important;
+}
+
+.lumo-taxonomy-hero__backdrop {
+  z-index: -3 !important;
+  background-color: #050711 !important;
+}
+
+.lumo-taxonomy-hero__veil { z-index: -2 !important; }
+.lumo-taxonomy-hero__content { z-index: 1 !important; }
+
+.lumo-taxonomy-hero--studio .lumo-taxonomy-hero__logo,
+.lumo-taxonomy-hero--network .lumo-taxonomy-hero__logo {
+  display: block !important;
+  width: min(540px, 46vw) !important;
+  height: clamp(108px, 13vw, 190px) !important;
+  max-width: min(76vw, 540px) !important;
+  max-height: 190px !important;
+  padding: 5px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  transform: none !important;
+}
+
+/* Light performance containment for below-the-fold Lumo sections. The
+   intrinsic size prevents scroll jumps before a row enters the viewport. */
+.noctafin-media-row {
+  content-visibility: auto !important;
+  contain-intrinsic-size: auto 390px !important;
+}
+
+.noctafin-card__art img,
+.noctafin-brand__logo,
+.noctafin-hero__bg,
+.lumo-taxonomy-hero__backdrop {
+  backface-visibility: hidden !important;
+}
+
+@media (max-width: 760px) {
+  #lumo-taxonomy-hero {
+    min-height: 300px !important;
+    margin-bottom: 20px !important;
+  }
+  .lumo-taxonomy-hero--studio .lumo-taxonomy-hero__logo,
+  .lumo-taxonomy-hero--network .lumo-taxonomy-hero__logo {
+    width: min(330px, 78vw) !important;
+    height: 112px !important;
+    max-width: 78vw !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #lumo-background-art,
+  .lumo-taxonomy-hero__backdrop { animation: none !important; }
+}

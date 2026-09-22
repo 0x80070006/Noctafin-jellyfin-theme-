@@ -10,17 +10,17 @@ window.NOCTAFIN_CONFIG = {
   },
   brand: {
     name: "Lumo",
-    logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
-    logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
-    logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+    logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.webp",
+    logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.webp",
+    logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.webp"
   },
   seasonal: {
     enabled: true,
     forceSeason: "auto",
     halloweenMonth: 10,
     christmasMonth: 12,
-    halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.png",
-    christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.png",
+    halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.webp",
+    christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.webp",
     backgroundBlurPx: 8,
     backgroundBrightness: 0.56
   },
@@ -30,10 +30,9 @@ window.NOCTAFIN_CONFIG = {
     maxItems: 8
   },
   background: {
-    video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
-    videoOpacity: 0.62,
-    overlayOpacity: 0.54,
-    homeOnly: true
+    image: "ui/noctafin-assets/background/lumo-space.webp",
+    imageBrightness: 0.72,
+    overlayOpacity: 0.50
   },
   taxonomyHero: {
     enabled: true,

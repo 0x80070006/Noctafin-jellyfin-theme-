@@ -1,22 +1,27 @@
 # Changelog
 
+## 1.10.0
+
+- Suppression complète du fond vidéo Lumo et de son coût de décodage.
+- Nouveau fond spatial statique fourni par l'utilisateur, compressé en WebP.
+- Conversion des logos/fonds saisonniers en WebP pour alléger les transferts et le stockage.
+- Halloween et Noël restent activés automatiquement aux mois configurés.
+- Refonte de la détection des pages Studio/Genre pour Jellyfin 12 legacy + React/MUI.
+- Suppression de l'exclusion `#indexPage` qui pouvait empêcher l'apparition du Hero sur les pages `#/list?...`.
+- Détection basée sur les contenus réellement visibles et exclusion des anciennes vues hors écran/inertes.
+- Hero placeholder injecté immédiatement sur toute route `studioId`/`genreId`, puis hydraté avec un média dès que l'API répond.
+- Retry progressif si la page native Jellyfin n'est pas encore montée.
+- Réinsertion automatique si React remonte la page.
+- Résolution de nom universelle : mapping local pour les studios connus, API Jellyfin pour tous les autres, titre natif en dernier fallback.
+- Palette générée pour tout studio inconnu ; couleurs configurées conservées pour les studios/réseaux connus.
+- Hero de genre stable pour la journée afin d'éviter les changements visuels durant les remounts.
+- Variables RGB ajoutées pour éviter de dépendre de `color-mix()` dans l'ambiance de page.
+- Les pages Studio/Genre gardent leur grille native Jellyfin et reçoivent uniquement l'habillage Lumo.
+- Les rails 12/6 et la sélection quotidienne restent inchangés.
+
 ## 1.9.0
 
 - IDs exacts ajoutés pour Pixar, Paramount, Marvel, Walt Disney, Columbia, 20th Century Fox, Apple TV+, Netflix, BBC, Cartoon Network, ABC et MTV.
-- Navigation Studios/Réseaux corrigée vers les routes natives `#/list?studioId=...&serverId=...`.
-- Navigation Genres corrigée vers `#/list?genreId=...&serverId=...`.
-- Le contexte de route est maintenant prioritaire sur les anciennes pages React encore montées dans le DOM.
-- Hero + ambiance colorée générés pour n'importe quel `studioId` ou `genreId` Jellyfin, pas seulement les éléments configurés sur l'accueil.
-- Résolution du nom natif par ID via `/Studios` et `/Genres` pour les taxonomies non configurées.
-- Logos officiels conservés dans le hero pour les studios/réseaux configurés ; fallback typographique cinématique pour tous les autres.
+- Navigation native Jellyfin vers les routes `studioId` / `genreId`.
+- Hero universel initial pour les pages Studio/Genre.
 - 12 médias maximum par rail, 6 visibles sur desktop.
-- Contenu des rails stable pendant une journée et renouvelé quotidiennement à partir d'un pool de 96 médias récents.
-- Refonte du déplacement des flèches par page avec correction de compatibilité WebView.
-- Les événements de molette verticale ne sont plus annulés par les rails.
-- Correction d'un doublon `année/note` dans les cartes.
-- Validation automatique des 12 IDs serveur ajoutée à `npm run check`.
-
-## 1.8.0
-
-- 12 médias maximum par ligne.
-- Hero cinématique Genre/Studio/Réseau sur les pages natives filtrées.

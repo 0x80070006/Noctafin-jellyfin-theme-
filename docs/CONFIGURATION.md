@@ -2,6 +2,18 @@
 
 La configuration principale se trouve dans `scripts/noctafin-config.js`.
 
+## Fond
+
+```js
+background: {
+  image: "ui/noctafin-assets/background/lumo-space.webp",
+  imageBrightness: 0.72,
+  overlayOpacity: 0.50
+}
+```
+
+Le fond par défaut est désormais une image statique optimisée. Aucun lecteur vidéo n'est créé. Les fonds Halloween et Noël sont gérés séparément par `seasonal`.
+
 ## Rails
 
 ```js
@@ -11,11 +23,11 @@ rows: {
 }
 ```
 
-`rowLimit` est volontairement plafonné à 12 dans le moteur. Sur desktop, le CSS affiche 6 cartes à la fois. `dailyPoolLimit` définit la taille du pool récent dans lequel Lumo effectue sa sélection déterministe quotidienne.
+`rowLimit` est plafonné à 12 dans le moteur. Sur desktop, le CSS affiche 6 cartes à la fois. La sélection reste stable pendant une journée puis change le lendemain.
 
 ## Studios / Réseaux
 
-Chaque entrée peut contenir un `id`. Lorsqu'il est présent, cet ID est prioritaire sur la résolution par nom :
+Chaque entrée peut définir un `id`, un logo et deux couleurs :
 
 ```js
 {
@@ -27,8 +39,8 @@ Chaque entrée peut contenir un `id`. Lorsqu'il est présent, cet ID est priorit
 }
 ```
 
-Le clic ouvre la page native Jellyfin correspondant exactement à cet ID. Les aliases restent utiles comme fallback pour un autre serveur.
+Pour une entrée configurée, le Hero utilise le logo local et cette palette. Pour un studio non configuré, Lumo récupère son nom natif via Jellyfin et génère une palette déterministe.
 
-## Hero universel
+## Hero universel Studio/Genre
 
-Toute URL native contenant `genreId` ou `studioId` active automatiquement le hero Lumo. Les éléments non présents dans la configuration sont résolus par l'API Jellyfin et reçoivent une palette déterministe basée sur leur nom.
+Toute route native contenant `genreId` ou `studioId` déclenche le système. Le Hero est d'abord créé sans attendre l'API, puis hydraté avec un backdrop. Cela garantit un affichage même si la requête média échoue ou si Jellyfin remonte plusieurs fois la vue.

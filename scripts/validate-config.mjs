@@ -38,9 +38,31 @@ for (const [label, id] of expected) {
   if (group.id !== id) throw new Error(`Mauvais ID pour ${label}`);
 }
 
+if (!cfg.background?.image || !String(cfg.background.image).endsWith('lumo-space.webp')) {
+  throw new Error('background.image doit pointer vers lumo-space.webp');
+}
+if ('video' in (cfg.background || {})) throw new Error('Le fond vidéo doit rester supprimé en v1.10+');
+
+const themeRoot = new URL('../', import.meta.url);
+for (const relative of [
+  'assets/background/lumo-space.webp',
+  'assets/seasonal/lumo-blue.webp',
+  'assets/seasonal/lumo-halloween.webp',
+  'assets/seasonal/lumo-christmas.webp',
+  'assets/seasonal/background-halloween.webp',
+  'assets/seasonal/background-christmas.webp'
+]) {
+  if (!fs.existsSync(new URL(relative, themeRoot))) throw new Error(`Asset manquant: ${relative}`);
+}
+
+const runtimeSource = fs.readFileSync(new URL('./noctafin-home.js', import.meta.url), 'utf8');
+for (const needle of ['findTaxonomyHost', 'scheduleTaxonomyRetry', 'lumo-taxonomy-hero', 'GenreIds', 'StudioIds']) {
+  if (!runtimeSource.includes(needle)) throw new Error(`Runtime incomplet: ${needle}`);
+}
+
 if (Number(cfg.rows?.rowLimit) !== 12) throw new Error('rows.rowLimit doit rester à 12');
 if (Number(cfg.rows?.dailyPoolLimit) < 48) throw new Error('rows.dailyPoolLimit doit être >= 48');
 if (!cfg.taxonomyHero?.enabled) throw new Error('taxonomyHero doit rester activé');
 if (!cfg.navigation?.serverIdFallback) throw new Error('serverIdFallback absent');
 
-console.log(`Configuration valide: ${groups.length} studios/réseaux exacts, ${cfg.genres?.length || 0} genres accueil, 12 médias/rail.`);
+console.log(`Configuration valide: ${groups.length} studios/réseaux exacts, ${cfg.genres?.length || 0} genres accueil, 12 médias/rail, fond spatial statique et hero universel.`);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.9.0"
+VERSION="1.10.0"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
 
@@ -58,12 +58,14 @@ find "$LUMO_DIR/styles" -mindepth 1 -maxdepth 1 -type f -delete 2>/dev/null || t
 cp -f "$ROOT/styles/"*.css "$LUMO_DIR/styles/"
 chmod 0644 "$LUMO_DIR/theme.css" "$LUMO_DIR/styles/"*.css
 
-# Assets saisonniers fournis dans le dépôt.
-cp -f "$ROOT/assets/seasonal/"*.png "$SEASON_DIR/"
-chmod 0644 "$SEASON_DIR/"*.png
+# Assets saisonniers optimisés en WebP (alpha conservé pour les logos).
+rm -f "$SEASON_DIR/"*.png 2>/dev/null || true
+cp -f "$ROOT/assets/seasonal/"*.webp "$SEASON_DIR/"
+chmod 0644 "$SEASON_DIR/"*.webp
 
-# Fond vidéo Lumo compressé (1080p H.264, sans audio).
-install -m 0644 "$ROOT/assets/background/lumo-japan-night-1080p.mp4" "$BACKGROUND_DIR/lumo-japan-night-1080p.mp4"
+# Fond spatial statique Lumo, WebP léger pour réduire CPU/GPU et réseau.
+install -m 0644 "$ROOT/assets/background/lumo-space.webp" "$BACKGROUND_DIR/lumo-space.webp"
+rm -f "$BACKGROUND_DIR/lumo-japan-night-1080p.mp4" 2>/dev/null || true
 
 # Logos de marques : téléchargés localement afin d'éviter les blocages CSP.
 # En cas de panne réseau, une version déjà présente est conservée.
@@ -161,6 +163,6 @@ echo "Lumo $VERSION installé dans: $WEB_DIR"
 echo "CSS local: $LUMO_DIR/theme.css"
 echo "Logos studios/réseaux: $LOGO_DIR"
 echo "Assets saisonniers: $SEASON_DIR"
-echo "Fond vidéo Lumo: $BACKGROUND_DIR/lumo-japan-night-1080p.mp4"
+echo "Fond spatial Lumo: $BACKGROUND_DIR/lumo-space.webp"
 echo "IMPORTANT: pour l'installation complète, retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin afin d'éviter les conflits/cache d'une ancienne version."
 echo "Après une mise à jour Jellyfin, relance cet installateur si index.html a été remplacé."

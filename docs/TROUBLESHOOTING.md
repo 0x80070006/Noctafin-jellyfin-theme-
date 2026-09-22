@@ -1,36 +1,49 @@
-# Dépannage Lumo 1.7
+# Dépannage Lumo 1.10
 
 ## Une ancienne apparence revient
 
 Vérifie que **CSS personnalisé Jellyfin est vide**. Ne mélange pas l'installation complète locale et un ancien `@import` jsDelivr.
 
-Puis :
-
 ```bash
-grep -n "1.9.0" /usr/share/jellyfin/web/index.html
+grep -n "1.10.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ```
 
 Recharge avec `Ctrl+Shift+R`.
 
-## Le fond vidéo n'apparaît pas
+## Le fond spatial n'apparaît pas
 
 ```bash
-ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/background/lumo-japan-night-1080p.mp4
+ls -lh /usr/share/jellyfin/web/ui/noctafin-assets/background/lumo-space.webp
 ```
 
-Le fond vidéo est volontairement désactivé en octobre, en décembre, hors de l'accueil et lorsque `prefers-reduced-motion` est activé dans le système.
-
-## Les flèches ne défilent pas
-
-Vérifie qu'une ligne contient plus d'éléments que les 6 visibles. Les flèches sont désactivées aux extrémités du rail. Une réinstallation est nécessaire après mise à jour du JavaScript :
+Relance ensuite l'installation :
 
 ```bash
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
-## Un Studio ou Genre ouvre une page non filtrée
+En octobre et décembre, le fond spatial est volontairement remplacé par le fond saisonnier.
 
-Vérifie les `aliases` dans `scripts/noctafin-config.js`. Lumo résout les IDs réels depuis l'API Jellyfin avant de construire la navigation.
+## Le Hero Studio/Genre n'apparaît pas
+
+Vérifie d'abord que l'URL contient bien `studioId=` ou `genreId=` puis ouvre la console navigateur. Le runtime 1.10 tente plusieurs conteneurs Jellyfin 12 et réessaie automatiquement pendant le montage de la page.
+
+Vérifie la version réellement chargée :
+
+```bash
+grep -n "noctafin-home.js?v=1.10.0" /usr/share/jellyfin/web/index.html
+```
+
+Après une mise à jour du paquet Jellyfin, relance toujours `install/install.sh`, car `index.html` peut être remplacé.
+
+## Les flèches ne défilent pas
+
+Une ligne doit contenir plus de médias que le nombre visible. Sur desktop, Lumo affiche 6 cartes et peut charger jusqu'à 12 médias. Réinstalle le JavaScript après toute mise à jour :
+
+```bash
+JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
+systemctl restart jellyfin
+```

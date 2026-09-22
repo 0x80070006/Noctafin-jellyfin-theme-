@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.9.0";
+  const VERSION = "1.10.0";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -11,26 +11,25 @@
     },
     brand: {
       name: "Lumo",
-      logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.png",
-      logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.png",
-      logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.png"
+      logoBlue: "ui/noctafin-assets/seasonal/lumo-blue.webp",
+      logoHalloween: "ui/noctafin-assets/seasonal/lumo-halloween.webp",
+      logoChristmas: "ui/noctafin-assets/seasonal/lumo-christmas.webp"
     },
     seasonal: {
       enabled: true,
       forceSeason: "auto",
       halloweenMonth: 10,
       christmasMonth: 12,
-      halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.png",
-      christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.png",
+      halloweenBackground: "ui/noctafin-assets/seasonal/background-halloween.webp",
+      christmasBackground: "ui/noctafin-assets/seasonal/background-christmas.webp",
       backgroundBlurPx: 8,
       backgroundBrightness: 0.56
     },
     hero: { enabled: true, rotateEveryMs: 7000, maxItems: 8 },
     background: {
-      video: "ui/noctafin-assets/background/lumo-japan-night-1080p.mp4",
-      videoOpacity: 0.62,
-      overlayOpacity: 0.54,
-      homeOnly: true
+      image: "ui/noctafin-assets/background/lumo-space.webp",
+      imageBrightness: 0.72,
+      overlayOpacity: 0.50
     },
     taxonomyHero: { enabled: true, maxItems: 18 },
     rows: {
@@ -97,8 +96,14 @@
   let rowObserver = null;
   let mountScheduled = false;
   let taxonomyCache = null;
+  let taxonomyCacheExpiresAt = 0;
+  let taxonomyPromise = null;
   let taxonomyHeroKey = "";
   let taxonomyHeroRequest = 0;
+  let taxonomyRetryTimer = null;
+  let taxonomyRetryCount = 0;
+  const taxonomyHeroItemCache = new Map();
+  const taxonomyContextCache = new Map();
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -136,14 +141,23 @@
   function headers() {
     if (!auth?.token) return {};
     return {
-      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="1.7", Token="${auth.token}"`
+      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="${VERSION}", Token="${auth.token}"`
     };
   }
 
-  async function fetchJson(path) {
-    const response = await fetch(`${auth.base}${path}`, { headers: headers() });
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}: ${path}`);
-    return response.json();
+  async function fetchJson(path, timeoutMs = 12000) {
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), Math.max(1500, timeoutMs)) : null;
+    try {
+      const response = await fetch(`${auth.base}${path}`, {
+        headers: headers(),
+        signal: controller?.signal
+      });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}: ${path}`);
+      return await response.json();
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   function imageUrl(itemId, type = "Primary", index = null, width = 600) {
@@ -318,13 +332,11 @@
     style.id = "lumo-critical-style";
     style.textContent = `
       html.lumo-ui,html.lumo-ui body{background:#02030a!important}
-      #lumo-background-layer{position:fixed!important;inset:0!important;z-index:0!important;overflow:hidden!important;pointer-events:none!important}
-      #lumo-background-art,#lumo-background-video,#lumo-background-shade{position:absolute!important;pointer-events:none!important}
-      #lumo-background-art{inset:-30px!important;background-color:#02030a!important;will-change:transform,filter,background-position}
-      #lumo-background-video{inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;opacity:0!important}
-      #lumo-background-shade{inset:0!important;background:linear-gradient(180deg,rgba(1,2,7,.05),rgba(1,2,7,.18) 60%,rgba(1,2,7,.32))!important}
-      html[data-lumo-season="halloween"] #lumo-background-art,html[data-lumo-season="christmas"] #lumo-background-art{background-image:var(--lumo-season-background)!important;background-size:cover!important;background-position:center!important;filter:blur(var(--lumo-season-blur,8px)) brightness(var(--lumo-season-brightness,.56)) saturate(.92)!important;transform:scale(1.07)!important}
-      html[data-lumo-season="default"] #lumo-background-art{background-image:radial-gradient(circle at 13% 17%,rgba(124,92,255,.26),transparent 43%),radial-gradient(circle at 83% 12%,rgba(37,215,255,.20),transparent 44%),radial-gradient(circle at 75% 79%,rgba(255,79,163,.18),transparent 43%),linear-gradient(180deg,#03040a,#010207)!important;background-size:82vmax 82vmax,76vmax 76vmax,84vmax 84vmax,100% 100%!important;background-position:-28vmax -26vmax,68vw -28vmax,62vw 62vh,center!important}
+      #lumo-background-layer{position:fixed!important;inset:0!important;z-index:0!important;overflow:hidden!important;pointer-events:none!important;contain:strict!important}
+      #lumo-background-art,#lumo-background-shade{position:absolute!important;pointer-events:none!important}
+      #lumo-background-art{inset:0!important;background-color:#02030a!important;background-image:var(--lumo-default-background)!important;background-size:cover!important;background-position:center center!important;background-repeat:no-repeat!important;filter:brightness(var(--lumo-background-brightness,.72)) saturate(.94)!important}
+      #lumo-background-shade{inset:0!important;background:linear-gradient(180deg,rgba(1,2,7,.18),rgba(1,2,7,var(--lumo-background-overlay,.50)) 56%,rgba(1,2,7,.72))!important}
+      html[data-lumo-season="halloween"] #lumo-background-art,html[data-lumo-season="christmas"] #lumo-background-art{inset:-20px!important;background-image:var(--lumo-season-background)!important;background-size:cover!important;background-position:center!important;filter:blur(var(--lumo-season-blur,8px)) brightness(var(--lumo-season-brightness,.56)) saturate(.92)!important;transform:scale(1.045)!important}
       html.lumo-ui #reactRoot,html.lumo-ui #root,html.lumo-ui .mainAnimatedPages,html.lumo-ui .page,html.lumo-ui .backgroundContainer,html.lumo-ui main,html.lumo-ui main.MuiBox-root,html.lumo-ui #reactRoot>div,html.lumo-ui #reactRoot>div>.MuiBox-root{background-color:transparent!important;background-image:none!important}
       html.lumo-ui #reactRoot,html.lumo-ui #root,html.lumo-ui .mainAnimatedPages{position:relative!important;z-index:1!important}
       [data-lumo-native-brand-hidden="true"]{display:none!important}
@@ -349,62 +361,39 @@
       const art = document.createElement("div");
       art.id = "lumo-background-art";
 
-      const video = document.createElement("video");
-      video.id = "lumo-background-video";
-      video.muted = true;
-      video.loop = true;
-      video.autoplay = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      video.disablePictureInPicture = true;
-      video.setAttribute("tabindex", "-1");
-      video.setAttribute("aria-hidden", "true");
-      video.addEventListener("error", () => document.documentElement.classList.add("lumo-video-failed"));
-
       const shade = document.createElement("div");
       shade.id = "lumo-background-shade";
-      layer.append(art, video, shade);
+
+      layer.append(art, shade);
       document.body.prepend(layer);
+    } else {
+      /* v1.10 removes the video background completely. Clean up a stale
+         <video> left behind when upgrading without a hard reload. */
+      layer.querySelector("#lumo-background-video")?.remove();
     }
     return layer;
   }
 
-  function shouldUseHomeVideo() {
-    if (!CONFIG.background.video) return false;
-    if (isTaxonomyRoute()) return false;
-    if (activeSeason() !== "default") return false;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
-    if (!CONFIG.background.homeOnly) return true;
-    const found = locateHome();
-    if (!found?.homeTab?.isConnected) return false;
-    try {
-      const style = getComputedStyle(found.homeTab);
-      return style.display !== "none" && style.visibility !== "hidden" && !found.homeTab.hidden;
-    } catch {
-      return true;
-    }
-  }
-
   function syncBackgroundMedia() {
-    const layer = ensureBackgroundLayer();
-    const video = layer?.querySelector?.("#lumo-background-video");
-    if (!video) return;
+    ensureBackgroundLayer();
+    const root = document.documentElement;
+    root.classList.remove("lumo-video-active", "lumo-video-failed");
 
-    const enabled = shouldUseHomeVideo();
-    document.documentElement.classList.toggle("lumo-video-active", enabled);
-    document.documentElement.style.setProperty("--lumo-video-opacity", String(Math.max(0, Math.min(1, Number(CONFIG.background.videoOpacity) || 0.62))));
-    document.documentElement.style.setProperty("--lumo-video-overlay", String(Math.max(0, Math.min(0.95, Number(CONFIG.background.overlayOpacity) || 0.54))));
-
-    if (enabled) {
-      const src = assetUrl(CONFIG.background.video);
-      if (video.getAttribute("src") !== src) video.setAttribute("src", src);
-      if (video.paused) {
-        const promise = video.play?.();
-        if (promise?.catch) promise.catch(() => {});
-      }
+    const image = String(CONFIG.background.image || "").trim();
+    if (image) {
+      root.style.setProperty("--lumo-default-background", `url("${assetUrl(image).replace(/"/g, "%22")}")`);
     } else {
-      try { video.pause?.(); } catch { /* ignore */ }
+      root.style.removeProperty("--lumo-default-background");
     }
+
+    root.style.setProperty(
+      "--lumo-background-brightness",
+      String(Math.max(0.25, Math.min(1, Number(CONFIG.background.imageBrightness) || 0.72)))
+    );
+    root.style.setProperty(
+      "--lumo-background-overlay",
+      String(Math.max(0, Math.min(0.95, Number(CONFIG.background.overlayOpacity) || 0.50)))
+    );
   }
 
   function replaceBrandContents(target, name, logoHref, season) {
@@ -758,16 +747,30 @@
   }
 
   async function getTaxonomies() {
-    if (taxonomyCache) return taxonomyCache;
-    const [genresResult, studiosResult] = await Promise.allSettled([
-      fetchJson(`/Genres?UserId=${encodeURIComponent(auth.userId)}&Recursive=true&IncludeItemTypes=Movie,Series&Limit=500`),
-      fetchJson(`/Studios?UserId=${encodeURIComponent(auth.userId)}&Recursive=true&Limit=800`)
-    ]);
-    taxonomyCache = {
-      genres: genresResult.status === "fulfilled" ? (genresResult.value.Items || []) : [],
-      studios: studiosResult.status === "fulfilled" ? (studiosResult.value.Items || []) : []
-    };
-    return taxonomyCache;
+    const now = Date.now();
+    if (taxonomyCache && now < taxonomyCacheExpiresAt) return taxonomyCache;
+    if (taxonomyPromise) return taxonomyPromise;
+
+    taxonomyPromise = (async () => {
+      const [genresResult, studiosResult] = await Promise.allSettled([
+        fetchJson(`/Genres?UserId=${encodeURIComponent(auth.userId)}&Recursive=true&IncludeItemTypes=Movie,Series&Limit=500`),
+        fetchJson(`/Studios?UserId=${encodeURIComponent(auth.userId)}&Recursive=true&Limit=800`)
+      ]);
+      const anySuccess = genresResult.status === "fulfilled" || studiosResult.status === "fulfilled";
+      taxonomyCache = {
+        genres: genresResult.status === "fulfilled" ? (genresResult.value.Items || []) : [],
+        studios: studiosResult.status === "fulfilled" ? (studiosResult.value.Items || []) : []
+      };
+      /* Long cache on success, short retry window on a transient API failure. */
+      taxonomyCacheExpiresAt = Date.now() + (anySuccess ? 10 * 60_000 : 15_000);
+      return taxonomyCache;
+    })();
+
+    try {
+      return await taxonomyPromise;
+    } finally {
+      taxonomyPromise = null;
+    }
   }
 
   function resolveIds(entries, aliases) {
@@ -995,7 +998,8 @@
       label: group.label || "",
       colors: Array.isArray(group.colors) ? group.colors.slice(0, 2) : [],
       logo: group.logo || "",
-      logoFilter: group.logoFilter || "none"
+      logoFilter: group.logoFilter || "none",
+      ts: Date.now()
     };
     try { sessionStorage.setItem("lumo.taxonomyContext", JSON.stringify(context)); } catch { /* ignore */ }
 
@@ -1056,6 +1060,48 @@
     return palettes[Math.abs(hash) % palettes.length];
   }
 
+  function visibleElement(node) {
+    if (!node?.isConnected) return false;
+    if (node.hidden || node.getAttribute?.("aria-hidden") === "true" || node.hasAttribute?.("inert")) return false;
+    if (node.closest?.(".hide,[aria-hidden='true'],[inert]")) return false;
+    try {
+      const style = getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+      const rect = node.getBoundingClientRect();
+      const intersectsX = rect.right > -32 && rect.left < innerWidth + 32;
+      const intersectsY = rect.bottom > -32 && rect.top < innerHeight + 96;
+      return rect.width > 2 && rect.height > 2 && intersectsX && intersectsY;
+    } catch {
+      return false;
+    }
+  }
+
+  function readNativeTaxonomyTitle() {
+    const generic = new Set([
+      "lumo", "jellyfin", "films", "film", "movies", "movie", "series", "séries",
+      "bibliothèque", "library", "éléments", "items", "genre", "genres", "studio", "studios"
+    ]);
+    const selectors = [
+      ".mainAnimatedPage:not(.hide) .pageTitle",
+      "[data-role='page']:not(.hide) .pageTitle",
+      "#reactRoot main h1",
+      "#reactRoot main h2",
+      "main[role='main'] h1",
+      "main[role='main'] h2",
+      ".page:not(.hide) h1",
+      ".page:not(.hide) h2"
+    ];
+    for (const selector of selectors) {
+      for (const node of $$(selector)) {
+        if (!visibleElement(node)) continue;
+        const value = String(node.textContent || "").replace(/\s+/g, " ").trim();
+        if (!value || value.length > 90 || generic.has(value.toLowerCase())) continue;
+        return value;
+      }
+    }
+    return "";
+  }
+
   async function resolveTaxonomyContext() {
     if (!CONFIG.taxonomyHero.enabled) return null;
     const params = getRouteParams();
@@ -1063,20 +1109,27 @@
     const studioId = routeParamId(params, ["studioId", "StudioId", "studioIds", "StudioIds"]);
     if (!genreId && !studioId) return null;
 
+    const kindFromRoute = genreId ? "genre" : "studio";
     const routeId = String(genreId || studioId || "").trim();
+    const cacheKey = `${kindFromRoute}:${routeId}`;
+    const cached = taxonomyContextCache.get(cacheKey);
+    if (cached) return { ...cached, ids: [routeId] };
+
     let stored = null;
     try { stored = JSON.parse(sessionStorage.getItem("lumo.taxonomyContext") || "null"); } catch { stored = null; }
     if (stored && String(stored.id || "") === routeId) {
-      return { ...stored, id: routeId, ids: [routeId] };
+      const context = { ...stored, id: routeId, ids: [routeId] };
+      taxonomyContextCache.set(cacheKey, context);
+      return context;
     }
 
-    /* Static server-specific mappings are checked before the API so direct
-       links to the configured home studios always receive the right logo and
-       palette, even while /Studios is still loading. */
-    const configured = configuredGroupById(routeId, genreId ? "genre" : "studio");
+    /* Exact mappings from the home page are authoritative and require no API
+       round-trip. This makes the six requested studios and six TV networks
+       work even if /Studios is slow or temporarily unavailable. */
+    const configured = configuredGroupById(routeId, kindFromRoute);
     if (configured) {
-      return {
-        kind: configured.kind || (genreId ? "genre" : "studio"),
+      const context = {
+        kind: configured.kind || kindFromRoute,
         id: routeId,
         ids: [routeId],
         label: configured.label || (genreId ? "Genre" : "Studio"),
@@ -1084,15 +1137,23 @@
         logo: configured.logo || "",
         logoFilter: configured.logoFilter || "none"
       };
+      taxonomyContextCache.set(cacheKey, context);
+      return context;
     }
 
-    /* Every Jellyfin genre and studio gets a hero, not only the hand-picked
-       home shortcuts. We resolve the exact native taxonomy name by ID. */
-    const taxonomy = await getTaxonomies();
+    /* For every other Jellyfin taxonomy ID, resolve the native name from the
+       API. The DOM title is a last-resort fallback so the hero still has a
+       meaningful label if an older server build rejects the taxonomy call. */
+    let taxonomy = { genres: [], studios: [] };
+    try { taxonomy = await getTaxonomies(); } catch (error) {
+      console.debug(LOG, "Taxonomies indisponibles, repli sur le titre natif", error);
+    }
+
     if (genreId) {
       const entry = taxonomyEntryById(taxonomy.genres, routeId);
-      const label = entry?.Name || "Genre";
-      return {
+      const nativeLabel = entry?.Name || readNativeTaxonomyTitle();
+      const label = nativeLabel || "Genre";
+      const context = {
         kind: "genre",
         id: routeId,
         ids: [routeId],
@@ -1101,76 +1162,121 @@
         logo: "",
         logoFilter: "none"
       };
+      if (nativeLabel) taxonomyContextCache.set(cacheKey, context);
+      return context;
     }
 
     const entry = taxonomyEntryById(taxonomy.studios, routeId);
-    const label = entry?.Name || "Studio";
-    const byName = configuredGroupByName(label);
-    return {
+    const resolvedLabel = entry?.Name || readNativeTaxonomyTitle();
+    const nativeLabel = resolvedLabel || "Studio";
+    const byName = resolvedLabel ? configuredGroupByName(resolvedLabel) : null;
+    const context = {
       kind: byName?.kind || "studio",
       id: routeId,
       ids: [routeId],
-      label: byName?.label || label,
-      colors: byName?.colors || taxonomyPalette(label),
+      label: byName?.label || nativeLabel,
+      colors: byName?.colors || taxonomyPalette(nativeLabel),
       logo: byName?.logo || "",
       logoFilter: byName?.logoFilter || "none"
     };
+    if (resolvedLabel) taxonomyContextCache.set(cacheKey, context);
+    return context;
   }
 
   function findTaxonomyHost() {
-    const selectors = [
+    /* Jellyfin 12 mixes legacy ViewManager pages and React/MUI pages. Locate
+       the visible content first, then promote it to its page/main ancestor.
+       Do not exclude #indexPage: on some 12.0 builds the list route is mounted
+       beneath a shared index shell, which was the reason v1.9 missed heroes. */
+    const candidates = new Map();
+
+    const add = (node, bonus = 0) => {
+      if (!node?.isConnected) return;
+      const host = node.matches?.("main,[data-role='page'],.mainAnimatedPage,.page")
+        ? node
+        : node.closest?.("[data-role='page'],.mainAnimatedPage,.page,main") || node;
+      if (!host?.isConnected || host.closest?.("header,nav,aside,[role='navigation']")) return;
+      if (!visibleElement(host)) return;
+      try {
+        const rect = host.getBoundingClientRect();
+        const visibleWidth = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
+        const visibleHeight = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0));
+        const area = Math.max(1, visibleWidth * visibleHeight);
+        const hasMedia = Boolean(host.querySelector?.(
+          ".itemsContainer,.vertical-wrap,[class*='MuiGrid-container'],[class*='MuiImageList'],[class*='card'],[data-testid*='item']"
+        ));
+        const activeBonus = host.classList?.contains("hide") ? -1e9 : 0;
+        const score = area + bonus + (hasMedia ? 2_000_000 : 0) + activeBonus;
+        const current = candidates.get(host);
+        if (!current || current.score < score) candidates.set(host, { node: host, score });
+      } catch { /* ignore */ }
+    };
+
+    const contentSelectors = [
+      ".mainAnimatedPage:not(.hide) .itemsContainer",
+      "[data-role='page']:not(.hide) .itemsContainer",
+      ".page:not(.hide) .itemsContainer",
+      "#reactRoot main [class*='MuiGrid-container']",
+      "#reactRoot main [class*='card']",
+      "#reactRoot main [data-testid*='item']"
+    ];
+    contentSelectors.forEach((selector) => $$(selector).forEach((node) => {
+      if (visibleElement(node)) add(node, 4_000_000);
+    }));
+
+    [
+      ".mainAnimatedPage:not(.hide)",
+      "[data-role='page']:not(.hide)",
+      ".page:not(.hide)",
+      ".mainAnimatedPages",
+      ".viewContainer",
       "#reactRoot main[role='main']",
       "#reactRoot main",
       "main[role='main']",
-      "main.MuiBox-root",
-      ".mainAnimatedPage:not(.hide)",
-      ".page:not(.hide)",
       "main"
-    ];
-    const candidates = [];
-    const seen = new Set();
-    for (const selector of selectors) {
-      for (const node of $$(selector)) {
-        if (!node?.isConnected || seen.has(node)) continue;
-        seen.add(node);
-        if (node.id === "indexPage" || node.closest?.("#indexPage")) continue;
-        if (node.closest?.("header,nav,aside,[role='navigation']")) continue;
-        try {
-          const style = getComputedStyle(node);
-          const rect = node.getBoundingClientRect();
-          if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
-          if (rect.width < 320 || rect.height < 120) continue;
-          const visibleWidth = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
-          const visibleHeight = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0));
-          const viewportArea = visibleWidth * visibleHeight;
-          const contentBonus = node.querySelector?.("[class*='card'],[class*='grid'],[data-testid],.itemsContainer") ? 1.2 : 1;
-          candidates.push({ node, score: viewportArea * contentBonus + rect.width * 100 });
-        } catch { /* ignore */ }
-      }
-    }
-    candidates.sort((a, b) => b.score - a.score);
-    return candidates[0]?.node || null;
+    ].forEach((selector) => $$(selector).forEach((node) => add(node, 0)));
+
+    const ranked = [...candidates.values()].sort((a, b) => b.score - a.score);
+    return ranked[0]?.node || null;
   }
 
   function clearTaxonomyHero() {
     taxonomyHeroKey = "";
     taxonomyHeroRequest += 1;
+    taxonomyRetryCount = 0;
+    if (taxonomyRetryTimer) clearTimeout(taxonomyRetryTimer);
+    taxonomyRetryTimer = null;
     $("#lumo-taxonomy-hero")?.remove();
     const root = document.documentElement;
     delete root.dataset.lumoTaxonomyKind;
     delete root.dataset.lumoTaxonomyId;
     root.style.removeProperty("--lumo-taxonomy-a");
     root.style.removeProperty("--lumo-taxonomy-b");
+    root.style.removeProperty("--lumo-taxonomy-a-rgb");
+    root.style.removeProperty("--lumo-taxonomy-b-rgb");
+  }
+
+  function colorToRgbChannels(value, fallback = "124,92,255") {
+    const text = String(value || "").trim();
+    const short = text.match(/^#([0-9a-f]{3})$/i);
+    const full = text.match(/^#([0-9a-f]{6})$/i);
+    const hex = full?.[1] || (short ? short[1].split("").map((c) => c + c).join("") : "");
+    if (!hex) return fallback;
+    return `${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)}`;
   }
 
   function applyTaxonomyTheme(context) {
     if (!context) return;
     const colors = context.colors?.length >= 2 ? context.colors : taxonomyPalette(context.label);
+    const a = colors[0] || "#7c5cff";
+    const b = colors[1] || colors[0] || "#25d7ff";
     const root = document.documentElement;
     root.dataset.lumoTaxonomyKind = context.kind || "studio";
     root.dataset.lumoTaxonomyId = context.id || "";
-    root.style.setProperty("--lumo-taxonomy-a", colors[0] || "#7c5cff");
-    root.style.setProperty("--lumo-taxonomy-b", colors[1] || colors[0] || "#25d7ff");
+    root.style.setProperty("--lumo-taxonomy-a", a);
+    root.style.setProperty("--lumo-taxonomy-b", b);
+    root.style.setProperty("--lumo-taxonomy-a-rgb", colorToRgbChannels(a, "124,92,255"));
+    root.style.setProperty("--lumo-taxonomy-b-rgb", colorToRgbChannels(b, "37,215,255"));
   }
 
   function hasBackdropArt(item) {
@@ -1198,28 +1304,34 @@
 
   async function fetchTaxonomyHeroItem(context) {
     if (!auth?.userId) return null;
+    const cacheKey = `${context.kind}:${context.id}:${localDayKey()}`;
+    if (taxonomyHeroItemCache.has(cacheKey)) return taxonomyHeroItemCache.get(cacheKey);
 
-    /* Genres should look cinematic: prefer an actual film with a backdrop.
-       Studio/network pages may use films or series. Random is attempted first,
-       with a deterministic recent-items fallback for Jellyfin builds that do
-       not expose Random sorting on this endpoint. */
+    /* A stable daily choice avoids visual flicker when Jellyfin remounts a
+       legacy list page. We fetch one lightweight recent pool and select from
+       items that actually have backdrop art whenever possible. */
     const typePlans = context.kind === "genre"
       ? ["Movie", "Movie,Series"]
       : [context.kind === "network" ? "Series" : "Movie,Series"];
 
     for (const includeTypes of typePlans) {
-      for (const sortBy of ["Random", "DateCreated"]) {
-        try {
-          const items = await fetchTaxonomyCandidates(context, includeTypes, sortBy);
-          if (!items.length) continue;
-          const preferred = items.filter(hasBackdropArt);
-          const pool = preferred.length ? preferred : items;
-          return pool[Math.floor(Math.random() * pool.length)] || pool[0] || null;
-        } catch (error) {
-          console.debug(LOG, "Hero taxonomie: essai suivant", context.label, includeTypes, sortBy, error);
-        }
+      try {
+        const items = await fetchTaxonomyCandidates(context, includeTypes, "DateCreated");
+        if (!items.length) continue;
+        const preferred = items.filter(hasBackdropArt);
+        const pool = preferred.length ? preferred : items;
+        const random = seededRandom(hash32(
+          `${auth?.serverId || "server"}|${auth?.userId || "user"}|${localDayKey()}|hero|${context.kind}|${context.id}`
+        ));
+        const item = pool[Math.floor(random() * pool.length)] || pool[0] || null;
+        taxonomyHeroItemCache.set(cacheKey, item);
+        return item;
+      } catch (error) {
+        console.debug(LOG, "Hero taxonomie: repli suivant", context.label, includeTypes, error);
       }
     }
+
+    taxonomyHeroItemCache.set(cacheKey, null);
     return null;
   }
 
@@ -1274,6 +1386,16 @@
     return hero;
   }
 
+  function scheduleTaxonomyRetry() {
+    if (taxonomyRetryTimer || !isTaxonomyRoute()) return;
+    taxonomyRetryCount = Math.min(taxonomyRetryCount + 1, 24);
+    const delay = Math.min(1000, 80 + taxonomyRetryCount * 55);
+    taxonomyRetryTimer = setTimeout(() => {
+      taxonomyRetryTimer = null;
+      scheduleMount();
+    }, delay);
+  }
+
   async function syncTaxonomyPageHero() {
     if (!auth?.token || !auth?.userId) return;
     if (!isTaxonomyRoute()) {
@@ -1283,21 +1405,55 @@
 
     const context = await resolveTaxonomyContext();
     if (!context) {
-      clearTaxonomyHero();
+      scheduleTaxonomyRetry();
       return;
     }
 
-    /* Apply the page palette immediately. Hero DOM can arrive a little later
-       while React finishes mounting the list, but the page background must
-       never flash back to the default theme. */
+    /* Colour the page before media fetching. Even a slow API call therefore
+       yields an immediate studio/genre-specific page instead of a plain list. */
     applyTaxonomyTheme(context);
+    syncBackgroundMedia();
 
     const key = `${context.kind}:${context.id}`;
-    const existing = $("#lumo-taxonomy-hero");
-    const host = findTaxonomyHost();
-    if (!host) return;
+    let host = findTaxonomyHost();
+    if (!host) {
+      scheduleTaxonomyRetry();
+      return;
+    }
+
+    taxonomyRetryCount = 0;
+    if (taxonomyRetryTimer) clearTimeout(taxonomyRetryTimer);
+    taxonomyRetryTimer = null;
+
+    let existing = $("#lumo-taxonomy-hero");
     if (existing?.isConnected && taxonomyHeroKey === key && existing.dataset.key === key) {
-      if (!host.contains(existing)) host.prepend(existing);
+      const descriptorMatches = existing.dataset.kind === context.kind
+        && existing.dataset.label === (context.label || "");
+      if (descriptorMatches) {
+        if (!host.contains(existing)) {
+          try { host.prepend(existing); } catch { /* React/legacy host changed; retry below */ }
+        }
+        return;
+      }
+      /* The API/native heading may have resolved a better name after the
+         placeholder was created. Rebuild instead of freezing "Studio/Genre". */
+      existing.remove();
+      existing = null;
+      taxonomyHeroKey = "";
+    }
+
+    /* Insert a complete placeholder immediately. This is intentionally done
+       before the API request: the hero is guaranteed to exist for every valid
+       taxonomy route, even if the media query fails. */
+    $("#lumo-taxonomy-hero")?.remove();
+    taxonomyHeroKey = key;
+    const placeholder = buildTaxonomyHero(context, null);
+    placeholder.dataset.loading = "true";
+    try {
+      host.prepend(placeholder);
+    } catch {
+      taxonomyHeroKey = "";
+      scheduleTaxonomyRetry();
       return;
     }
 
@@ -1306,17 +1462,31 @@
       console.debug(LOG, "Hero taxonomie sans média", context.label, error);
       return null;
     });
+
     if (requestId !== taxonomyHeroRequest || !isTaxonomyRoute()) return;
-
     const latestContext = await resolveTaxonomyContext().catch(() => null);
-    if (!latestContext || latestContext.id !== context.id) return;
+    if (!latestContext || String(latestContext.id) !== String(context.id)) return;
 
-    const latestHost = findTaxonomyHost();
-    if (!latestHost) return;
-    $("#lumo-taxonomy-hero")?.remove();
-    taxonomyHeroKey = key;
-    applyTaxonomyTheme(context);
-    latestHost.prepend(buildTaxonomyHero(context, item));
+    host = findTaxonomyHost() || host;
+    if (!host?.isConnected) {
+      scheduleTaxonomyRetry();
+      return;
+    }
+
+    const hydrated = buildTaxonomyHero(latestContext, item);
+    hydrated.dataset.loading = "false";
+    const current = $("#lumo-taxonomy-hero");
+    try {
+      if (current?.isConnected && current.dataset.key === key) current.replaceWith(hydrated);
+      else host.prepend(hydrated);
+      taxonomyHeroKey = key;
+    } catch {
+      taxonomyHeroKey = "";
+      scheduleTaxonomyRetry();
+      return;
+    }
+
+    applyTaxonomyTheme(latestContext);
     syncBackgroundMedia();
   }
 
