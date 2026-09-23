@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.13.0"
+$Version = "1.14.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -58,6 +58,16 @@ $Logos = @{
 foreach ($Entry in $Logos.GetEnumerator()) {
     $Target = Join-Path $LogoDir $Entry.Key
     $Tmp = "$Target.tmp"
+
+    # Conserver un SVG local valide par défaut pour rendre les mises à jour
+    # indépendantes du réseau. Définir LUMO_REFRESH_LOGOS=1 pour forcer.
+    if ($env:LUMO_REFRESH_LOGOS -ne "1" -and (Test-Path $Target)) {
+        try {
+            $Existing = [System.IO.File]::ReadAllText($Target)
+            if ($Existing -match '<svg') { continue }
+        } catch { }
+    }
+
     Remove-Item $Tmp -Force -ErrorAction SilentlyContinue
     try {
         Invoke-WebRequest -Uri $Entry.Value -OutFile $Tmp -MaximumRedirection 10 -UseBasicParsing -Headers @{"User-Agent"="Lumo-Jellyfin/$Version"}

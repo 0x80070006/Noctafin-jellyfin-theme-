@@ -8,14 +8,11 @@
    video compositing tree. Jellyfin's player gets a dedicated opaque canvas.
    -------------------------------------------------------------------------- */
 html.lumo-playback-active,
-html.lumo-playback-active body,
-html.lumo-playback-pending,
-html.lumo-playback-pending body {
+html.lumo-playback-active body {
   background: #000 !important;
 }
 
-html.lumo-playback-active #lumo-background-layer,
-html.lumo-playback-pending #lumo-background-layer {
+html.lumo-playback-active #lumo-background-layer {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -24,8 +21,7 @@ html.lumo-playback-pending #lumo-background-layer {
 
 /* The regular application header is not part of the fullscreen player. The
    player keeps its own OSD/back/title controls. */
-html.lumo-playback-active .lumo-main-header,
-html.lumo-playback-pending .lumo-main-header {
+html.lumo-playback-active .lumo-main-header {
   display: none !important;
 }
 
@@ -309,7 +305,6 @@ html:has(.videoPlayerContainer) #lumo-background-layer {
 }
 
 html.lumo-playback-active .videoPlayerContainer,
-html.lumo-playback-pending .videoPlayerContainer,
 html:has(.videoPlayerContainer) .videoPlayerContainer {
   position: fixed !important;
   inset: 0 !important;
@@ -327,12 +322,9 @@ html:has(.videoPlayerContainer) .videoPlayerContainer {
 
 html.lumo-playback-active video.htmlVideoPlayer,
 html.lumo-playback-active video.htmlvideoplayer,
-html.lumo-playback-pending video.htmlVideoPlayer,
-html.lumo-playback-pending video.htmlvideoplayer,
 html:has(.videoPlayerContainer) video.htmlVideoPlayer,
 html:has(.videoPlayerContainer) video.htmlvideoplayer,
-html.lumo-playback-active .videoPlayerContainer > video,
-html.lumo-playback-pending .videoPlayerContainer > video {
+html.lumo-playback-active .videoPlayerContainer > video {
   position: absolute !important;
   inset: 0 !important;
   z-index: 1 !important;
@@ -356,8 +348,6 @@ html.lumo-playback-active .videoOsdHeader,
 html.lumo-playback-active .osdHeader,
 html.lumo-playback-active .videoOsdBottom,
 html.lumo-playback-active .osdControls,
-html.lumo-playback-pending .videoOsdHeader,
-html.lumo-playback-pending .videoOsdBottom,
 html:has(.videoPlayerContainer) .videoOsdHeader,
 html:has(.videoPlayerContainer) .videoOsdBottom {
   z-index: 80 !important;
@@ -367,9 +357,7 @@ html:has(.videoPlayerContainer) .videoOsdBottom {
    controls while the pointer is over them makes the player feel unstable. */
 html.lumo-playback-active .videoOsdHeader button,
 html.lumo-playback-active .videoOsdBottom button,
-html.lumo-playback-active .osdControls button,
-html.lumo-playback-pending .videoOsdHeader button,
-html.lumo-playback-pending .videoOsdBottom button {
+html.lumo-playback-active .osdControls button {
   transform: none !important;
   box-shadow: none;
 }
@@ -377,7 +365,6 @@ html.lumo-playback-pending .videoOsdBottom button {
 /* Any stale regular application header gets removed during playback. Native
    video OSD headers are explicitly excluded by the JavaScript classifier. */
 html.lumo-playback-active .lumo-main-header:not(.videoOsdHeader):not(.osdHeader):not([class*="videoOsd"]):not([class*="VideoOsd"]):not([class*="osdHeader"]),
-html.lumo-playback-pending .lumo-main-header:not(.videoOsdHeader):not(.osdHeader):not([class*="videoOsd"]):not([class*="VideoOsd"]):not([class*="osdHeader"]),
 html:has(.videoPlayerContainer) .lumo-main-header:not(.videoOsdHeader):not(.osdHeader):not([class*="videoOsd"]):not([class*="VideoOsd"]):not([class*="osdHeader"]) {
   display: none !important;
 }

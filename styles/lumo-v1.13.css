@@ -55,3 +55,146 @@
   [data-lumo-play-id].is-starting svg { animation: none !important; }
   #lumo-playback-error { transition: none; }
 }
+
+/* ==========================================================================
+   Lumo v1.14.0 — hardened rails, poster containment and scroll ownership
+   This file remains the final override imported by theme.css for compatibility.
+   ========================================================================== */
+
+:root {
+  --lumo-visible-count: 6;
+  --lumo-rail-gap: 12px;
+}
+
+/* Desktop rails are arrow-driven. Hiding x-overflow from direct wheel input
+   prevents trackpads/mice from stealing the page's vertical scroll while
+   scrollLeft remains fully controllable from JS. */
+@media (hover: hover) and (pointer: fine) {
+  .noctafin-card-track,
+  .noctafin-brand-track {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    overscroll-behavior: auto !important;
+    touch-action: pan-y pinch-zoom !important;
+    scroll-snap-type: none !important;
+    scrollbar-width: none !important;
+  }
+}
+
+/* Touch devices keep native horizontal swiping. */
+@media (hover: none), (pointer: coarse) {
+  .noctafin-card-track,
+  .noctafin-brand-track {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-x pan-y pinch-zoom !important;
+    scroll-snap-type: x proximity !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+.noctafin-card-track,
+.noctafin-brand-track {
+  align-items: flex-start !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  gap: var(--lumo-rail-gap) !important;
+  padding: 8px 0 18px !important;
+}
+
+.noctafin-card--poster,
+.noctafin-card--landscape {
+  flex: 0 0 calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  width: calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  min-width: calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  max-width: calc((100% - (var(--lumo-visible-count) - 1) * var(--lumo-rail-gap)) / var(--lumo-visible-count)) !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+.noctafin-card__art {
+  transform: none !important;
+  overflow: hidden !important;
+  contain: layout paint !important;
+}
+
+.noctafin-card--poster .noctafin-card__art {
+  aspect-ratio: 2 / 3 !important;
+}
+
+.noctafin-card--landscape .noctafin-card__art {
+  aspect-ratio: 16 / 9 !important;
+}
+
+.noctafin-card--poster .noctafin-card__art img {
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.noctafin-card--landscape .noctafin-card__art img {
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+/* Zoom only the bitmap inside its fixed frame; the card/art never leaves the
+   rail and cannot overlap the heading or neighboring rows. */
+.noctafin-card:hover .noctafin-card__art,
+.noctafin-card:focus-visible .noctafin-card__art {
+  transform: none !important;
+}
+
+.noctafin-card:hover .noctafin-card__art img,
+.noctafin-card:focus-visible .noctafin-card__art img {
+  transform: scale(1.035) !important;
+}
+
+.noctafin-brand {
+  transform: none !important;
+  overflow: hidden !important;
+  contain: layout paint !important;
+}
+
+.noctafin-brand:hover,
+.noctafin-brand:focus-visible {
+  transform: none !important;
+}
+
+.noctafin-brand__logo {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  transform-origin: center !important;
+}
+
+.noctafin-brand:hover .noctafin-brand__logo,
+.noctafin-brand:focus-visible .noctafin-brand__logo {
+  transform: scale(1.035) !important;
+}
+
+@media (max-width: 1180px) {
+  :root { --lumo-visible-count: 4; }
+}
+
+@media (max-width: 760px) {
+  :root { --lumo-visible-count: 2; --lumo-rail-gap: 10px; }
+}
+
+/* Synthetic Jellyfin shortcut bridge: must participate in event bubbling but
+   never be visible/focusable or alter layout. */
+.lumo-native-playback-bridge {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+}
+

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.13.0"
+VERSION="1.14.0"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
 
@@ -115,6 +115,13 @@ for entry in "${logo_sources[@]}"; do
   IFS='|' read -r filename url <<< "$entry"
   target="$LOGO_DIR/$filename"
   tmp="$target.tmp"
+
+  # Les mises à jour Lumo ne doivent pas dépendre du réseau si un logo local
+  # valide existe déjà. Forcer un rafraîchissement avec LUMO_REFRESH_LOGOS=1.
+  if [[ "${LUMO_REFRESH_LOGOS:-0}" != "1" ]] && is_svg_file "$target"; then
+    continue
+  fi
+
   rm -f "$tmp"
   if fetch_logo "$tmp" "$url" && is_svg_file "$tmp"; then
     mv -f "$tmp" "$target"

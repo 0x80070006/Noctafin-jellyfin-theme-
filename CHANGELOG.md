@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.14.0
+
+- Nouveau pont de lecture **Jellyfin-native shortcut** : Lumo crée temporairement une `itemAction` avec `data-id`, `data-serverid`, `data-type`, `data-mediatype`, `data-isfolder`, `data-action` et `data-positionticks`, puis laisse le gestionnaire natif Jellyfin déclencher Play/Resume.
+- La cible Série est résolue vers un **épisode concret avant toute tentative de lecture** ; plus de clic natif anticipé sur l'ID de la série.
+- `PlaybackManager.play()` n'est plus appelé avec `items:[item]` mais avec `ids:[resolvedId]`, `serverId` et `startPositionTicks`, aligné sur le contrat du raccourci natif Jellyfin.
+- Politique **last user intent wins** : un nouveau clic sur un autre média invalide immédiatement timers, ponts et transaction de la tentative précédente ; seul un double-clic très rapproché sur le même média est absorbé.
+- Le mode `lumo-playback-pending` ne masque plus le fond/header ni ne noircit l'interface avant l'apparition réelle du lecteur. L'isolation noire n'est appliquée qu'à une surface lecteur effectivement active.
+- Fallback natif conservé mais repoussé en dernier recours ; en cas d'échec, la fiche exacte reste ouverte et aucune redirection vers l'accueil n'est déclenchée.
+- Rails desktop durcis : défilement horizontal direct masqué, navigation par flèches uniquement, et `touch-action: pan-y` pour empêcher un rail de capturer la molette verticale de la page.
+- Les appareils tactiles conservent le swipe horizontal natif.
+- 12 médias par rail / 6 visibles sur desktop conservés, avec largeur calculée et navigation programmée.
+- Jaquettes : cadre fixe, poster entier en `object-fit: contain`; le zoom ne concerne plus que l'image interne et ne peut plus sortir de la ligne.
+- Studios/réseaux : même principe de zoom interne, logo contenu et aucun débordement hors carte.
+- Suppression du vieux navigateur plein écran `noctafin-browser-open` de `home.css`, qui pouvait réintroduire un verrou de scroll via un cache historique.
+- MutationObserver filtré pour ignorer les mutations créées par Lumo lui-même ; watchdog passé à 5 s et suspendu quand l'onglet est caché pour réduire le travail inutile.
+- Nouveau validateur `validate-layout.mjs` en plus des validations playback/config.
+- `theme.css` suit exactement la chaîne d'imports v1.14.0 demandée, tout en gardant les couches historiques v1.10–v1.13 comme compatibilité.
+
 ## 1.13.0
 
 - Port du pattern de liaison Abyss Spotlight : priorité à l'action native Jellyfin `play`/`resume` portant le même `data-id` que le média cliqué.

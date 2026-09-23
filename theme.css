@@ -1,16 +1,16 @@
 /*
- * Lumo — Jellyfin 12 theme v1.13.0
+ * Lumo — Jellyfin 12 theme v1.14.0
  * Full install injects this stylesheet locally into jellyfin-web.
  * CSS-only import remains possible, but dynamic heroes/details require install.sh.
  */
-@import url("./styles/tokens.css?v=1.13.0");
-@import url("./styles/core.css?v=1.13.0");
-@import url("./styles/header.css?v=1.13.0");
-@import url("./styles/home.css?v=1.13.0");
-@import url("./styles/details.css?v=1.13.0");
-@import url("./styles/player.css?v=1.13.0");
-@import url("./styles/responsive.css?v=1.13.0");
-@import url("./styles/lumo-v1.10.css?v=1.13.0");
-@import url("./styles/lumo-v1.11.css?v=1.13.0");
-@import url("./styles/lumo-v1.12.css?v=1.13.0");
-@import url("./styles/lumo-v1.13.css?v=1.13.0");
+@import url("./styles/tokens.css?v=1.14.0");
+@import url("./styles/core.css?v=1.14.0");
+@import url("./styles/header.css?v=1.14.0");
+@import url("./styles/home.css?v=1.14.0");
+@import url("./styles/details.css?v=1.14.0");
+@import url("./styles/player.css?v=1.14.0");
+@import url("./styles/responsive.css?v=1.14.0");
+@import url("./styles/lumo-v1.10.css?v=1.14.0");
+@import url("./styles/lumo-v1.11.css?v=1.14.0");
+@import url("./styles/lumo-v1.12.css?v=1.14.0");
+@import url("./styles/lumo-v1.13.css?v=1.14.0");

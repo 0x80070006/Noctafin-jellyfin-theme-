@@ -2,45 +2,42 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
-## Nouveautés 1.13.0
+## Nouveautés 1.14.0
 
-### Bus de lecture unique, inspiré du pattern Abyss Spotlight
+### Lecture : priorité au gestionnaire natif Jellyfin
 
-Les six points d'entrée de lecture passent maintenant par **une seule liaison `itemId` → lecture native Jellyfin** :
+Les six points d'entrée restent raccordés à un seul bus `itemId` : Hero accueil, rails, fiche Film, fiche Série, **Lecture en cours** et cartes épisodes.
 
-- Hero de l'accueil ;
-- jaquettes des rails ;
-- fiche Film ;
-- fiche Série ;
-- bloc **Lecture en cours** ;
-- cartes épisodes.
+La v1.14 ne dépend plus d'un objet média JavaScript capturé lors du rendu. Au clic :
 
-Chaque nœud cliquable porte son propre `data-lumo-play-id`. Un seul listener délégué en phase capture lit cet ID **au moment exact du clic**. Il n'existe donc plus de closure de bouton conservant un ancien objet média après un remount React.
+1. Lumo relit l'`itemId` sur le nœud réellement cliqué.
+2. Une Série est d'abord résolue vers un épisode concret : reprise, sinon Next Up, sinon premier épisode.
+3. Lumo crée une `itemAction` native temporaire avec l'ID, le serveur, le type, le média, l'action Play/Resume et la position de reprise.
+4. Cette action est insérée dans un conteneur Jellyfin déjà géré par son système de shortcuts puis cliquée.
+5. Si ce pont n'est pas disponible, Lumo essaie une action native exacte déjà rendue.
+6. Ensuite seulement, `PlaybackManager.play()` est utilisé avec `ids:[resolvedId]`, `serverId` et `startPositionTicks`.
+7. La fiche native exacte reste le dernier fallback. Aucun retour forcé vers l'accueil.
 
-La séquence de démarrage est désormais :
+Un clic plus récent annule désormais proprement une tentative précédente. L'état `playback-pending` ne masque plus l'interface avant que le vrai lecteur existe.
 
-1. rechercher une action native Jellyfin `play`/`resume` liée au **même `data-id`**, comme le fait Abyss Spotlight ;
-2. si elle n'existe pas ou ne monte pas le lecteur, recharger le média exact depuis l'API à partir de l'ID cliqué ;
-3. pour une Série, résoudre d'abord un épisode concret (reprise → Next Up → premier épisode) ;
-4. appeler `PlaybackManager.play()` avec **un seul item concret** ;
-5. vérifier qu'une vraie surface lecteur/OSD apparaît ;
-6. en dernier secours, ouvrir la fiche native du média exact et cliquer son bouton Lecture.
+### Rails et scroll
 
-Aucune route `/video` synthétique n'est utilisée. Si la lecture échoue encore, la fiche native reste ouverte et Lumo affiche un message discret au lieu de renvoyer à l'accueil.
+- 12 médias maximum par rail, 6 visibles sur desktop.
+- Desktop : navigation horizontale par flèches ; le rail ne capture plus la molette verticale.
+- Tactile : swipe horizontal natif conservé.
+- Posters affichés entièrement avec `object-fit: contain`.
+- Le zoom est limité à l'image **à l'intérieur** du cadre fixe : la carte ne sort plus de sa ligne.
+- Même confinement pour les logos Studios/Réseaux.
+- Ancien navigateur plein écran/scroll-lock retiré.
+- MutationObserver et watchdog allégés pour réduire les remounts inutiles.
 
-### Protection contre les désynchronisations
+### Chaîne CSS 1.14
 
-- verrou global anti-double lancement ;
-- les clics concurrents ne peuvent plus lancer deux médias différents en parallèle ;
-- les timers/fallbacks sont associés à un numéro de transaction et ne peuvent plus agir sur une lecture plus récente ;
-- la cible API est rafraîchie au clic afin de récupérer la progression et l'état utilisateur actuels ;
-- les actions natives génériques ne sont utilisées que si l'URL courante correspond exactement à l'item attendu.
+`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.13.css`, toutes cache-bustées en `?v=1.14.0`.
 
-### Tests playback
+### Validation
 
-`npm run check` valide désormais explicitement les six points d'entrée et vérifie qu'ils passent tous par le bus central, qu'aucune route `/video` synthétique ne subsiste et que le fallback natif exact est présent.
-
-Toutes les fonctions précédentes restent actives : isolation du lecteur, fond spatial + Halloween/Noël, Hero dédupliqué, Heroes Studio/Genre, saisons accordéon, Lecture en cours, 12 médias par rail / 6 visibles et branding Lumo.
+`npm run check` contrôle la configuration, les six points d'entrée playback et les invariants de layout/scroll. Les installateurs Shell sont également vérifiés séparément.
 
 ## Configuration des saisons
 
@@ -82,9 +79,9 @@ Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
 ```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.13.0" data-lumo-theme="1.13.0">
-<script src="ui/noctafin-config.js?v=1.13.0" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.13.0" data-noctafin-home></script>
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.14.0" data-lumo-theme="1.14.0">
+<script src="ui/noctafin-config.js?v=1.14.0" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.14.0" data-noctafin-home></script>
 ```
 
 ## Mise à jour
@@ -100,7 +97,7 @@ systemctl restart jellyfin
 ## Vérification
 
 ```bash
-grep -n "1.13.0" /usr/share/jellyfin/web/index.html
+grep -n "1.14.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.12.css
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.13.css
@@ -119,7 +116,7 @@ bash -n install/uninstall.sh
 Prévisualisation uniquement, sans les fonctions JavaScript :
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.13.0");
+@import url("https://cdn.jsdelivr.net/gh/0x80070006/Noctafin-jellyfin-theme-@main/theme.css?v=1.14.0");
 ```
 
 Le mode CSS-only ne peut pas fournir les fiches cinématiques, les Heroes dynamiques ni les rails Studio/Genre/Réseau.
