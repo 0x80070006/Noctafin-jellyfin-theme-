@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.13.0
+
+- Port du pattern de liaison Abyss Spotlight : priorité à l'action native Jellyfin `play`/`resume` portant le même `data-id` que le média cliqué.
+- Nouveau bus de lecture unique fondé sur `data-lumo-play-id`, installé une seule fois en délégation d'événement capture afin de survivre aux remounts React sans conserver de closure obsolète.
+- Les 6 points d'entrée sont raccordés au même bus : Hero accueil, rails, fiche Film, fiche Série, Lecture en cours et cartes épisodes.
+- Les jaquettes des rails lancent désormais directement le média correspondant via ce bus de lecture déterministe.
+- Rafraîchissement API de la cible au moment du clic : l'ID du nœud cliqué est la source de vérité, plus l'objet JavaScript éventuellement ancien ayant servi au rendu.
+- Pour une Série, résolution explicite vers un épisode concret avant `PlaybackManager` : épisode reprenable, sinon Next Up, sinon premier épisode réel.
+- `PlaybackManager.play()` reçoit un seul item concret pour réduire les erreurs de traduction/queue et les risques de démarrer un autre épisode.
+- Verrou transactionnel anti-double clic et anti-course entre deux médias ; les fallbacks/timers anciens sont invalidés par un numéro de transaction.
+- Fallback natif durci : recherche d'abord un bouton exact lié au même ID ; le bouton générique d'une fiche n'est accepté que si la route courante contient cet ID.
+- Échec propre : aucune route `/video` synthétique, aucun retour forcé à l'accueil ; la fiche native exacte reste ouverte et un toast Lumo informe l'utilisateur.
+- Nouveau validateur `scripts/validate-playback.mjs` couvrant les 6 points d'entrée et les invariants du pipeline de lecture.
+- Nouvelle couche CSS `lumo-v1.13.css` pour l'état de démarrage et le message d'échec, sans modification de géométrie des cartes/boutons.
+- Toutes les fonctionnalités v1.12 sont conservées sans régression fonctionnelle attendue.
+
+
 ## 1.12.0
 
 - Isolation renforcée du lecteur Jellyfin : le fond spatial Lumo, les fiches custom et le header principal sont automatiquement retirés du compositing pendant la lecture.

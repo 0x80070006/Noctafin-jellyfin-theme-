@@ -1,0 +1,57 @@
+/* Lumo v1.13.0 — deterministic playback bridge */
+
+/* Keep every custom playback target visually stable while Jellyfin mounts the
+   native player. We do not resize cards/buttons here, so layouts cannot jump. */
+[data-lumo-play-id][aria-busy="true"] {
+  cursor: progress !important;
+  pointer-events: none !important;
+}
+
+[data-lumo-play-id].is-starting {
+  filter: brightness(.92);
+}
+
+.noctafin-hero__button[data-lumo-play-id].is-starting svg,
+.lumo-detail-action[data-lumo-play-id].is-starting svg,
+.lumo-series-resume__card[data-lumo-play-id].is-starting .lumo-series-resume__action svg,
+.lumo-episode-card[data-lumo-play-id].is-starting .lumo-episode-card__play svg {
+  animation: lumo-play-pulse .72s ease-in-out infinite alternate;
+}
+
+@keyframes lumo-play-pulse {
+  from { transform: scale(.92); opacity: .65; }
+  to { transform: scale(1.06); opacity: 1; }
+}
+
+#lumo-playback-error {
+  position: fixed;
+  z-index: 2147483000;
+  left: 50%;
+  bottom: max(2.25rem, env(safe-area-inset-bottom));
+  max-width: min(34rem, calc(100vw - 2rem));
+  transform: translate(-50%, 1rem);
+  opacity: 0;
+  pointer-events: none;
+  padding: .72rem 1rem;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(7,10,17,.88);
+  color: #fff;
+  box-shadow: 0 14px 38px rgba(0,0,0,.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: opacity .18s ease, transform .18s ease;
+  font-size: .92rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+#lumo-playback-error.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-lumo-play-id].is-starting svg { animation: none !important; }
+  #lumo-playback-error { transition: none; }
+}

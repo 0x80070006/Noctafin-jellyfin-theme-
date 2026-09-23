@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.12.0";
+  const VERSION = "1.13.0";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -125,6 +125,9 @@
   let playbackPendingTimer = null;
   let playbackFallbackTimer = null;
   let nativePlaybackAttemptKey = "";
+  let playbackEpoch = 0;
+  let playbackTransaction = null;
+  let playbackDelegationInstalled = false;
   const seriesResumeCache = new Map();
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -268,7 +271,10 @@
   function syncPlaybackMode() {
     const active = Boolean(isPlaybackRoute() || hasActivePlaybackSurface());
     const pending = document.documentElement.classList.contains("lumo-playback-pending");
-    if (active) nativePlaybackAttemptKey = "";
+    if (active) {
+      nativePlaybackAttemptKey = "";
+      clearPlaybackTransaction();
+    }
     document.documentElement.classList.toggle("lumo-playback-active", active);
     document.body?.classList.toggle("lumo-playback-active", active);
     if (active) {
@@ -284,6 +290,7 @@
   }
 
   function beginPlaybackPending() {
+    if (heroTimer) { clearTimeout(heroTimer); heroTimer = null; }
     if (playbackPendingTimer) clearTimeout(playbackPendingTimer);
     document.documentElement.classList.add("lumo-playback-pending");
     document.body?.classList.add("lumo-playback-pending");
@@ -347,24 +354,100 @@
     return manager;
   }
 
+  function normalizeItemId(value) {
+    return String(value || "").trim();
+  }
+
+  function escapeAttributeValue(value) {
+    const raw = normalizeItemId(value);
+    if (window.CSS?.escape) return window.CSS.escape(raw);
+    return raw.replace(/([\\"'\]\[])/g, "\\$1");
+  }
+
+  function clearPlaybackTransaction(epoch = null) {
+    if (!playbackTransaction) return;
+    if (epoch != null && playbackTransaction.epoch !== epoch) return;
+    playbackTransaction = null;
+  }
+
+  function setPlaybackBusy(node, active) {
+    if (!node?.isConnected) return;
+    node.classList.toggle("is-starting", Boolean(active));
+    if (active) {
+      node.setAttribute("aria-busy", "true");
+      node.dataset.lumoPlaybackBusy = "1";
+    } else {
+      node.removeAttribute("aria-busy");
+      delete node.dataset.lumoPlaybackBusy;
+    }
+  }
+
+  function bindPlaybackTarget(node, itemOrId, options = {}) {
+    if (!node) return node;
+    const id = normalizeItemId(typeof itemOrId === "string" ? itemOrId : itemOrId?.Id);
+    if (!id) {
+      delete node.dataset.lumoPlayId;
+      return node;
+    }
+    node.dataset.lumoPlayId = id;
+    node.dataset.lumoPlaySource = String(options.source || "custom");
+    node.dataset.lumoPlayResume = options.resume === false ? "false" : "true";
+    const type = typeof itemOrId === "object" ? itemOrId?.Type : options.type;
+    if (type) node.dataset.lumoPlayType = String(type);
+    return node;
+  }
+
+  function installPlaybackDelegation() {
+    if (playbackDelegationInstalled) return;
+    playbackDelegationInstalled = true;
+    document.addEventListener("click", async (event) => {
+      const trigger = event.target?.closest?.("[data-lumo-play-id]");
+      if (!trigger?.isConnected) return;
+      const requestedId = normalizeItemId(trigger.dataset.lumoPlayId);
+      if (!requestedId) return;
+
+      /* One delegated capture listener is intentional: React can remount the
+         surrounding view at any time, but the id is always read from the node
+         that was actually clicked. No closure can keep an obsolete item. */
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+
+      if (trigger.dataset.lumoPlaybackBusy === "1") return;
+      setPlaybackBusy(trigger, true);
+      try {
+        await playItemRobust(requestedId, {
+          resume: trigger.dataset.lumoPlayResume !== "false",
+          source: trigger.dataset.lumoPlaySource || "custom",
+          hintedType: trigger.dataset.lumoPlayType || ""
+        });
+      } finally {
+        setTimeout(() => setPlaybackBusy(trigger, false), 450);
+      }
+    }, true);
+  }
+
   function nativePlaybackParams(itemId) {
-    const params = new URLSearchParams({ id: String(itemId || ""), lumoNativePlay: "1" });
+    const params = new URLSearchParams({ id: normalizeItemId(itemId), lumoNativePlay: "1" });
     const serverId = auth?.serverId || CONFIG.navigation.serverIdFallback;
     if (serverId) params.set("serverId", serverId);
     return params;
   }
 
-  function fallbackNativePlayback(item) {
-    const id = String(item?.Id || "").trim();
+  function fallbackNativePlayback(item, epoch = playbackEpoch) {
+    const id = normalizeItemId(item?.Id || item);
     if (!id) return false;
-    /* Never send the browser to a synthetic /video route. Jellyfin versions
-       differ on that route and some builds redirect it to Home. Instead open
-       the item's own native details view and let Jellyfin's own Play action
-       start the media. This is slower than PlaybackManager but cannot strand
-       the user on a broken player URL. */
+    /* Never invent a /video route. Open the exact item's native details page,
+       then let Jellyfin's own Play/Resume action finish the launch. */
     const target = `#/details?${nativePlaybackParams(id).toString()}`;
+    nativePlaybackAttemptKey = "";
     try { window.location.hash = target; }
     catch { navigate(`/details?${nativePlaybackParams(id).toString()}`); }
+    if (playbackTransaction?.epoch === epoch) playbackTransaction.resolvedId = id;
+    /* mount() deliberately pauses Lumo while playback is pending, so the
+       fallback owns its own bounded polling loop instead of waiting for a
+       future custom-detail mount. */
+    triggerNativeDetailPlayback(id, epoch);
     scheduleMount();
     return true;
   }
@@ -387,7 +470,53 @@
     } catch { /* best effort */ }
   }
 
-  function findNativePlayButton() {
+  function exactNativeActionCandidates(itemId) {
+    const id = escapeAttributeValue(itemId);
+    if (!id) return [];
+    const owners = [`[data-id="${id}"]`, `[data-itemid="${id}"]`, `[data-item-id="${id}"]`];
+    const selectors = [];
+    for (const owner of owners) {
+      selectors.push(
+        `${owner}[data-action="resume"]`, `${owner} [data-action="resume"]`,
+        `${owner}[data-action="play"]`, `${owner} [data-action="play"]`,
+        `${owner}.btnPlay`, `${owner} .btnPlay`
+      );
+    }
+    const seen = new Set();
+    const candidates = [];
+    selectors.forEach((selector) => {
+      $$(selector).forEach((node) => {
+        if (!node?.isConnected || seen.has(node) || node.closest?.("#lumo-detail-page,#noctafin-hero")) return;
+        if (node.disabled || node.getAttribute?.("aria-disabled") === "true") return;
+        seen.add(node);
+        candidates.push(node);
+      });
+    });
+    /* Prefer a visible/current React action, but keep hidden native home cards
+       as a valid Abyss-style bridge because Jellyfin still wires their action. */
+    candidates.sort((a, b) => Number(visibleElement(b)) - Number(visibleElement(a)));
+    return candidates;
+  }
+
+  function clickExactNativePlayback(itemId) {
+    const action = exactNativeActionCandidates(itemId)[0];
+    if (!action) return false;
+    try {
+      action.click();
+      return true;
+    } catch (error) {
+      console.debug(LOG, "Action Lecture native exacte impossible", itemId, error);
+      return false;
+    }
+  }
+
+  function findNativePlayButton(itemId = "") {
+    const exact = exactNativeActionCandidates(itemId)[0];
+    if (exact) return exact;
+    /* Generic fallback is allowed only while the URL itself points to the exact
+       item. This prevents a stale hidden details page from playing another id. */
+    const expected = normalizeItemId(itemId);
+    if (expected && detailRouteId() !== expected) return null;
     const selectors = [
       ".detailPagePrimaryContainer .btnPlay",
       ".detailPageContent .btnPlay",
@@ -409,8 +538,25 @@
     return null;
   }
 
-  function triggerNativeDetailPlayback(itemId) {
-    const expected = String(itemId || "");
+  function notifyPlaybackFailure(message = "Impossible de démarrer la lecture automatiquement.") {
+    console.warn(LOG, message);
+    let toast = $("#lumo-playback-error");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "lumo-playback-error";
+      toast.className = "lumo-playback-error";
+      toast.setAttribute("role", "status");
+      toast.setAttribute("aria-live", "polite");
+      document.body?.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add("is-visible");
+    clearTimeout(toast._lumoTimer);
+    toast._lumoTimer = setTimeout(() => toast?.classList.remove("is-visible"), 4200);
+  }
+
+  function triggerNativeDetailPlayback(itemId, epoch = playbackEpoch) {
+    const expected = normalizeItemId(itemId);
     if (!expected) return;
     if (playbackFallbackTimer) clearTimeout(playbackFallbackTimer);
     const startedAt = performance.now();
@@ -418,16 +564,22 @@
 
     const tick = () => {
       playbackFallbackTimer = null;
+      if (epoch !== playbackEpoch && playbackTransaction?.epoch !== epoch) return;
       if (isPlaybackRoute() || hasActivePlaybackSurface()) {
-        nativePlaybackAttemptKey = "";
-        removeNativePlaybackFlag();
-        syncPlaybackMode();
-        return;
+        const currentId = currentPlaybackItemId();
+        if (!currentId || currentId === expected) {
+          nativePlaybackAttemptKey = "";
+          removeNativePlaybackFlag();
+          clearPlaybackTransaction(epoch);
+          syncPlaybackMode();
+          return;
+        }
+        console.debug(LOG, "Surface lecteur active sur un autre item; attente de la cible exacte", { expected, currentId });
       }
       if (detailRouteId() !== expected || !nativePlaybackRequested()) return;
 
       if (!clicked) {
-        const button = findNativePlayButton();
+        const button = findNativePlayButton(expected);
         if (button) {
           clicked = true;
           try { button.click(); }
@@ -437,12 +589,12 @@
 
       const elapsed = performance.now() - startedAt;
       if (elapsed >= 6500) {
-        /* Keep the native detail page usable instead of looping or returning
-           Home. Removing the marker also lets Lumo remount normally later. */
         nativePlaybackAttemptKey = "";
         removeNativePlaybackFlag();
         document.documentElement.classList.remove("lumo-playback-pending");
         document.body?.classList.remove("lumo-playback-pending");
+        clearPlaybackTransaction(epoch);
+        notifyPlaybackFailure("La lecture n'a pas pu démarrer. La fiche native reste ouverte.");
         scheduleMount();
         return;
       }
@@ -452,49 +604,165 @@
     playbackFallbackTimer = setTimeout(tick, 80);
   }
 
+  function playbackSurfaceStarted() {
+    return Boolean(isPlaybackRoute() || hasActivePlaybackSurface());
+  }
+
+  function currentPlaybackItemId() {
+    const manager = normalizePlaybackManager(window.playbackManager || window.PlaybackManager);
+    if (!manager) return "";
+    const probes = ["currentItem", "getCurrentItem", "currentItemId", "getCurrentItemId"];
+    for (const key of probes) {
+      try {
+        const value = typeof manager[key] === "function" ? manager[key]() : manager[key];
+        const id = normalizeItemId(typeof value === "object" ? value?.Id : value);
+        if (id) return id;
+      } catch { /* optional Jellyfin API */ }
+    }
+    return "";
+  }
+
+  async function waitForPlaybackStart(epoch, timeoutMs = 2400, expectedId = "") {
+    const started = performance.now();
+    const expected = normalizeItemId(expectedId);
+    let sawSurface = false;
+    let lastCurrent = "";
+    while (performance.now() - started < timeoutMs) {
+      if (epoch !== playbackEpoch) return false;
+      if (playbackSurfaceStarted()) {
+        sawSurface = true;
+        const current = currentPlaybackItemId();
+        if (current) lastCurrent = current;
+        if (!expected || !current || current === expected) return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+    if (sawSurface && expected && lastCurrent && lastCurrent !== expected) {
+      console.warn(LOG, "Le lecteur a monté un autre item; relais exact requis", { expected, current: lastCurrent });
+      return false;
+    }
+    return sawSurface || playbackSurfaceStarted();
+  }
+
+  async function resolvePlaybackTarget(requestedId) {
+    const id = normalizeItemId(requestedId);
+    if (!id) return null;
+    let requested = null;
+    try {
+      requested = await fetchDetailItem(id, { fresh: true, timeoutMs: 4500 });
+    } catch (error) {
+      console.debug(LOG, "Détail frais indisponible pour la lecture; essai du cache", id, error);
+      requested = await fetchDetailItem(id).catch(() => null);
+    }
+    if (!requested?.Id) return null;
+
+    if (requested.Type !== "Series") return requested;
+
+    /* A Series button always resolves to one concrete episode before any
+       PlaybackManager call. Prefer the user's resumable episode, then NextUp,
+       then the first real episode. This removes ambiguity from Jellyfin's
+       series translation layer and guarantees a single target id. */
+    const resumable = await fetchSeriesResumeEpisode(requested.Id).catch(() => null);
+    const episode = resumable?.Id ? resumable : await firstPlayableEpisode(requested.Id).catch(() => null);
+    if (!episode?.Id) return null;
+    try {
+      return await fetchDetailItem(episode.Id, { fresh: true, timeoutMs: 4500 }) || episode;
+    } catch {
+      return episode;
+    }
+  }
+
   async function playItemRobust(itemOrId, options = {}) {
-    const requestedId = typeof itemOrId === "string" ? itemOrId : itemOrId?.Id;
+    const requestedId = normalizeItemId(typeof itemOrId === "string" ? itemOrId : itemOrId?.Id);
     if (!requestedId) return false;
+
+    const now = Date.now();
+    if (playbackTransaction) {
+      if (playbackTransaction.requestedId === requestedId && now - playbackTransaction.startedAt < 10_000) {
+        return playbackTransaction.promise || true;
+      }
+      if (now - playbackTransaction.startedAt < 10_000) {
+        console.debug(LOG, "Une lecture est déjà en cours de démarrage; second clic ignoré", requestedId);
+        return false;
+      }
+      clearPlaybackTransaction();
+    }
+
+    const epoch = ++playbackEpoch;
     beginPlaybackPending();
 
-    let item = typeof itemOrId === "object" && itemOrId?.Id ? itemOrId : null;
-    try {
-      item = item || await fetchDetailItem(requestedId);
-      if (item?.Type === "Series") item = await firstPlayableEpisode(item.Id);
-      if (!item?.Id) throw new Error("Aucun média lisible");
+    let resolveTransactionPromise;
+    const transactionPromise = new Promise((resolve) => { resolveTransactionPromise = resolve; });
+    playbackTransaction = {
+      epoch,
+      requestedId,
+      resolvedId: "",
+      source: String(options.source || "unknown"),
+      startedAt: now,
+      promise: transactionPromise
+    };
 
-      if (!item.ServerId && auth?.serverId) item = { ...item, ServerId: auth.serverId };
+    const finish = (value, keepForFallback = false) => {
+      resolveTransactionPromise(Boolean(value));
+      if (!keepForFallback) clearPlaybackTransaction(epoch);
+      return Boolean(value);
+    };
+
+    try {
+      /* Port of Abyss Spotlight's proven bridge: when Jellyfin already owns a
+         native Play/Resume action for this exact data-id, trigger that action
+         first instead of guessing a route or relying on a stale item closure. */
+      if (clickExactNativePlayback(requestedId)) {
+        if (await waitForPlaybackStart(epoch, 1800, options.hintedType === "Series" ? "" : requestedId)) return finish(true);
+      }
+
+      const item = await resolvePlaybackTarget(requestedId);
+      if (!item?.Id) throw new Error(`Aucun média lisible pour ${requestedId}`);
+      const resolvedId = normalizeItemId(item.Id);
+      if (playbackTransaction?.epoch === epoch) playbackTransaction.resolvedId = resolvedId;
+
+      if (resolvedId !== requestedId && clickExactNativePlayback(resolvedId)) {
+        if (await waitForPlaybackStart(epoch, 1800, resolvedId)) return finish(true);
+      }
+
+      if (!item.ServerId && auth?.serverId) item.ServerId = auth.serverId;
       const manager = await resolvePlaybackManager();
       if (manager) {
         const resumeTicks = options.resume === false ? 0 : Math.max(0, Number(item.UserData?.PlaybackPositionTicks) || 0);
-        await Promise.resolve(manager.play({
-          items: [item],
-          fullscreen: true,
-          startPositionTicks: resumeTicks,
-          startIndex: 0
-        }));
-        requestAnimationFrame(() => syncPlaybackMode());
-
-        /* A successful call should mount the native player almost immediately.
-           Guard against a client extension/runtime swallowing play(): fall back
-           to the native detail action, never to Home or an invented route. */
-        if (playbackFallbackTimer) clearTimeout(playbackFallbackTimer);
-        playbackFallbackTimer = setTimeout(() => {
-          playbackFallbackTimer = null;
-          if (isPlaybackRoute() || hasActivePlaybackSurface()) return;
-          console.warn(LOG, "Le lecteur ne s'est pas monté; relais vers la lecture native.");
-          fallbackNativePlayback(item);
-        }, 5500);
-        return true;
+        try {
+          await Promise.resolve(manager.play({
+            items: [item],
+            fullscreen: true,
+            startPositionTicks: resumeTicks,
+            startIndex: 0
+          }));
+          if (await waitForPlaybackStart(epoch, 3200, resolvedId)) return finish(true);
+          console.warn(LOG, "PlaybackManager a répondu sans monter le lecteur; relais natif exact", resolvedId);
+        } catch (error) {
+          playbackManagerPromise = null;
+          console.warn(LOG, "PlaybackManager a refusé la lecture; relais natif exact", resolvedId, error);
+        }
+      } else {
+        console.warn(LOG, "PlaybackManager non accessible; relais natif exact", resolvedId);
       }
 
-      console.warn(LOG, "PlaybackManager non accessible; relais vers la lecture native Jellyfin.");
-      return fallbackNativePlayback(item);
+      const handedOff = fallbackNativePlayback(item, epoch);
+      if (handedOff) {
+        finish(true, true);
+        return true;
+      }
+      return finish(false);
     } catch (error) {
-      console.warn(LOG, "Lecture impossible", error);
+      console.warn(LOG, "Lecture impossible", requestedId, error);
+      const fallback = { Id: requestedId };
+      if (fallbackNativePlayback(fallback, epoch)) {
+        finish(true, true);
+        return true;
+      }
       document.documentElement.classList.remove("lumo-playback-pending");
       document.body?.classList.remove("lumo-playback-pending");
-      return false;
+      notifyPlaybackFailure();
+      return finish(false);
     }
   }
 
@@ -1043,18 +1311,8 @@
 
     const id = detailsId(item);
     info.onclick = () => navigate(`/details?id=${encodeURIComponent(id)}`);
-    play.onclick = async (event) => {
-      event?.preventDefault?.();
-      event?.stopPropagation?.();
-      if (!item?.Id) return;
-      play.disabled = true;
-      try {
-        const ok = await playItemRobust(item);
-        if (!ok) navigate(`/details?id=${encodeURIComponent(detailsId(item))}`);
-      } finally {
-        play.disabled = false;
-      }
-    };
+    play.onclick = null;
+    bindPlaybackTarget(play, item, { source: "hero-home" });
 
     const dots = $(".noctafin-hero__dots", hero);
     $$(".noctafin-hero__dot", dots).forEach((dot, dotIndex) => {
@@ -1942,13 +2200,13 @@
     }, delay);
   }
 
-  async function fetchDetailItem(itemId) {
+  async function fetchDetailItem(itemId, options = {}) {
     const id = String(itemId || "").trim();
     if (!id) return null;
     const cached = detailItemCache.get(id);
-    if (cached && Date.now() - cached.ts < 5 * 60_000) return cached.item;
+    if (!options.fresh && cached && Date.now() - cached.ts < 5 * 60_000) return cached.item;
     const params = new URLSearchParams({ Fields: FIELDS });
-    const item = await fetchJson(`/Users/${auth.userId}/Items/${encodeURIComponent(id)}?${params}`);
+    const item = await fetchJson(`/Users/${auth.userId}/Items/${encodeURIComponent(id)}?${params}`, Number(options.timeoutMs) || 12000);
     if (item?.Id) detailItemCache.set(id, { ts: Date.now(), item });
     return item || null;
   }
@@ -2137,13 +2395,7 @@
     action.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8L18.7 12 8 5.6Z"/></svg><span>Reprendre</span>';
     copy.append(eyebrow, title, meta, action);
     button.append(art, copy);
-    button.addEventListener("click", async () => {
-      if (button.disabled) return;
-      button.disabled = true;
-      button.classList.add("is-starting");
-      try { await playItemRobust(episode); }
-      finally { setTimeout(() => { button.disabled = false; button.classList.remove("is-starting"); }, 900); }
-    });
+    bindPlaybackTarget(button, episode, { source: "series-resume" });
     section.append(heading, button);
     return section;
   }
@@ -2167,7 +2419,7 @@
     });
   }
 
-  function makeDetailAction(label, kind, onClick, primary = false) {
+  function makeDetailAction(label, kind, onClick, primary = false, playTarget = null, playSource = "detail") {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `lumo-detail-action${primary ? " lumo-detail-action--primary" : ""}`;
@@ -2183,7 +2435,8 @@
     const text = document.createElement("span");
     text.textContent = label;
     button.append(icon, text);
-    button.addEventListener("click", onClick);
+    if (kind === "play" && playTarget) bindPlaybackTarget(button, playTarget, { source: playSource });
+    else if (typeof onClick === "function") button.addEventListener("click", onClick);
     return button;
   }
 
@@ -2244,7 +2497,7 @@
     appendDetailMeta(meta, item);
     const actions = document.createElement("div");
     actions.className = "lumo-detail-actions";
-    actions.appendChild(makeDetailAction("Lecture", "play", () => playItemRobust(item), true));
+    actions.appendChild(makeDetailAction("Lecture", "play", null, true, item, "movie-detail"));
     const overviewWrap = document.createElement("div");
     overviewWrap.className = "lumo-movie-detail-hero__overview-wrap";
     if (Array.isArray(item.Taglines) && item.Taglines[0]) {
@@ -2315,21 +2568,7 @@
     overview.textContent = episode.Overview || "";
     text.append(heading, meta, overview);
     card.append(art, text);
-    card.addEventListener("click", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (card.disabled) return;
-      card.disabled = true;
-      card.classList.add("is-starting");
-      try {
-        await playItemRobust(episode);
-      } finally {
-        setTimeout(() => {
-          card.disabled = false;
-          card.classList.remove("is-starting");
-        }, 900);
-      }
-    });
+    bindPlaybackTarget(card, episode, { source: "episode-card" });
     return card;
   }
 
@@ -2439,14 +2678,7 @@
     appendDetailMeta(meta, item);
     const actions = document.createElement("div");
     actions.className = "lumo-detail-actions";
-    const play = makeDetailAction("Lecture", "play", async () => {
-      play.disabled = true;
-      try {
-        await playItemRobust(item);
-      } finally {
-        play.disabled = false;
-      }
-    }, true);
+    const play = makeDetailAction("Lecture", "play", null, true, item, "series-detail");
     actions.appendChild(play);
     const overview = document.createElement("p");
     overview.className = "lumo-detail-overview";
@@ -2848,9 +3080,8 @@
     $(".noctafin-card__rating", card).textContent = Number.isFinite(rating) && rating > 0 ? `★ ${rating.toFixed(1)}` : "";
     const progressBar = $(".noctafin-card__progress > span", card);
     if (progressBar) progressBar.style.width = `${progress}%`;
-    card.addEventListener("click", () => {
-      navigate(`/details?id=${encodeURIComponent(detailsId(item))}`);
-    });
+    bindPlaybackTarget(card, item, { source: "rail" });
+    card.setAttribute("aria-label", `Lire ${title || "ce média"}`);
     return card;
   }
 
@@ -3069,6 +3300,7 @@
     $("#noctafin-browser-page")?.remove();
     document.body?.classList.remove("noctafin-browser-open");
     auth = getAuth() || auth;
+    installPlaybackDelegation();
     syncPlaybackMode();
     syncLumoChrome();
     scheduleMount();

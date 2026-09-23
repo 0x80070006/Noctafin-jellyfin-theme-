@@ -80,7 +80,8 @@ for (const needle of ['.lumo-playback-active', '.videoPlayerContainer', '.lumo-s
 }
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
-if (!themeCss.includes('lumo-v1.12.css?v=1.12.0')) throw new Error('theme.css doit charger lumo-v1.12.css en dernier');
+if (!themeCss.includes('lumo-v1.12.css?v=1.13.0')) throw new Error('theme.css doit conserver lumo-v1.12.css');
+if (!themeCss.includes('lumo-v1.13.css?v=1.13.0')) throw new Error('theme.css doit charger lumo-v1.13.css en dernier');
 
 const detailCss = new URL('../styles/lumo-v1.11.css', import.meta.url);
 if (!fs.existsSync(detailCss)) throw new Error('styles/lumo-v1.11.css manquant');

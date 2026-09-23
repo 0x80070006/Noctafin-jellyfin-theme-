@@ -1,11 +1,11 @@
-# Dépannage Lumo 1.12
+# Dépannage Lumo 1.13
 
 ## Une ancienne apparence revient
 
 Vérifie que **CSS personnalisé Jellyfin est vide**. Ne mélange pas l'installation complète locale et un ancien `@import` jsDelivr.
 
 ```bash
-grep -n "1.12.0" /usr/share/jellyfin/web/index.html
+grep -n "1.13.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ```
@@ -30,7 +30,7 @@ En octobre et décembre, le fond spatial est volontairement remplacé par le fon
 
 ## Le lecteur affiche le fond Lumo au lieu de la vidéo
 
-La 1.12 isole explicitement `.videoPlayerContainer`, `.htmlvideoplayer` et l'OSD Jellyfin. Vérifie d'abord que le nouveau CSS est réellement installé :
+La 1.13 isole explicitement `.videoPlayerContainer`, `.htmlvideoplayer` et l'OSD Jellyfin. Vérifie d'abord que le nouveau CSS est réellement installé :
 
 ```bash
 grep -n "lumo-v1.12.css" /usr/share/jellyfin/web/ui/lumo/theme.css
@@ -48,20 +48,20 @@ Dans Jellyfin, le champ **CSS personnalisé** doit être vide. Un ancien `@impor
 
 ## Un épisode renvoie vers l'accueil au lieu de démarrer
 
-La 1.12 n'utilise plus de route `/video` synthétique. Elle passe d'abord par le `PlaybackManager` de Jellyfin puis, en secours, par le vrai bouton Lecture de la fiche native de l'épisode. Vérifie que le runtime chargé est bien la 1.12 :
+La 1.13 n'utilise plus de route `/video` synthétique. Elle passe d'abord par le `PlaybackManager` de Jellyfin puis, en secours, par le vrai bouton Lecture de la fiche native de l'épisode. Vérifie que le runtime chargé est bien la 1.13 :
 
 ```bash
-grep -n "noctafin-home.js?v=1.12.0" /usr/share/jellyfin/web/index.html
+grep -n "noctafin-home.js?v=1.13.0" /usr/share/jellyfin/web/index.html
 ```
 
 ## Le Hero Studio/Genre n'apparaît pas
 
-Vérifie d'abord que l'URL contient bien `studioId=` ou `genreId=` puis ouvre la console navigateur. Le runtime 1.12 tente plusieurs conteneurs Jellyfin 12 et réessaie automatiquement pendant le montage de la page.
+Vérifie d'abord que l'URL contient bien `studioId=` ou `genreId=` puis ouvre la console navigateur. Le runtime 1.13 tente plusieurs conteneurs Jellyfin 12 et réessaie automatiquement pendant le montage de la page.
 
 Vérifie la version réellement chargée :
 
 ```bash
-grep -n "noctafin-home.js?v=1.12.0" /usr/share/jellyfin/web/index.html
+grep -n "noctafin-home.js?v=1.13.0" /usr/share/jellyfin/web/index.html
 ```
 
 Après une mise à jour du paquet Jellyfin, relance toujours `install/install.sh`, car `index.html` peut être remplacé.
