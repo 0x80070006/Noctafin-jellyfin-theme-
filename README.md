@@ -84,6 +84,9 @@ JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
+Si le conteneur n'a pas accès à Wikimedia, `LUMO_DOWNLOAD_EXTRA_LOGOS=0`
+évite d'attendre les logos optionnels. Les sept jaquettes fournies restent disponibles.
+
 Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :

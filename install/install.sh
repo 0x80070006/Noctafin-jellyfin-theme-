@@ -118,6 +118,9 @@ PY
 }
 
 for entry in "${logo_sources[@]}"; do
+  if [[ "${LUMO_DOWNLOAD_EXTRA_LOGOS:-1}" == "0" ]]; then
+    break
+  fi
   IFS='|' read -r filename url <<< "$entry"
   target="$LOGO_DIR/$filename"
   tmp="$target.tmp"
