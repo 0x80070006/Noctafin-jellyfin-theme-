@@ -54,6 +54,13 @@ for (const relative of [
 }
 
 const runtimeSource = fs.readFileSync(new URL('./noctafin-home.js', import.meta.url), 'utf8');
+const rowFields = runtimeSource.slice(runtimeSource.indexOf('const FIELDS = ['), runtimeSource.indexOf('].join(",");', runtimeSource.indexOf('const FIELDS = [')));
+if (rowFields.includes('"People"') || rowFields.includes('"OriginalTitle"')) {
+  throw new Error('Les métadonnées des acteurs ne doivent pas alourdir les requêtes des rails');
+}
+if (!runtimeSource.includes('Fields: `${FIELDS},People,OriginalTitle`')) {
+  throw new Error('La fiche doit demander les acteurs et le titre original');
+}
 for (const needle of ['findTaxonomyHost', 'scheduleTaxonomyRetry', 'lumo-taxonomy-hero', 'GenreIds', 'StudioIds', 'syncDetailPage', 'buildMovieDetailPage', 'buildSeriesDetailPage', 'fetchSeriesSeasons', 'fetchSeasonEpisodes', 'playItemRobust', 'resolvePlaybackManager', 'triggerNativeDetailPlayback', 'fetchSeriesResumeEpisode', 'buildSeriesResumeCard', 'hasActivePlaybackSurface']) {
   if (!runtimeSource.includes(needle)) throw new Error(`Runtime incomplet: ${needle}`);
 }

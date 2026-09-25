@@ -81,8 +81,6 @@
     "CommunityRating",
     "Genres",
     "Studios",
-    "People",
-    "OriginalTitle",
     "ProductionYear",
     "SeriesName",
     "SeriesId",
@@ -2401,7 +2399,7 @@
     if (!id) return null;
     const cached = detailItemCache.get(id);
     if (!options.fresh && cached && Date.now() - cached.ts < 5 * 60_000) return cached.item;
-    const params = new URLSearchParams({ Fields: FIELDS });
+    const params = new URLSearchParams({ Fields: `${FIELDS},People,OriginalTitle` });
     const item = await fetchJson(`/Users/${auth.userId}/Items/${encodeURIComponent(id)}?${params}`, Number(options.timeoutMs) || 12000);
     if (item?.Id) detailItemCache.set(id, { ts: Date.now(), item });
     return item || null;
