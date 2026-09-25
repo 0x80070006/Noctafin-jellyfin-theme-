@@ -1,6 +1,6 @@
 /* Lumo v1.15 — mode CSS seul, depuis les fichiers installés dans Jellyfin.
    Après l'installation complète, le CSS est déjà chargé automatiquement. */
-@import url("ui/lumo/theme.css?v=1.15.1");
+@import url("ui/lumo/theme.css?v=1.15.2");
 
 /* Personnalisation optionnelle */
 :root {

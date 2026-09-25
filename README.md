@@ -2,6 +2,12 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
+## Corrections 1.15.2
+
+- Les cartes de films et séries ouvrent leur fiche cinématique ; seul un bouton « Lecture » démarre la vidéo. Les cartes d'épisodes dans une fiche de série gardent leur action de lecture explicite.
+- La fiche d'un film présente son fond, sa date de sortie, son synopsis, sa réalisation et sa distribution lorsqu'ils sont renseignés dans Jellyfin. Un bouton « Retour » est toujours visible.
+- Le lecteur conserve les dimensions et la position des commandes définies par Jellyfin. Les anciennes règles CSS qui déplaçaient la vidéo et masquaient l'action de retour ont été retirées.
+
 ## Corrections 1.15.1
 
 - Un seul Hero sur l'accueil : l'installateur retire l'ancien chargeur Spotlight d'Abyss lorsqu'il est présent.
@@ -22,7 +28,7 @@ Voir [les fonctions et limites de Jellyfin 12](docs/INTEGRATIONS.md) avant l'ins
 
 ### Lecture : priorité au gestionnaire natif Jellyfin
 
-Les six points d'entrée restent raccordés à un seul bus `itemId` : Hero accueil, rails, fiche Film, fiche Série, **Lecture en cours** et cartes épisodes.
+Les boutons « Lecture » du Hero, des fiches Film et Série, de **Lecture en cours** et des cartes épisodes restent raccordés à un seul bus `itemId`. Les cartes des rails ouvrent une fiche sans lancer la lecture.
 
 La v1.14 ne dépend plus d'un objet média JavaScript capturé lors du rendu. Au clic :
 
@@ -49,7 +55,7 @@ Un clic plus récent annule désormais proprement une tentative précédente. L'
 
 ### Chaîne CSS 1.14
 
-`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.13.css` et la correction `lumo-v1.15.css`, toutes cache-bustées en `?v=1.15.1`.
+`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.13.css` et la correction `lumo-v1.15.css`, toutes cache-bustées en `?v=1.15.2`.
 
 ### Validation
 
@@ -98,9 +104,9 @@ Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
 ```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.15.1" data-lumo-theme="1.15.1">
-<script src="ui/noctafin-config.js?v=1.15.1" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.15.1" data-noctafin-home></script>
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.15.2" data-lumo-theme="1.15.2">
+<script src="ui/noctafin-config.js?v=1.15.2" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.15.2" data-noctafin-home></script>
 ```
 
 ## Mise à jour
@@ -108,7 +114,7 @@ Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin
 Extrais la nouvelle archive, puis relance l'installateur depuis son dossier :
 
 ```bash
-cd /chemin/vers/Lumo-Jellyfin-v1.15.1
+cd /chemin/vers/Lumo-Jellyfin-v1.15.2
 chmod +x install/install.sh
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
@@ -117,7 +123,7 @@ systemctl restart jellyfin
 ## Vérification
 
 ```bash
-grep -n "1.15.1" /usr/share/jellyfin/web/index.html
+grep -n "1.15.2" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.12.css
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.13.css
@@ -146,7 +152,7 @@ dans le champ CSS personnalisé : cela chargerait la feuille deux fois.
 Après avoir copié `theme.css` et `styles/` sous `jellyfin-web/ui/lumo/`, le CSS personnalisé peut charger le style seul :
 
 ```css
-@import url("ui/lumo/theme.css?v=1.15.1");
+@import url("ui/lumo/theme.css?v=1.15.2");
 ```
 
 Le mode CSS-only ne peut pas fournir les fiches cinématiques, les Heroes dynamiques ni les rails Studio/Genre/Réseau.

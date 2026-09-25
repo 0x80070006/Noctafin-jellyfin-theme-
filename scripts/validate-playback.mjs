@@ -25,12 +25,16 @@ for (const name of requiredFunctions) {
 
 const entrypoints = [
   'hero-home',
-  'rail',
   'movie-detail',
   'series-detail',
   'series-resume',
   'episode-card'
 ];
+
+const railCardSource = runtime.slice(runtime.indexOf('function makeCard('), runtime.indexOf('async function previewItemId('));
+if (!railCardSource.includes('navigate(`/details?id=${encodeURIComponent(id)}`)') || railCardSource.includes('bindPlaybackTarget(card')) {
+  throw new Error('Une carte de rail doit ouvrir la fiche sans lancer le lecteur');
+}
 
 for (const source of entrypoints) {
   if (!runtime.includes(`"${source}"`)) throw new Error(`Point d'entrée playback non câblé: ${source}`);
@@ -83,4 +87,4 @@ if (calls !== 2) {
   throw new Error(`playItemRobust doit être appelé uniquement par le délégateur (définition + 1 appel), trouvé: ${calls}`);
 }
 
-console.log(`Playback valide: ${entrypoints.length} points d'entrée -> itemId exact -> shortcut Jellyfin natif -> action exacte -> PlaybackManager(ids) -> fiche native.`);
+console.log(`Playback valide: cartes vers fiches, ${entrypoints.length} boutons de lecture -> itemId exact -> lecteur natif.`);

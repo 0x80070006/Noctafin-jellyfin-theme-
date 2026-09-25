@@ -73,24 +73,27 @@ if (runtimeSource.includes('`#/video?') || runtimeSource.includes('navigate(`/vi
 const playbackCss = new URL('../styles/lumo-v1.12.css', import.meta.url);
 if (!fs.existsSync(playbackCss)) throw new Error('styles/lumo-v1.12.css manquant');
 const playbackCssSource = fs.readFileSync(playbackCss, 'utf8');
-for (const needle of ['.lumo-playback-active', '.videoPlayerContainer', '.lumo-series-resume__card', ':has(.videoPlayerContainer)']) {
+for (const needle of ['.lumo-playback-active #lumo-background-layer', '.lumo-series-resume__card']) {
   if (!playbackCssSource.includes(needle)) throw new Error(`CSS v1.12 incomplet: ${needle}`);
+}
+if (/(?:videoPlayerContainer|htmlVideoPlayer|videoOsdBottom)\s*\{/.test(playbackCssSource)) {
+  throw new Error('Le CSS Lumo ne doit pas imposer la géométrie du lecteur Jellyfin');
 }
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
 const expectedThemeImports = [
-  'tokens.css?v=1.15.1',
-  'core.css?v=1.15.1',
-  'header.css?v=1.15.1',
-  'home.css?v=1.15.1',
-  'details.css?v=1.15.1',
-  'player.css?v=1.15.1',
-  'responsive.css?v=1.15.1',
-  'lumo-v1.10.css?v=1.15.1',
-  'lumo-v1.11.css?v=1.15.1',
-  'lumo-v1.12.css?v=1.15.1',
-  'lumo-v1.13.css?v=1.15.1',
-  'lumo-v1.15.css?v=1.15.1'
+  'tokens.css?v=1.15.2',
+  'core.css?v=1.15.2',
+  'header.css?v=1.15.2',
+  'home.css?v=1.15.2',
+  'details.css?v=1.15.2',
+  'player.css?v=1.15.2',
+  'responsive.css?v=1.15.2',
+  'lumo-v1.10.css?v=1.15.2',
+  'lumo-v1.11.css?v=1.15.2',
+  'lumo-v1.12.css?v=1.15.2',
+  'lumo-v1.13.css?v=1.15.2',
+  'lumo-v1.15.css?v=1.15.2'
 ];
 for (const needle of expectedThemeImports) {
   if (!themeCss.includes(needle)) throw new Error(`Import theme.css manquant: ${needle}`);

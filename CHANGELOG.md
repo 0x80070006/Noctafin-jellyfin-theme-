@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.2
+
+- Les cartes des rails ouvrent la fiche de film ou de série au lieu de lancer la lecture ; le bouton Lecture reste l'entrée explicite vers le lecteur.
+- La fiche cinéma affiche la date de sortie, le synopsis complet, le réalisateur et la distribution disponibles, avec un bouton Retour visible.
+- Suppression des règles CSS qui imposaient une position et des dimensions au lecteur natif et à ses commandes.
+
 ## 1.15.1
 
 - Suppression de l'ancien chargeur Abyss Spotlight lors de l'installation pour éviter deux Heroes sur l'accueil.

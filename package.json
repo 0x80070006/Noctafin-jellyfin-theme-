@@ -1,6 +1,6 @@
 {
   "name": "lumo-jellyfin-theme",
-  "version": "1.15.1",
+  "version": "1.15.2",
   "private": true,
   "description": "Lumo: cinematic Jellyfin 12 theme with seasonal branding, hero, continue-watching, genre, studio and TV network rows.",
   "scripts": {

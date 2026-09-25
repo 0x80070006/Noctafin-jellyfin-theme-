@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.15.1";
+  const VERSION = "1.15.2";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -81,6 +81,8 @@
     "CommunityRating",
     "Genres",
     "Studios",
+    "People",
+    "OriginalTitle",
     "ProductionYear",
     "SeriesName",
     "SeriesId",
@@ -2665,6 +2667,93 @@
     return root;
   }
 
+  function makeDetailBackButton() {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "lumo-detail-back";
+    button.setAttribute("aria-label", "Retour à la page précédente");
+    button.textContent = "← Retour";
+    button.addEventListener("click", () => {
+      if (window.history.length > 1) window.history.back();
+      else navigate(isModernJellyfin() ? "/" : "/home.html");
+    });
+    return button;
+  }
+
+  function movieReleaseDate(item) {
+    const date = item?.PremiereDate ? new Date(item.PremiereDate) : null;
+    if (date && Number.isFinite(date.getTime())) {
+      return new Intl.DateTimeFormat(CONFIG.locale || "fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+    }
+    return item?.ProductionYear ? String(item.ProductionYear) : "";
+  }
+
+  function buildMovieCredits(item) {
+    const people = Array.isArray(item?.People) ? item.People : [];
+    const section = document.createElement("section");
+    section.className = "lumo-movie-credits";
+    const synopsis = document.createElement("div");
+    synopsis.className = "lumo-movie-credits__synopsis";
+    const heading = document.createElement("h2");
+    heading.textContent = "À propos du film";
+    synopsis.appendChild(heading);
+    if (item?.Overview) {
+      const description = document.createElement("p");
+      description.textContent = item.Overview;
+      synopsis.appendChild(description);
+    }
+    const facts = document.createElement("dl");
+    const rows = [
+      ["Sortie", movieReleaseDate(item)],
+      ["Réalisation", people.filter((person) => person.Type === "Director").map((person) => person.Name).filter(Boolean).join(", ")],
+      ["Titre original", item?.OriginalTitle && item.OriginalTitle !== item.Name ? item.OriginalTitle : ""]
+    ];
+    for (const [label, value] of rows) {
+      if (!value) continue;
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const detail = document.createElement("dd");
+      detail.textContent = value;
+      facts.append(term, detail);
+    }
+    synopsis.appendChild(facts);
+    section.appendChild(synopsis);
+
+    const actors = people.filter((person) => person.Type === "Actor" && person.Name).slice(0, 12);
+    if (actors.length) {
+      const cast = document.createElement("div");
+      cast.className = "lumo-movie-credits__cast";
+      const castHeading = document.createElement("h2");
+      castHeading.textContent = "Distribution";
+      const list = document.createElement("div");
+      list.className = "lumo-movie-cast";
+      for (const actor of actors) {
+        const card = document.createElement("div");
+        card.className = "lumo-movie-cast__person";
+        const portrait = document.createElement("div");
+        portrait.className = "lumo-movie-cast__portrait";
+        portrait.textContent = String(actor.Name).trim().charAt(0).toLocaleUpperCase(CONFIG.locale || "fr-FR");
+        if (actor.Id) {
+          const img = document.createElement("img");
+          img.loading = "lazy";
+          img.alt = "";
+          img.src = imageUrl(actor.Id, "Primary", null, 320);
+          img.onerror = () => img.remove();
+          portrait.appendChild(img);
+        }
+        const name = document.createElement("strong");
+        name.textContent = actor.Name;
+        const role = document.createElement("span");
+        role.textContent = actor.Role || "";
+        card.append(portrait, name, role);
+        list.appendChild(card);
+      }
+      cast.append(castHeading, list);
+      section.appendChild(cast);
+    }
+    return section;
+  }
+
   function buildMovieDetailPage(item) {
     const root = createDetailRoot(item);
     root.className = "lumo-detail-page lumo-detail-page--movie";
@@ -2716,7 +2805,7 @@
     content.append(logo, title, meta, actions);
     overviewWrap.appendChild(genres);
     hero.append(backdrop, veil, content, overviewWrap);
-    root.appendChild(hero);
+    root.append(makeDetailBackButton(), hero, buildMovieCredits(item));
     return root;
   }
 
@@ -2901,7 +2990,7 @@
     loading.textContent = "Chargement des saisons…";
     seasonsList.appendChild(loading);
     seasonsWrap.append(seasonsHeading, seasonsList);
-    root.append(backdrop, veil, shell, resumeSlot, seasonsWrap);
+    root.append(makeDetailBackButton(), backdrop, veil, shell, resumeSlot, seasonsWrap);
 
     fetchSeriesResumeEpisode(item.Id).then((episode) => {
       if (!root.isConnected || !episode?.Id) return;
@@ -3282,11 +3371,14 @@
     $(".noctafin-card__rating", card).textContent = Number.isFinite(rating) && rating > 0 ? `★ ${rating.toFixed(1)}` : "";
     const progressBar = $(".noctafin-card__progress > span", card);
     if (progressBar) progressBar.style.width = `${progress}%`;
-    bindPlaybackTarget(card, item, { source: "rail" });
+    card.addEventListener("click", () => {
+      const id = detailsId(item);
+      if (id) navigate(`/details?id=${encodeURIComponent(id)}`);
+    });
     if (["Movie", "Series", "Episode"].includes(item.Type)) {
       attachHoverPreview(card, item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id);
     }
-    card.setAttribute("aria-label", `Lire ${title || "ce média"}`);
+    card.setAttribute("aria-label", `Voir la fiche de ${title || "ce média"}`);
     return card;
   }
 

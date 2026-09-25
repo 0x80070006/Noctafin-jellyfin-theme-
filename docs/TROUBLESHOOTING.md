@@ -5,7 +5,7 @@
 Vérifie que **CSS personnalisé Jellyfin est vide**. Ne mélange pas l'installation complète locale et un ancien `@import` jsDelivr.
 
 ```bash
-grep -n "1.15.1" /usr/share/jellyfin/web/index.html
+grep -n "1.15.2" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/lumo/theme.css
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ```
@@ -51,7 +51,7 @@ Dans Jellyfin, le champ **CSS personnalisé** doit être vide. Un ancien `@impor
 La 1.14 n'utilise aucune route `/video` synthétique. Elle remet d'abord la cible exacte au système de shortcuts natif Jellyfin via une `itemAction` temporaire, puis essaie une action native exacte et enfin `PlaybackManager(ids)`. La fiche native n'est utilisée qu'en dernier recours. Vérifie que le runtime chargé est bien la 1.14 :
 
 ```bash
-grep -n "noctafin-home.js?v=1.15.1" /usr/share/jellyfin/web/index.html
+grep -n "noctafin-home.js?v=1.15.2" /usr/share/jellyfin/web/index.html
 ```
 
 ## Le Hero Studio/Genre n'apparaît pas
@@ -61,7 +61,7 @@ Vérifie d'abord que l'URL contient bien `studioId=` ou `genreId=` puis ouvre la
 Vérifie la version réellement chargée :
 
 ```bash
-grep -n "noctafin-home.js?v=1.15.1" /usr/share/jellyfin/web/index.html
+grep -n "noctafin-home.js?v=1.15.2" /usr/share/jellyfin/web/index.html
 ```
 
 Après une mise à jour du paquet Jellyfin, relance toujours `install/install.sh`, car `index.html` peut être remplacé.
