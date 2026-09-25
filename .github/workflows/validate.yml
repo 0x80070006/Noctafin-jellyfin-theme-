@@ -19,13 +19,15 @@ jobs:
           bash -n install/uninstall.sh
       - name: Ensure current version and universal taxonomy logic
         run: |
-          grep -q '1.15.0' theme.css
-          grep -q 'lumo-v1.12.css?v=1.15.0' theme.css
-          grep -q 'lumo-v1.13.css?v=1.15.0' theme.css
+          version="$(node -p "require('./package.json').version")"
+          grep -Fq "Lumo — Jellyfin 12 theme v$version" theme.css
+          grep -Fq "lumo-v1.12.css?v=$version" theme.css
+          grep -Fq "lumo-v1.13.css?v=$version" theme.css
+          grep -Fq "lumo-v1.15.css?v=$version" theme.css
           grep -q 'function installPlaybackDelegation' scripts/noctafin-home.js
           grep -q 'function clickExactNativePlayback' scripts/noctafin-home.js
-          grep -q 'VERSION = "1.15.0"' scripts/noctafin-home.js
-          grep -q 'VERSION="1.15.0"' install/install.sh
+          grep -Fq "VERSION = \"$version\"" scripts/noctafin-home.js
+          grep -Fq "VERSION=\"$version\"" install/install.sh
           grep -q 'function isTaxonomyRoute' scripts/noctafin-home.js
           grep -q 'function findTaxonomyHost' scripts/noctafin-home.js
           grep -q 'function scheduleTaxonomyRetry' scripts/noctafin-home.js
