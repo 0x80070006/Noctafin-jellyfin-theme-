@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.14.0"
+$Version = "1.15.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -37,7 +37,7 @@ Get-ChildItem $LumoStyles -File -ErrorAction SilentlyContinue | Remove-Item -For
 Copy-Item (Join-Path $Root "styles\*.css") $LumoStyles -Force
 Get-ChildItem $SeasonDir -Filter "*.png" -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Copy-Item (Join-Path $Root "assets\seasonal\*.webp") $SeasonDir -Force
-Copy-Item (Join-Path $Root "assets\background\lumo-space.webp") (Join-Path $BackgroundDir "lumo-space.webp") -Force
+Get-ChildItem (Join-Path $Root "assets\logos") -Filter "*.svg" -File | Copy-Item -Destination $LogoDir -Force
 Remove-Item (Join-Path $BackgroundDir "lumo-japan-night-1080p.mp4") -Force -ErrorAction SilentlyContinue
 
 $Logos = @{
@@ -99,5 +99,5 @@ Write-Host "Lumo $Version installé dans $WebDir" -ForegroundColor Green
 Write-Host "CSS local: $(Join-Path $LumoDir 'theme.css')"
 Write-Host "Logos studios/réseaux: $LogoDir"
 Write-Host "Assets saisonniers: $SeasonDir"
-Write-Host "Fond spatial Lumo: $(Join-Path $BackgroundDir 'lumo-space.webp')"
+Write-Host "Fond normal: noir et reflets colorés animés (CSS)"
 Write-Host "IMPORTANT: retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin pour éviter les conflits/cache d'une ancienne version." -ForegroundColor Yellow

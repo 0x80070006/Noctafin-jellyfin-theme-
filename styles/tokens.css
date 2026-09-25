@@ -23,7 +23,7 @@
   --nf-shadow: 0 18px 50px rgba(0, 0, 0, .42);
   --nf-glow: 0 0 0 1px rgba(124, 92, 255, .32), 0 18px 55px rgba(84, 65, 255, .24);
   --nf-page-x: clamp(18px, 4vw, 76px);
-  --nf-hero-height: clamp(500px, 72vh, 820px);
+  --nf-hero-height: clamp(500px, 55vh, 640px);
   --nf-card-width: clamp(122px, 8.1vw, 158px);
   --nf-speed: 220ms;
 }

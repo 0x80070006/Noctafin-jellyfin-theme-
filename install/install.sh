@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.14.0"
+VERSION="1.15.0"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
 
@@ -63,9 +63,15 @@ rm -f "$SEASON_DIR/"*.png 2>/dev/null || true
 cp -f "$ROOT/assets/seasonal/"*.webp "$SEASON_DIR/"
 chmod 0644 "$SEASON_DIR/"*.webp
 
-# Fond spatial statique Lumo, WebP léger pour réduire CPU/GPU et réseau.
-install -m 0644 "$ROOT/assets/background/lumo-space.webp" "$BACKGROUND_DIR/lumo-space.webp"
+# Les reflets ambiants sont dessinés en CSS; conserver les anciens assets
+# saisonniers sans charger d'image en mode normal.
 rm -f "$BACKGROUND_DIR/lumo-japan-night-1080p.mp4" 2>/dev/null || true
+
+# Ces sept jaquettes sont fournies avec le thème et fonctionnent hors ligne.
+if compgen -G "$ROOT/assets/logos/*.svg" >/dev/null; then
+  cp -f "$ROOT/assets/logos/"*.svg "$LOGO_DIR/"
+  chmod 0644 "$LOGO_DIR/"*.svg
+fi
 
 # Logos de marques : téléchargés localement afin d'éviter les blocages CSP.
 # En cas de panne réseau, une version déjà présente est conservée.
@@ -170,6 +176,6 @@ echo "Lumo $VERSION installé dans: $WEB_DIR"
 echo "CSS local: $LUMO_DIR/theme.css"
 echo "Logos studios/réseaux: $LOGO_DIR"
 echo "Assets saisonniers: $SEASON_DIR"
-echo "Fond spatial Lumo: $BACKGROUND_DIR/lumo-space.webp"
+echo "Fond normal: noir et reflets colorés animés (CSS)"
 echo "IMPORTANT: pour l'installation complète, retire l'ancien @import jsDelivr du CSS personnalisé Jellyfin afin d'éviter les conflits/cache d'une ancienne version."
 echo "Après une mise à jour Jellyfin, relance cet installateur si index.html a été remplacé."

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.15.0
+
+- Fond normal noir avec deux reflets colorés à déplacement lent ; images saisonnières conservées et préférence de mouvement réduit respectée.
+- Sept logos de plateformes et studios intégrés localement au rail d'accueil, sous le Hero et avant la reprise ; flèches accessibles ajoutées au Hero.
+- Résolution des identifiants de studios depuis le serveur courant, sans lien mort vers un identifiant propre à une ancienne bibliothèque.
+- Aperçus muets différés des bandes-annonces locales et vidéos de thème, avec arrêt sur sortie et isolation du vrai lecteur Jellyfin.
+- Déduplication des épisodes par série dans la ligne de reprise Lumo.
+- Authentification isolée par serveur ; URL d'aperçu utilisant le paramètre `ApiKey` accepté par Jellyfin 12.
+- Vérifications de comportement et test d'installation Windows idempotente sur un `jellyfin-web` factice.
+- Documentation des fonctions reprises, des dépendances serveur et des limites de validation.
+
 ## 1.14.0
 
 - Nouveau pont de lecture **Jellyfin-native shortcut** : Lumo crée temporairement une `itemAction` avec `data-id`, `data-serverid`, `data-type`, `data-mediatype`, `data-isfolder`, `data-action` et `data-positionticks`, puis laisse le gestionnaire natif Jellyfin déclencher Play/Resume.

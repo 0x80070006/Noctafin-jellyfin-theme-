@@ -24,13 +24,21 @@ const expected = new Map([
 ]);
 
 const groups = [...(cfg.studios || []), ...(cfg.networks || [])];
+const featured = ['Apple TV+', 'Prime Video', 'hulu', 'NETFLIX', 'HBO MAX', 'Disney+', 'PIXAR'];
+if (JSON.stringify(cfg.networks.slice(0, 7).map((group) => group.label)) !== JSON.stringify(featured)) {
+  throw new Error('Ordre des sept jaquettes de référence incorrect');
+}
+for (const group of cfg.networks.slice(0, 7)) {
+  const file = group.logo?.replace('ui/noctafin-assets/', 'assets/');
+  if (!file || !fs.existsSync(new URL(`../${file}`, import.meta.url))) throw new Error(`Logo local manquant: ${group.label}`);
+}
 const ids = new Set();
 for (const group of groups) {
-  if (!/^[0-9a-f]{32}$/i.test(group.id || '')) throw new Error(`ID invalide pour ${group.label}: ${group.id}`);
-  if (ids.has(group.id)) throw new Error(`ID dupliqué: ${group.id}`);
-  ids.add(group.id);
+  if (group.id && !/^[0-9a-f]{32}$/i.test(group.id)) throw new Error(`ID invalide pour ${group.label}: ${group.id}`);
+  if (group.id && ids.has(group.id)) throw new Error(`ID dupliqué: ${group.id}`);
+  if (group.id) ids.add(group.id);
   const wanted = expected.get(group.label);
-  if (wanted && group.id !== wanted) throw new Error(`ID inattendu pour ${group.label}: ${group.id}`);
+  if (wanted && group.id && group.id !== wanted) throw new Error(`ID inattendu pour ${group.label}: ${group.id}`);
 }
 for (const [label, id] of expected) {
   const group = groups.find((entry) => entry.label === label);
@@ -38,9 +46,7 @@ for (const [label, id] of expected) {
   if (group.id !== id) throw new Error(`Mauvais ID pour ${label}`);
 }
 
-if (!cfg.background?.image || !String(cfg.background.image).endsWith('lumo-space.webp')) {
-  throw new Error('background.image doit pointer vers lumo-space.webp');
-}
+if (cfg.background?.image !== '') throw new Error('Le fond normal doit utiliser les reflets CSS sur noir');
 if ('video' in (cfg.background || {})) throw new Error('Le fond vidéo doit rester supprimé en v1.11+');
 
 const themeRoot = new URL('../', import.meta.url);
@@ -81,17 +87,17 @@ for (const needle of ['.lumo-playback-active', '.videoPlayerContainer', '.lumo-s
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
 const expectedThemeImports = [
-  'tokens.css?v=1.14.0',
-  'core.css?v=1.14.0',
-  'header.css?v=1.14.0',
-  'home.css?v=1.14.0',
-  'details.css?v=1.14.0',
-  'player.css?v=1.14.0',
-  'responsive.css?v=1.14.0',
-  'lumo-v1.10.css?v=1.14.0',
-  'lumo-v1.11.css?v=1.14.0',
-  'lumo-v1.12.css?v=1.14.0',
-  'lumo-v1.13.css?v=1.14.0'
+  'tokens.css?v=1.15.0',
+  'core.css?v=1.15.0',
+  'header.css?v=1.15.0',
+  'home.css?v=1.15.0',
+  'details.css?v=1.15.0',
+  'player.css?v=1.15.0',
+  'responsive.css?v=1.15.0',
+  'lumo-v1.10.css?v=1.15.0',
+  'lumo-v1.11.css?v=1.15.0',
+  'lumo-v1.12.css?v=1.15.0',
+  'lumo-v1.13.css?v=1.15.0'
 ];
 for (const needle of expectedThemeImports) {
   if (!themeCss.includes(needle)) throw new Error(`Import theme.css manquant: ${needle}`);
@@ -107,4 +113,4 @@ for (const needle of ['#lumo-detail-page', '.lumo-movie-detail-hero', '.lumo-ser
   if (!detailCssSource.includes(needle)) throw new Error(`CSS détail incomplet: ${needle}`);
 }
 
-console.log(`Configuration valide: ${groups.length} studios/réseaux exacts, ${cfg.genres?.length || 0} genres accueil, 12 médias/rail, heroes taxonomie et fiches cinématiques.`);
+console.log(`Configuration valide: sept logos locaux, ${groups.length} groupes, ${cfg.genres?.length || 0} genres, 12 médias/rail, heroes et fiches.`);

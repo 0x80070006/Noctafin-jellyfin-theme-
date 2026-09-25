@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr" class="lumo-ui" data-lumo-season="default">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../../theme.css">
+  <style>
+    body { margin: 0; color: white; font-family: Arial, sans-serif; }
+    .fixture-header { height: 56px; background: #18212b; display:flex; align-items:center; padding:0 4vw; font-weight:700; }
+    .fixture-hero-art { position:absolute; inset:0; background:radial-gradient(ellipse at 70% 45%, #5b6176, transparent 35%),linear-gradient(115deg,#0c1420,#1e354e); }
+    .fixture-poster { background:linear-gradient(145deg,#485a6c,#121d29); }
+    .fixture-poster:nth-child(2) { background:linear-gradient(145deg,#73704c,#193944); }
+    .fixture-poster:nth-child(3) { background:linear-gradient(145deg,#a5a3a0,#39404d); }
+    .fixture-poster:nth-child(4) { background:linear-gradient(145deg,#918366,#322d2b); }
+    .fixture-poster:nth-child(5) { background:linear-gradient(145deg,#3e777b,#142c3e); }
+  </style>
+</head>
+<body>
+  <div id="lumo-background-layer" aria-hidden="true"><div id="lumo-background-art"></div><div id="lumo-background-shade"></div></div>
+  <header class="fixture-header">◈ Jellyfin <span style="margin-left:auto;font-weight:400">Accueil &nbsp;&nbsp; Favoris &nbsp;&nbsp; Recherche</span></header>
+  <main>
+    <section class="noctafin-hero" id="noctafin-hero">
+      <div class="fixture-hero-art"></div><div class="noctafin-hero__veil"></div>
+      <div class="noctafin-hero__nav"><button class="noctafin-hero__arrow">‹</button><button class="noctafin-hero__arrow">›</button></div>
+      <div class="noctafin-hero__content"><h1 class="noctafin-hero__title">LE CINÉMA CHEZ VOUS</h1><div class="noctafin-hero__meta"><span class="noctafin-hero__pill">★ 8.4</span><span class="noctafin-hero__pill">2026</span></div><p class="noctafin-hero__overview">Une sélection renouvelée chaque jour, vos films et séries préférés dans une interface pensée pour la découverte.</p><div class="noctafin-hero__actions"><button class="noctafin-hero__button noctafin-hero__button--primary">Lecture</button><button class="noctafin-hero__button">Plus d'infos</button></div></div>
+    </section>
+    <div id="noctafin-custom-sections" class="noctafin-custom-sections">
+      <section class="noctafin-shelf noctafin-shelf--featured"><div class="noctafin-section-heading"><span class="noctafin-section-title">Studios &amp; plateformes</span></div><div class="noctafin-track-shell"><div class="noctafin-brand-track">
+        <button class="noctafin-brand has-logo" style="--brand-a:#434853;--brand-b:#0a0c11"><span class="noctafin-brand__logo-frame" style="--lumo-brand-logo-filter:brightness(0) invert(1)"><img class="noctafin-brand__logo" src="../../assets/logos/apple-tv-plus.svg"></span></button>
+        <button class="noctafin-brand has-logo" style="--brand-a:#0c2639;--brand-b:#071019"><span class="noctafin-brand__logo-frame" style="--lumo-brand-logo-filter:brightness(0) invert(1)"><img class="noctafin-brand__logo" src="../../assets/logos/prime-video.svg"></span></button>
+        <button class="noctafin-brand has-logo" style="--brand-a:#133827;--brand-b:#071b12"><span class="noctafin-brand__logo-frame"><img class="noctafin-brand__logo" src="../../assets/logos/hulu.svg"></span></button>
+        <button class="noctafin-brand has-logo" style="--brand-a:#d81f26;--brand-b:#31070a"><span class="noctafin-brand__logo-frame" style="--lumo-brand-logo-filter:brightness(0) invert(1)"><img class="noctafin-brand__logo" src="../../assets/logos/netflix.svg"></span></button>
+        <button class="noctafin-brand has-logo" style="--brand-a:#2e154c;--brand-b:#130b21"><span class="noctafin-brand__logo-frame" style="--lumo-brand-logo-filter:brightness(0) invert(1)"><img class="noctafin-brand__logo" src="../../assets/logos/hbo-max.svg"></span></button>
+        <button class="noctafin-brand has-logo" style="--brand-a:#112c4d;--brand-b:#081422"><span class="noctafin-brand__logo-frame" style="--lumo-brand-logo-filter:brightness(0) invert(1)"><img class="noctafin-brand__logo" src="../../assets/logos/disney-plus.svg"></span></button>
+        <button class="noctafin-brand has-logo" style="--brand-a:#122c48;--brand-b:#0b1728"><span class="noctafin-brand__logo-frame" style="--lumo-brand-logo-filter:brightness(0) invert(1)"><img class="noctafin-brand__logo" src="../../assets/logos/pixar.svg"></span></button>
+      </div></div></section>
+      <section class="noctafin-media-row noctafin-media-row--landscape"><div class="noctafin-section-heading"><span class="noctafin-section-title">Continuer de regarder</span></div><div class="noctafin-track-shell"><div class="noctafin-card-track"><button class="noctafin-card noctafin-card--landscape"><span class="noctafin-card__art fixture-poster"></span><span class="noctafin-card__title">Une aventure</span></button><button class="noctafin-card noctafin-card--landscape"><span class="noctafin-card__art fixture-poster"></span><span class="noctafin-card__title">La série</span></button><button class="noctafin-card noctafin-card--landscape"><span class="noctafin-card__art fixture-poster"></span><span class="noctafin-card__title">Les mystères</span></button><button class="noctafin-card noctafin-card--landscape"><span class="noctafin-card__art fixture-poster"></span><span class="noctafin-card__title">Le voyage</span></button><button class="noctafin-card noctafin-card--landscape"><span class="noctafin-card__art fixture-poster"></span><span class="noctafin-card__title">Une autre histoire</span></button></div></div></section>
+    </div>
+  </main>
+</body>
+</html>

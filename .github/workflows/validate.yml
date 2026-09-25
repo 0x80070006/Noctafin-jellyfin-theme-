@@ -1,0 +1,38 @@
+name: Validate
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript and server mappings
+        run: npm run check
+      - name: Check shell installers
+        run: |
+          bash -n install/install.sh
+          bash -n install/uninstall.sh
+      - name: Ensure current version and universal taxonomy logic
+        run: |
+          grep -q '1.15.0' theme.css
+          grep -q 'lumo-v1.12.css?v=1.15.0' theme.css
+          grep -q 'lumo-v1.13.css?v=1.15.0' theme.css
+          grep -q 'function installPlaybackDelegation' scripts/noctafin-home.js
+          grep -q 'function clickExactNativePlayback' scripts/noctafin-home.js
+          grep -q 'VERSION = "1.15.0"' scripts/noctafin-home.js
+          grep -q 'VERSION="1.15.0"' install/install.sh
+          grep -q 'function isTaxonomyRoute' scripts/noctafin-home.js
+          grep -q 'function findTaxonomyHost' scripts/noctafin-home.js
+          grep -q 'function scheduleTaxonomyRetry' scripts/noctafin-home.js
+          grep -q 'function dailySelection' scripts/noctafin-home.js
+          grep -q 'function syncDetailPage' scripts/noctafin-home.js
+          grep -q 'function buildSeriesDetailPage' scripts/noctafin-home.js
+          grep -q 'function fetchSeriesSeasons' scripts/noctafin-home.js
+          test -s assets/logos/apple-tv-plus.svg
+          test -s assets/logos/netflix.svg
+          ! test -e assets/background/lumo-japan-night-1080p.mp4

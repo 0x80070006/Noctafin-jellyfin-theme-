@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.14.0";
+  const VERSION = "1.15.0";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -26,8 +26,9 @@
       backgroundBrightness: 0.56
     },
     hero: { enabled: true, rotateEveryMs: 7000, maxItems: 8 },
+    preview: { enabled: true, delayMs: 850 },
     background: {
-      image: "ui/noctafin-assets/background/lumo-space.webp",
+      image: "",
       imageBrightness: 0.72,
       overlayOpacity: 0.50
     },
@@ -63,6 +64,7 @@
     brand: { ...DEFAULTS.brand, ...(source.brand || {}) },
     seasonal: { ...DEFAULTS.seasonal, ...(source.seasonal || {}) },
     hero: { ...DEFAULTS.hero, ...(source.hero || {}) },
+    preview: { ...DEFAULTS.preview, ...(source.preview || {}) },
     background: { ...DEFAULTS.background, ...(source.background || {}) },
     taxonomyHero: { ...DEFAULTS.taxonomyHero, ...(source.taxonomyHero || {}) },
     details: { ...DEFAULTS.details, ...(source.details || {}) },
@@ -129,6 +131,8 @@
   let playbackTransaction = null;
   let playbackDelegationInstalled = false;
   const seriesResumeCache = new Map();
+  const previewCache = new Map();
+  let activePreview = null;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -154,8 +158,7 @@
       const servers = credentials?.Servers || [];
       const sameServer = (server) => [server.ManualAddress, server.LocalAddress, server.RemoteAddress]
         .some((address) => normalizeAddress(address) === base);
-      const server = servers.find((entry) => entry.AccessToken && entry.UserId && sameServer(entry))
-        || servers.find((entry) => entry.AccessToken && entry.UserId);
+      const server = servers.find((entry) => entry.AccessToken && entry.UserId && sameServer(entry));
       if (!server) return null;
       return { base, token: server.AccessToken, userId: server.UserId, serverId: server.Id || "", serverName: server.Name || "" };
     } catch {
@@ -262,6 +265,7 @@
     ];
     if (strongSelectors.some((selector) => $$(selector).some(playbackSurfaceRect))) return true;
     return $$('video').some((video) => {
+      if (video.classList.contains("lumo-hover-preview")) return false;
       if (!playbackSurfaceRect(video)) return false;
       const duration = Number(video.duration);
       return !video.paused || Number(video.currentTime) > 0 || Number.isFinite(duration) && duration > 1 || Boolean(video.currentSrc);
@@ -1121,6 +1125,7 @@
     root.classList.remove("lumo-video-active", "lumo-video-failed");
 
     const image = String(CONFIG.background.image || "").trim();
+    root.toggleAttribute("data-lumo-custom-background", Boolean(image));
     if (image) {
       root.style.setProperty("--lumo-default-background", `url("${assetUrl(image).replace(/"/g, "%22")}")`);
     } else {
@@ -1135,6 +1140,21 @@
       "--lumo-background-overlay",
       String(Math.max(0, Math.min(0.95, Number(CONFIG.background.overlayOpacity) || 0.50)))
     );
+  }
+
+  function startAmbientReflections() {
+    const root = document.documentElement;
+    const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const step = () => {
+      if (document.hidden || motion?.matches || root.classList.contains("lumo-playback-active")) return;
+      for (const index of [1, 2]) {
+        root.style.setProperty(`--lumo-glow-${index}-x`, `${Math.round((Math.random() - .5) * 50)}vw`);
+        root.style.setProperty(`--lumo-glow-${index}-y`, `${Math.round((Math.random() - .5) * 45)}vh`);
+      }
+    };
+    step();
+    setInterval(step, 24000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) step(); });
   }
 
   function replaceBrandContents(target, name, logoHref, season) {
@@ -1344,6 +1364,10 @@
       <div class="noctafin-hero__bg noctafin-hero__bg--a"></div>
       <div class="noctafin-hero__bg noctafin-hero__bg--b"></div>
       <div class="noctafin-hero__veil"></div>
+      <div class="noctafin-hero__nav" aria-label="Navigation des sélections">
+        <button type="button" class="noctafin-hero__arrow focusable" data-direction="-1" aria-label="Sélection précédente">‹</button>
+        <button type="button" class="noctafin-hero__arrow focusable" data-direction="1" aria-label="Sélection suivante">›</button>
+      </div>
       <div class="noctafin-hero__content">
         <img class="noctafin-hero__logo" alt="" hidden>
         <h1 class="noctafin-hero__title"></h1>
@@ -1517,6 +1541,12 @@
         hero.remove();
         return;
       }
+      $$(".noctafin-hero__arrow", hero).forEach((button) => {
+        button.addEventListener("click", () => {
+          renderHero(hero, heroIndex + Number(button.dataset.direction));
+          scheduleHero(hero);
+        });
+      });
       const dots = $(".noctafin-hero__dots", hero);
       dots.replaceChildren();
       heroItems.forEach((_, index) => {
@@ -1570,6 +1600,7 @@
     return entries
       .filter((entry) => {
         const name = norm(entry.Name);
+        if (!name) return false;
         return aliasNorms.some((alias) => name === alias || name.includes(alias) || alias.includes(name));
       })
       .map((entry) => entry.Id)
@@ -1579,12 +1610,9 @@
   function configuredGroupIds(group, entries) {
     const fixed = String(group?.id || "").trim();
     const list = Array.isArray(entries) ? entries : [];
-    if (fixed) {
-      if (!list.length || list.some((entry) => String(entry?.Id || "") === fixed)) return [fixed];
-      const resolvedFallback = resolveIds(list, group?.aliases || []);
-      return resolvedFallback.length ? resolvedFallback : [fixed];
-    }
-    return resolveIds(list, group?.aliases || []);
+    const resolved = resolveIds(list, [group?.label, ...(group?.aliases || [])]);
+    if (resolved.length) return [...new Set(resolved)];
+    return fixed && list.some((entry) => String(entry?.Id || "") === fixed) ? [fixed] : [];
   }
 
   function configuredGroupById(id, kind = "studio") {
@@ -1771,13 +1799,13 @@
 
 
   function navigateToNativeFilter(group, kind = "genre") {
-    const id = String(group?.id || group?._ids?.find(Boolean) || "").trim();
+    const id = String(group?._ids?.find(Boolean) || group?.id || "").trim();
     if (!id) return;
 
     const context = {
       kind,
       id,
-      ids: [id],
+      ids: group?._ids?.length ? group._ids : [id],
       label: group.label || "",
       colors: Array.isArray(group.colors) ? group.colors.slice(0, 2) : [],
       logo: group.logo || "",
@@ -2983,7 +3011,7 @@
 
   function createBrandShelf(title, groups, prefix) {
     const section = document.createElement("section");
-    section.className = "noctafin-shelf";
+    section.className = `noctafin-shelf${prefix === "network" ? " noctafin-shelf--featured" : ""}`;
 
     const heading = makeHeading("", title);
     const { shell, track, nav, update } = createTrackShell("noctafin-brand-track", title);
@@ -3027,8 +3055,11 @@
 
       if (!group._ids?.length) {
         button.setAttribute("aria-disabled", "true");
+        button.disabled = true;
+        button.title = `Aucun média associé à ${group.label} dans cette bibliothèque`;
       } else {
-        button.addEventListener("click", () => navigateToNativeFilter(group, prefix === "network" ? "network" : "studio"));
+        button.title = `Explorer ${group.label}`;
+        button.addEventListener("click", () => navigateToNativeFilter(group, group.kind || (prefix === "network" ? "network" : "studio")));
       }
       track.appendChild(button);
     });
@@ -3114,7 +3145,7 @@
 
     if (query.resume) {
       const params = new URLSearchParams({
-        Limit: String(rowLimit),
+        Limit: String(Math.max(rowLimit * 5, 60)),
         Recursive: "true",
         IncludeItemTypes: query.includeTypes || "Movie,Episode",
         Fields: FIELDS,
@@ -3123,7 +3154,13 @@
         EnableTotalRecordCount: "false"
       });
       const result = (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
-      return uniqueItems(result).slice(0, rowLimit);
+      const seenSeries = new Set();
+      return uniqueItems(result).filter((item) => {
+        if (item.Type !== "Episode" || !item.SeriesId) return true;
+        if (seenSeries.has(item.SeriesId)) return false;
+        seenSeries.add(item.SeriesId);
+        return true;
+      }).slice(0, rowLimit);
     }
 
     const configuredPool = Number(CONFIG.rows.dailyPoolLimit) || 96;
@@ -3246,8 +3283,77 @@
     const progressBar = $(".noctafin-card__progress > span", card);
     if (progressBar) progressBar.style.width = `${progress}%`;
     bindPlaybackTarget(card, item, { source: "rail" });
+    if (["Movie", "Series", "Episode"].includes(item.Type)) {
+      attachHoverPreview(card, item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id);
+    }
     card.setAttribute("aria-label", `Lire ${title || "ce média"}`);
     return card;
+  }
+
+  async function previewItemId(itemId) {
+    const session = auth;
+    const key = `${session?.serverId || session?.base}:${session?.userId}:${itemId}`;
+    const cached = previewCache.get(key);
+    if (!cached || cached.expiresAt < Date.now()) {
+      const request = (async () => {
+        const trailers = await fetchJson(`/Users/${encodeURIComponent(session.userId)}/Items/${encodeURIComponent(itemId)}/LocalTrailers`, 4500).catch(() => []);
+        if (trailers?.[0]?.Id) return trailers[0].Id;
+        const themes = await fetchJson(`/Items/${encodeURIComponent(itemId)}/ThemeVideos?userId=${encodeURIComponent(session.userId)}`, 4500).catch(() => null);
+        return themes?.Items?.[0]?.Id || "";
+      })();
+      const entry = { promise: request, expiresAt: Date.now() + 60_000 };
+      previewCache.set(key, entry);
+      request.then((id) => { entry.expiresAt = Date.now() + (id ? 10 * 60_000 : 60_000); });
+      if (previewCache.size > 200) previewCache.delete(previewCache.keys().next().value);
+    }
+    return previewCache.get(key).promise;
+  }
+
+  function stopActivePreview() {
+    if (!activePreview) return;
+    activePreview.video.pause();
+    activePreview.video.removeAttribute("src");
+    activePreview.video.load();
+    activePreview.video.remove();
+    activePreview = null;
+  }
+
+  function attachHoverPreview(card, itemId) {
+    if (!CONFIG.preview?.enabled || window.matchMedia?.("(pointer: coarse)")?.matches ||
+        window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || navigator.connection?.saveData) return;
+    let timer = null;
+    let generation = 0;
+    const stop = () => {
+      generation += 1;
+      clearTimeout(timer);
+      if (activePreview?.card !== card) return;
+      stopActivePreview();
+    };
+    card.addEventListener("mouseenter", () => {
+      const current = ++generation;
+      timer = setTimeout(async () => {
+        if (!card.isConnected || current !== generation || !auth?.token) return;
+        const previewId = await previewItemId(itemId);
+        if (!previewId || !card.isConnected || current !== generation || !auth?.token) return;
+        stopActivePreview();
+        const art = card.querySelector(".noctafin-card__art");
+        if (!art) return;
+        const video = document.createElement("video");
+        video.className = "lumo-hover-preview";
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.setAttribute("aria-hidden", "true");
+        video.src = `${auth.base}/Videos/${encodeURIComponent(previewId)}/stream?static=true&ApiKey=${encodeURIComponent(auth.token)}`;
+        video.addEventListener("error", stop, { once: true });
+        art.appendChild(video);
+        activePreview = { card, video };
+        video.play().catch(stop);
+      }, Math.max(350, Number(CONFIG.preview.delayMs) || 850));
+    });
+    card.addEventListener("mouseleave", stop);
+    card.addEventListener("click", stop);
   }
 
   async function hydrateRow(section) {
@@ -3302,6 +3408,7 @@
       const networks = CONFIG.networks.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios) }));
 
       const fragment = document.createDocumentFragment();
+      if (CONFIG.rows.showNetworkRail) fragment.appendChild(createBrandShelf("Studios & plateformes", networks.slice(0, 7), "network"));
       if (CONFIG.rows.showResumeRow) {
         fragment.appendChild(createLazyMediaRow({
           kicker: "",
@@ -3312,7 +3419,6 @@
         }));
       }
       if (CONFIG.rows.showStudioRail) fragment.appendChild(createBrandShelf("Studios", studios, "studio"));
-      if (CONFIG.rows.showNetworkRail) fragment.appendChild(createBrandShelf("Réseaux TV", networks, "network"));
 
       if (CONFIG.rows.showGenreRows) {
         genres.filter((group) => group._ids.length).forEach((group) => {
@@ -3339,7 +3445,7 @@
       }
 
       if (CONFIG.rows.showNetworkRows) {
-        networks.filter((group) => group._ids.length).forEach((group) => {
+        networks.filter((group) => group._ids.length && group.kind !== "studio").forEach((group) => {
           fragment.appendChild(createLazyMediaRow({
             kicker: "",
             title: group.label,
@@ -3373,11 +3479,12 @@
   }
 
   async function mount() {
-    auth = getAuth() || auth;
+    auth = getAuth();
     const playbackActive = syncPlaybackMode();
     syncLumoChrome();
 
     if (playbackActive || document.documentElement.classList.contains("lumo-playback-pending")) {
+      stopActivePreview();
       currentHome = null;
       clearTaxonomyHero();
       if (heroTimer) clearTimeout(heroTimer);
@@ -3390,6 +3497,7 @@
        pages mounted. Details are handled first so a stale home/list subtree can
        never leak through or receive layout CSS while a film/series is open. */
     if (isDetailRoute()) {
+      stopActivePreview();
       currentHome = null;
       clearTaxonomyHero();
       if (heroTimer) clearTimeout(heroTimer);
@@ -3402,6 +3510,7 @@
     clearDetailPage();
 
     if (isTaxonomyRoute()) {
+      stopActivePreview();
       currentHome = null;
       if (heroTimer) clearTimeout(heroTimer);
       heroTimer = null;
@@ -3412,6 +3521,7 @@
 
     const found = locateHome();
     if (!found) {
+      stopActivePreview();
       currentHome = null;
       clearTaxonomyHero();
       syncBackgroundMedia();
@@ -3428,7 +3538,7 @@
 
     cleanupTransient();
     currentHome = found;
-    auth = getAuth() || auth;
+    auth = getAuth();
     syncLumoChrome();
     if (!auth?.token || !auth?.userId) {
       console.warn(LOG, "Session Jellyfin introuvable; le thème CSS reste actif mais les sections dynamiques ne peuvent pas charger.");
@@ -3464,7 +3574,8 @@
   function boot() {
     $("#noctafin-browser-page")?.remove();
     document.body?.classList.remove("noctafin-browser-open");
-    auth = getAuth() || auth;
+    auth = getAuth();
+    startAmbientReflections();
     installPlaybackDelegation();
     syncPlaybackMode();
     syncLumoChrome();

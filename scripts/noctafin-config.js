@@ -29,8 +29,12 @@ window.NOCTAFIN_CONFIG = {
     rotateEveryMs: 7000,
     maxItems: 8
   },
+  preview: {
+    enabled: true,
+    delayMs: 850
+  },
   background: {
-    image: "ui/noctafin-assets/background/lumo-space.webp",
+    image: "",
     imageBrightness: 0.72,
     overlayOpacity: 0.50
   },
@@ -129,11 +133,47 @@ window.NOCTAFIN_CONFIG = {
       logoFilter: "brightness(0) invert(1)"
     },
     {
+      label: "Prime Video",
+      aliases: ["Amazon Studios", "Amazon Prime Video", "Prime Video", "Amazon"],
+      colors: ["#0c2639", "#071019"],
+      logo: "ui/noctafin-assets/logos/prime-video.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "hulu",
+      aliases: ["Hulu", "Hulu Originals"],
+      colors: ["#133827", "#071b12"],
+      logo: "ui/noctafin-assets/logos/hulu.svg"
+    },
+    {
       label: "NETFLIX",
       id: "411cb7d6c12c8bf0d3c1caed22120c6f",
       aliases: ["Netflix"],
       colors: ["#d81f26", "#31070a"],
-      logo: "ui/noctafin-assets/logos/netflix.svg"
+      logo: "ui/noctafin-assets/logos/netflix.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "HBO MAX",
+      aliases: ["HBO Max", "Max", "HBO"],
+      colors: ["#2e154c", "#130b21"],
+      logo: "ui/noctafin-assets/logos/hbo-max.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "Disney+",
+      aliases: ["Disney+", "Disney Plus", "Disney"],
+      colors: ["#112c4d", "#081422"],
+      logo: "ui/noctafin-assets/logos/disney-plus.svg",
+      logoFilter: "brightness(0) invert(1)"
+    },
+    {
+      label: "PIXAR",
+      kind: "studio",
+      aliases: ["Pixar", "Pixar Animation Studios"],
+      colors: ["#122c48", "#0b1728"],
+      logo: "ui/noctafin-assets/logos/pixar.svg",
+      logoFilter: "brightness(0) invert(1)"
     },
     {
       label: "BBC",

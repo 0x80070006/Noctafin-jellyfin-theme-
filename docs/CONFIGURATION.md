@@ -6,13 +6,13 @@ La configuration principale se trouve dans `scripts/noctafin-config.js`.
 
 ```js
 background: {
-  image: "ui/noctafin-assets/background/lumo-space.webp",
+  image: "",
   imageBrightness: 0.72,
   overlayOpacity: 0.50
 }
 ```
 
-Le fond par défaut est désormais une image statique optimisée. Aucun lecteur vidéo n'est créé. Les fonds Halloween et Noël sont gérés séparément par `seasonal`.
+Le fond normal est noir avec deux reflets colorés dont les positions évoluent toutes les 24 secondes. L'animation est suspendue lorsque la page est cachée et désactivée si l'utilisateur demande moins de mouvement. Les fonds Halloween et Noël restent gérés séparément par `seasonal`.
 
 ## Rails
 
