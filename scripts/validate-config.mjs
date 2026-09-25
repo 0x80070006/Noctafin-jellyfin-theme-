@@ -8,19 +8,14 @@ vm.runInContext(source, sandbox, { filename: 'noctafin-config.js' });
 const cfg = sandbox.window.NOCTAFIN_CONFIG;
 if (!cfg) throw new Error('NOCTAFIN_CONFIG absent');
 
-const expected = new Map([
-  ['PIXAR', 'a1384420050b89ea581e04c0dd9a83a8'],
-  ['PARAMOUNT', '2672ed34a3f2b0bb6b4257c2ab9875b7'],
-  ['MARVEL', '92e087260fb84bbba21ef249122925df'],
-  ['WALT DISNEY', 'ff966337d51b0e006da6e16df7cb7ca1'],
-  ['COLUMBIA', '3e8c9b438ab4664dc15b8cdbfce57134'],
-  ['20TH CENTURY FOX', 'da8c4e8ad6d11fba2241aebbf643bed7'],
-  ['Apple TV+', '865e87e3544b4bcd5f1fcd3f7b8358e8'],
-  ['NETFLIX', '411cb7d6c12c8bf0d3c1caed22120c6f'],
-  ['BBC', 'c39802fd4af78383c08c5ef2056d2ca7'],
-  ['CARTOON NETWORK', '05d703671f62d4d6ee1a3636b89add52'],
-  ['ABC', '96b48893d56b599270991d22c7a88280'],
-  ['MTV', 'ec5ae1b12f4efbf619aa77ca1bcd2d6f']
+const preferredStudios = new Map([
+  ['PIXAR', 'Pixar'],
+  ['MARVEL', 'Marvel Studios'],
+  ['WALT DISNEY', 'Walt Disney Pictures'],
+  ['20TH CENTURY FOX', '20th Century Fox'],
+  ['COLUMBIA', 'Columbia Pictures'],
+  ['PARAMOUNT', 'Paramount Pictures'],
+  ['DREAMWORKS', 'DreamWorks Animation']
 ]);
 
 const groups = [...(cfg.studios || []), ...(cfg.networks || [])];
@@ -32,18 +27,15 @@ for (const group of cfg.networks.slice(0, 7)) {
   const file = group.logo?.replace('ui/noctafin-assets/', 'assets/');
   if (!file || !fs.existsSync(new URL(`../${file}`, import.meta.url))) throw new Error(`Logo local manquant: ${group.label}`);
 }
-const ids = new Set();
 for (const group of groups) {
-  if (group.id && !/^[0-9a-f]{32}$/i.test(group.id)) throw new Error(`ID invalide pour ${group.label}: ${group.id}`);
-  if (group.id && ids.has(group.id)) throw new Error(`ID dupliqué: ${group.id}`);
-  if (group.id) ids.add(group.id);
-  const wanted = expected.get(group.label);
-  if (wanted && group.id && group.id !== wanted) throw new Error(`ID inattendu pour ${group.label}: ${group.id}`);
+  if ('id' in group) throw new Error(`ID de bibliothèque en dur pour ${group.label}`);
+  if (!Array.isArray(group.aliases) || !group.aliases.length) throw new Error(`Noms de studio absents: ${group.label}`);
 }
-for (const [label, id] of expected) {
-  const group = groups.find((entry) => entry.label === label);
-  if (!group) throw new Error(`Groupe requis absent: ${label}`);
-  if (group.id !== id) throw new Error(`Mauvais ID pour ${label}`);
+for (const [label, name] of preferredStudios) {
+  const group = cfg.studios.find((entry) => entry.label === label);
+  if (!group || group.aliases[0] !== name) throw new Error(`Nom de studio prioritaire incorrect: ${label}`);
+  const file = group.logo?.replace('ui/noctafin-assets/', 'assets/');
+  if (!file || !fs.existsSync(new URL(`../${file}`, import.meta.url))) throw new Error(`Logo studio local manquant: ${label}`);
 }
 
 if (cfg.background?.image !== '') throw new Error('Le fond normal doit utiliser les reflets CSS sur noir');
@@ -71,7 +63,7 @@ if (Number(cfg.rows?.dailyPoolLimit) < 48) throw new Error('rows.dailyPoolLimit 
 if (!cfg.taxonomyHero?.enabled) throw new Error('taxonomyHero doit rester activé');
 if (!cfg.details?.enabled) throw new Error('details doit rester activé');
 if (Number(cfg.details?.episodePageSize) < 20) throw new Error('details.episodePageSize doit rester >= 20');
-if (!cfg.navigation?.serverIdFallback) throw new Error('serverIdFallback absent');
+if (cfg.navigation?.serverIdFallback) throw new Error('serverIdFallback doit rester vide pour tous les serveurs');
 
 
 if (runtimeSource.includes('`#/video?') || runtimeSource.includes('navigate(`/video?')) {
@@ -87,17 +79,18 @@ for (const needle of ['.lumo-playback-active', '.videoPlayerContainer', '.lumo-s
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
 const expectedThemeImports = [
-  'tokens.css?v=1.15.0',
-  'core.css?v=1.15.0',
-  'header.css?v=1.15.0',
-  'home.css?v=1.15.0',
-  'details.css?v=1.15.0',
-  'player.css?v=1.15.0',
-  'responsive.css?v=1.15.0',
-  'lumo-v1.10.css?v=1.15.0',
-  'lumo-v1.11.css?v=1.15.0',
-  'lumo-v1.12.css?v=1.15.0',
-  'lumo-v1.13.css?v=1.15.0'
+  'tokens.css?v=1.15.1',
+  'core.css?v=1.15.1',
+  'header.css?v=1.15.1',
+  'home.css?v=1.15.1',
+  'details.css?v=1.15.1',
+  'player.css?v=1.15.1',
+  'responsive.css?v=1.15.1',
+  'lumo-v1.10.css?v=1.15.1',
+  'lumo-v1.11.css?v=1.15.1',
+  'lumo-v1.12.css?v=1.15.1',
+  'lumo-v1.13.css?v=1.15.1',
+  'lumo-v1.15.css?v=1.15.1'
 ];
 for (const needle of expectedThemeImports) {
   if (!themeCss.includes(needle)) throw new Error(`Import theme.css manquant: ${needle}`);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.15.1
+
+- Suppression de l'ancien chargeur Abyss Spotlight lors de l'installation pour éviter deux Heroes sur l'accueil.
+- Résolution des studios par correspondance exacte avec les noms retournés par le serveur Jellyfin courant. Pixar, DreamWorks Animation et Walt Disney Pictures ne dépendent plus d'ID propres à une installation.
+- Logos officiels des studios embarqués localement, avec cadrage uniforme et sans grossissement excessif de Pixar.
+- Cache des taxonomies isolé par serveur et utilisateur.
+
 ## 1.15.0
 
 - Fond normal noir avec deux reflets colorés à déplacement lent ; images saisonnières conservées et préférence de mouvement réduit respectée.

@@ -27,17 +27,18 @@ rows: {
 
 ## Studios / Réseaux
 
-Chaque entrée peut définir un `id`, un logo et deux couleurs :
+Chaque entrée définit des noms de studio à rechercher dans le serveur courant, un logo et deux couleurs :
 
 ```js
 {
   label: "PIXAR",
-  id: "a1384420050b89ea581e04c0dd9a83a8",
   aliases: ["Pixar", "Pixar Animation Studios"],
   logo: "ui/noctafin-assets/logos/pixar.svg",
   colors: ["#00b9ff", "#1555e8"]
 }
 ```
+
+Les `aliases` sont examinés dans cet ordre et comparés exactement aux noms que renvoie Jellyfin. L'ID du studio trouvé sert ensuite à la route native `studioId` et aux requêtes des lignes. Aucun ID de bibliothèque n'est partagé dans le thème.
 
 Pour une entrée configurée, le Hero utilise le logo local et cette palette. Pour un studio non configuré, Lumo récupère son nom natif via Jellyfin et génère une palette déterministe.
 

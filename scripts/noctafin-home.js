@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.15.0";
+  const VERSION = "1.15.1";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -107,6 +107,7 @@
   let rowObserver = null;
   let mountScheduled = false;
   let taxonomyCache = null;
+  let taxonomyCacheKey = "";
   let taxonomyCacheExpiresAt = 0;
   let taxonomyPromise = null;
   let taxonomyHeroKey = "";
@@ -166,19 +167,19 @@
     }
   }
 
-  function headers() {
-    if (!auth?.token) return {};
+  function headers(session = auth) {
+    if (!session?.token) return {};
     return {
-      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="${VERSION}", Token="${auth.token}"`
+      Authorization: `MediaBrowser Client="Jellyfin Web", Device="Lumo", DeviceId="lumo-home", Version="${VERSION}", Token="${session.token}"`
     };
   }
 
-  async function fetchJson(path, timeoutMs = 12000) {
+  async function fetchJson(path, timeoutMs = 12000, session = auth) {
     const controller = typeof AbortController === "function" ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), Math.max(1500, timeoutMs)) : null;
     try {
-      const response = await fetch(`${auth.base}${path}`, {
-        headers: headers(),
+      const response = await fetch(`${session.base}${path}`, {
+        headers: headers(session),
         signal: controller?.signal
       });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}: ${path}`);
@@ -1568,63 +1569,78 @@
     }
   }
 
+  async function fetchTaxonomyPages(path, session) {
+    const pageSize = 500;
+    const items = [];
+    for (let start = 0; start < 5000;) {
+      const page = await fetchJson(`${path}&StartIndex=${start}&Limit=${pageSize}`, 12000, session);
+      const batch = Array.isArray(page?.Items) ? page.Items : [];
+      if (!batch.length) break;
+      items.push(...batch);
+      start += batch.length;
+      const total = Number(page?.TotalRecordCount);
+      if (Number.isFinite(total) && total >= 0 && start >= total) break;
+      if (!Number.isFinite(total) && batch.length < pageSize) break;
+    }
+    return items;
+  }
+
   async function getTaxonomies() {
+    const session = auth;
+    const key = `${session?.base || ""}:${session?.userId || ""}`;
+    if (key !== taxonomyCacheKey) {
+      taxonomyCacheKey = key;
+      taxonomyCache = null;
+      taxonomyCacheExpiresAt = 0;
+      taxonomyPromise = null;
+      taxonomyContextCache.clear();
+      taxonomyHeroItemCache.clear();
+    }
     const now = Date.now();
     if (taxonomyCache && now < taxonomyCacheExpiresAt) return taxonomyCache;
     if (taxonomyPromise) return taxonomyPromise;
 
     taxonomyPromise = (async () => {
       const [genresResult, studiosResult] = await Promise.allSettled([
-        fetchJson(`/Genres?UserId=${encodeURIComponent(auth.userId)}&Recursive=true&IncludeItemTypes=Movie,Series&Limit=500`),
-        fetchJson(`/Studios?UserId=${encodeURIComponent(auth.userId)}&Recursive=true&Limit=800`)
+        fetchTaxonomyPages(`/Genres?UserId=${encodeURIComponent(session.userId)}&Recursive=true&IncludeItemTypes=Movie,Series`, session),
+        fetchTaxonomyPages(`/Studios?UserId=${encodeURIComponent(session.userId)}&Recursive=true`, session)
       ]);
       const anySuccess = genresResult.status === "fulfilled" || studiosResult.status === "fulfilled";
-      taxonomyCache = {
-        genres: genresResult.status === "fulfilled" ? (genresResult.value.Items || []) : [],
-        studios: studiosResult.status === "fulfilled" ? (studiosResult.value.Items || []) : []
+      const result = {
+        genres: genresResult.status === "fulfilled" ? genresResult.value : [],
+        studios: studiosResult.status === "fulfilled" ? studiosResult.value : []
       };
-      /* Long cache on success, short retry window on a transient API failure. */
-      taxonomyCacheExpiresAt = Date.now() + (anySuccess ? 10 * 60_000 : 15_000);
-      return taxonomyCache;
+      if (taxonomyCacheKey === key) {
+        taxonomyCache = result;
+        /* Long cache on success, short retry window on a transient API failure. */
+        taxonomyCacheExpiresAt = Date.now() + (anySuccess ? 10 * 60_000 : 15_000);
+      }
+      return result;
     })();
 
     try {
       return await taxonomyPromise;
     } finally {
-      taxonomyPromise = null;
+      if (taxonomyCacheKey === key) taxonomyPromise = null;
     }
   }
 
   function resolveIds(entries, aliases) {
-    const aliasNorms = (aliases || []).map(norm).filter(Boolean);
-    return entries
-      .filter((entry) => {
-        const name = norm(entry.Name);
-        if (!name) return false;
-        return aliasNorms.some((alias) => name === alias || name.includes(alias) || alias.includes(name));
-      })
-      .map((entry) => entry.Id)
-      .filter(Boolean);
+    const ids = [];
+    const seen = new Set();
+    for (const alias of (aliases || []).map(norm).filter(Boolean)) {
+      for (const entry of entries || []) {
+        if (!entry?.Id || norm(entry.Name) !== alias || seen.has(entry.Id)) continue;
+        seen.add(entry.Id);
+        ids.push(entry.Id);
+      }
+    }
+    return ids;
   }
 
-  function configuredGroupIds(group, entries) {
-    const fixed = String(group?.id || "").trim();
-    const list = Array.isArray(entries) ? entries : [];
-    const resolved = resolveIds(list, [group?.label, ...(group?.aliases || [])]);
-    if (resolved.length) return [...new Set(resolved)];
-    return fixed && list.some((entry) => String(entry?.Id || "") === fixed) ? [fixed] : [];
-  }
-
-  function configuredGroupById(id, kind = "studio") {
-    const target = String(id || "").trim();
-    if (!target) return null;
-    const groups = kind === "genre"
-      ? CONFIG.genres.map((group) => ({ ...group, kind: "genre" }))
-      : [
-          ...CONFIG.studios.map((group) => ({ ...group, kind: "studio" })),
-          ...CONFIG.networks.map((group) => ({ ...group, kind: "network" }))
-        ];
-    return groups.find((group) => String(group.id || "").trim() === target) || null;
+  function configuredGroupIds(group, entries, single = false) {
+    const ids = resolveIds(entries, [...(group?.aliases || []), group?.label]);
+    return single ? ids.slice(0, 1) : ids;
   }
 
   function configuredGroupByName(name) {
@@ -1636,7 +1652,7 @@
     ];
     return groups.find((group) => {
       const names = [group.label, ...(group.aliases || [])].map(norm).filter(Boolean);
-      return names.some((candidate) => candidate === target || candidate.includes(target) || target.includes(candidate));
+      return names.includes(target);
     }) || null;
   }
 
@@ -1799,7 +1815,7 @@
 
 
   function navigateToNativeFilter(group, kind = "genre") {
-    const id = String(group?._ids?.find(Boolean) || group?.id || "").trim();
+    const id = String(group?._ids?.find(Boolean) || "").trim();
     if (!id) return;
 
     const context = {
@@ -1810,6 +1826,7 @@
       colors: Array.isArray(group.colors) ? group.colors.slice(0, 2) : [],
       logo: group.logo || "",
       logoFilter: group.logoFilter || "none",
+      serverKey: `${auth?.base || ""}:${auth?.userId || ""}`,
       ts: Date.now()
     };
     try { sessionStorage.setItem("lumo.taxonomyContext", JSON.stringify(context)); } catch { /* ignore */ }
@@ -1943,38 +1960,21 @@
 
     const kindFromRoute = genreId ? "genre" : "studio";
     const routeId = String(genreId || studioId || "").trim();
-    const cacheKey = `${kindFromRoute}:${routeId}`;
+    const serverKey = `${auth?.base || ""}:${auth?.userId || ""}`;
+    const cacheKey = `${serverKey}:${kindFromRoute}:${routeId}`;
     const cached = taxonomyContextCache.get(cacheKey);
     if (cached) return { ...cached, ids: [routeId] };
 
     let stored = null;
     try { stored = JSON.parse(sessionStorage.getItem("lumo.taxonomyContext") || "null"); } catch { stored = null; }
-    if (stored && String(stored.id || "") === routeId) {
+    if (stored && String(stored.id || "") === routeId && stored.serverKey === serverKey) {
       const context = { ...stored, id: routeId, ids: [routeId] };
       taxonomyContextCache.set(cacheKey, context);
       return context;
     }
 
-    /* Exact mappings from the home page are authoritative and require no API
-       round-trip. This makes the six requested studios and six TV networks
-       work even if /Studios is slow or temporarily unavailable. */
-    const configured = configuredGroupById(routeId, kindFromRoute);
-    if (configured) {
-      const context = {
-        kind: configured.kind || kindFromRoute,
-        id: routeId,
-        ids: [routeId],
-        label: configured.label || (genreId ? "Genre" : "Studio"),
-        colors: configured.colors || taxonomyPalette(configured.label || routeId),
-        logo: configured.logo || "",
-        logoFilter: configured.logoFilter || "none"
-      };
-      taxonomyContextCache.set(cacheKey, context);
-      return context;
-    }
-
-    /* For every other Jellyfin taxonomy ID, resolve the native name from the
-       API. The DOM title is a last-resort fallback so the hero still has a
+    /* Resolve the native name for this server's ID; IDs differ across servers.
+       The DOM title is a last-resort fallback so the hero still has a
        meaningful label if an older server build rejects the taxonomy call. */
     let taxonomy = { genres: [], studios: [] };
     try { taxonomy = await getTaxonomies(); } catch (error) {
@@ -3400,12 +3400,13 @@
 
   async function initCustomRows(root) {
     try {
+      const authKey = `${auth?.base || ""}:${auth?.userId || ""}`;
       const taxonomy = await getTaxonomies();
-      if (!root.isConnected) return;
+      if (!root.isConnected || authKey !== `${auth?.base || ""}:${auth?.userId || ""}`) return;
 
       const genres = CONFIG.genres.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.genres) }));
-      const studios = CONFIG.studios.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios) }));
-      const networks = CONFIG.networks.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios) }));
+      const studios = CONFIG.studios.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios, true) }));
+      const networks = CONFIG.networks.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios, true) }));
 
       const fragment = document.createDocumentFragment();
       if (CONFIG.rows.showNetworkRail) fragment.appendChild(createBrandShelf("Studios & plateformes", networks.slice(0, 7), "network"));
@@ -3531,7 +3532,8 @@
     clearTaxonomyHero();
     syncBackgroundMedia();
 
-    if (currentHome?.homeTab === found.homeTab && $("#noctafin-custom-sections", found.homeTab)) {
+    if (currentHome?.homeTab === found.homeTab && $("#noctafin-custom-sections", found.homeTab)
+        && (!CONFIG.hero.enabled || $$("#noctafin-hero", found.homeTab).length === 1)) {
       syncNativeRows(found.sections);
       return;
     }
@@ -3545,8 +3547,8 @@
       return;
     }
 
-    $("#noctafin-hero", found.homeTab)?.remove();
-    $("#noctafin-custom-sections", found.homeTab)?.remove();
+    $$("#noctafin-hero").forEach((node) => node.remove());
+    $$("#noctafin-custom-sections").forEach((node) => node.remove());
 
     if (CONFIG.hero.enabled) {
       const hero = createHero();

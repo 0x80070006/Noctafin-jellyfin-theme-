@@ -2,6 +2,12 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
+## Corrections 1.15.1
+
+- Un seul Hero sur l'accueil : l'installateur retire l'ancien chargeur Spotlight d'Abyss lorsqu'il est présent.
+- Pixar, DreamWorks Animation et Walt Disney Pictures ouvrent le studio exact trouvé par nom sur le serveur connecté. Aucun identifiant de studio ou de serveur n'est livré en dur.
+- Les sept logos des studios, dont Marvel et DreamWorks, sont fournis dans le dépôt et restent cadrés dans leurs jaquettes.
+
 ## Nouveautés 1.15.0
 
 - Fond normal noir avec reflets violets et cyan qui changent lentement de position. Les fonds saisonniers gardent leur image.
@@ -43,7 +49,7 @@ Un clic plus récent annule désormais proprement une tentative précédente. L'
 
 ### Chaîne CSS 1.14
 
-`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.13.css`, toutes cache-bustées en `?v=1.15.0`.
+`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.13.css` et la correction `lumo-v1.15.css`, toutes cache-bustées en `?v=1.15.1`.
 
 ### Validation
 
@@ -92,9 +98,9 @@ Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
 ```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.15.0" data-lumo-theme="1.15.0">
-<script src="ui/noctafin-config.js?v=1.15.0" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.15.0" data-noctafin-home></script>
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.15.1" data-lumo-theme="1.15.1">
+<script src="ui/noctafin-config.js?v=1.15.1" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.15.1" data-noctafin-home></script>
 ```
 
 ## Mise à jour
@@ -102,7 +108,7 @@ Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin
 Extrais la nouvelle archive, puis relance l'installateur depuis son dossier :
 
 ```bash
-cd /chemin/vers/Lumo-Jellyfin-v1.15.0
+cd /chemin/vers/Lumo-Jellyfin-v1.15.1
 chmod +x install/install.sh
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
@@ -111,7 +117,7 @@ systemctl restart jellyfin
 ## Vérification
 
 ```bash
-grep -n "1.15.0" /usr/share/jellyfin/web/index.html
+grep -n "1.15.1" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.12.css
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.13.css
@@ -140,7 +146,7 @@ dans le champ CSS personnalisé : cela chargerait la feuille deux fois.
 Après avoir copié `theme.css` et `styles/` sous `jellyfin-web/ui/lumo/`, le CSS personnalisé peut charger le style seul :
 
 ```css
-@import url("ui/lumo/theme.css?v=1.15.0");
+@import url("ui/lumo/theme.css?v=1.15.1");
 ```
 
 Le mode CSS-only ne peut pas fournir les fiches cinématiques, les Heroes dynamiques ni les rails Studio/Genre/Réseau.

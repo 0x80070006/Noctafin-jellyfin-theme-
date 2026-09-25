@@ -8,7 +8,7 @@ const themePath = path.join(project, 'theme.css');
 const theme = fs.readFileSync(themePath, 'utf8');
 
 const imports = [...theme.matchAll(/@import\s+url\(["']?([^"')]+)["']?\)\s*;/g)].map(m => m[1]);
-if (imports.length !== 11) throw new Error(`theme.css doit avoir 11 imports, trouvé ${imports.length}`);
+if (imports.length !== 12) throw new Error(`theme.css doit avoir 12 imports, trouvé ${imports.length}`);
 
 const files = [themePath];
 for (const ref of imports) {

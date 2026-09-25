@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "1.15.0"
+$Version = "1.15.1"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -44,9 +44,10 @@ $Logos = @{
     "pixar.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pixar_logo.svg"
     "marvel-studios.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Marvel_Studios_2025.svg"
     "disney.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Walt_Disney_Pictures_text_logo.svg"
-    "20th-century.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/20th_Century_Studios_(2021).svg"
+    "20th-century.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/20th_Century_Fox_Horizontal_logo.svg"
     "columbia.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Columbia_Pictures.svg"
     "paramount.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Paramount_Pictures_Logo_2025.svg"
+    "dreamworks.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/DreamWorks_Animation_SKG_logo.svg"
     "apple-tv-plus.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Apple_TV_Plus_Logo.svg"
     "netflix.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Netflix_2015_logo.svg"
     "bbc.svg" = "https://commons.wikimedia.org/wiki/Special:Redirect/file/BBC_Logo_2021.svg"
@@ -56,6 +57,7 @@ $Logos = @{
 }
 
 foreach ($Entry in $Logos.GetEnumerator()) {
+    if ($env:LUMO_DOWNLOAD_EXTRA_LOGOS -eq "0") { break }
     $Target = Join-Path $LogoDir $Entry.Key
     $Tmp = "$Target.tmp"
 
@@ -87,6 +89,7 @@ foreach ($Entry in $Logos.GetEnumerator()) {
 $Html = Get-Content $Index -Raw -Encoding UTF8
 $Html = [regex]::Replace($Html, '<link[^>]*data-lumo-theme[^>]*>\s*', '', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', 'IgnoreCase')
+$Html = [regex]::Replace($Html, '<script[^>]*data-abyss-spotlight[^>]*></script>\s*', '', 'IgnoreCase')
 if ($Html -notmatch '</head>') { throw "index.html ne contient pas </head>" }
 if ($Html -notmatch '</body>') { throw "index.html ne contient pas </body>" }
 $Style = "<link rel=`"stylesheet`" href=`"ui/lumo/theme.css?v=$Version`" data-lumo-theme=`"$Version`">`n"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.15.0"
+VERSION="1.15.1"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
 
@@ -79,9 +79,10 @@ logo_sources=(
   "pixar.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Pixar_logo.svg"
   "marvel-studios.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Marvel_Studios_2025.svg"
   "disney.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Walt_Disney_Pictures_text_logo.svg"
-  "20th-century.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/20th_Century_Studios_(2021).svg"
+  "20th-century.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/20th_Century_Fox_Horizontal_logo.svg"
   "columbia.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Columbia_Pictures.svg"
   "paramount.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Paramount_Pictures_Logo_2025.svg"
+  "dreamworks.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/DreamWorks_Animation_SKG_logo.svg"
   "apple-tv-plus.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Apple_TV_Plus_Logo.svg"
   "netflix.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/Netflix_2015_logo.svg"
   "bbc.svg|https://commons.wikimedia.org/wiki/Special:Redirect/file/BBC_Logo_2021.svg"
@@ -156,6 +157,7 @@ text = path.read_text(encoding="utf-8")
 patterns = [
     r'<link[^>]*data-lumo-theme[^>]*>\s*',
     r'<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*',
+    r'<script[^>]*data-abyss-spotlight[^>]*></script>\s*',
 ]
 for pattern in patterns:
     text = re.sub(pattern, '', text, flags=re.I)

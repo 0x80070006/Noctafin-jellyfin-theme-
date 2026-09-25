@@ -11,3 +11,9 @@ Ces sept SVG proviennent de Wikimedia Commons et sont utilisés uniquement pour 
 | `hbo-max.svg` | [HBO Max Logo (October 2019 Print).svg](https://commons.wikimedia.org/wiki/File:HBO_Max_Logo_(October_2019_Print).svg) |
 | `disney-plus.svg` | [Disney+ logo.svg](https://commons.wikimedia.org/wiki/File:Disney%2B_logo.svg) |
 | `pixar.svg` | [Pixar logo.svg](https://commons.wikimedia.org/wiki/File:Pixar_logo.svg) |
+| `marvel-studios.svg` | [Marvel Studios 2025.svg](https://commons.wikimedia.org/wiki/File:Marvel_Studios_2025.svg) |
+| `disney.svg` | [Walt Disney Pictures text logo.svg](https://commons.wikimedia.org/wiki/File:Walt_Disney_Pictures_text_logo.svg) |
+| `20th-century.svg` | [20th Century Fox Horizontal logo.svg](https://commons.wikimedia.org/wiki/File:20th_Century_Fox_Horizontal_logo.svg), CC BY 4.0, auteur OlivierLLC |
+| `columbia.svg` | [Columbia Pictures.svg](https://commons.wikimedia.org/wiki/File:Columbia_Pictures.svg) |
+| `paramount.svg` | [Paramount Pictures Logo 2025.svg](https://commons.wikimedia.org/wiki/File:Paramount_Pictures_Logo_2025.svg) |
+| `dreamworks.svg` | [DreamWorks Animation SKG logo.svg](https://commons.wikimedia.org/wiki/File:DreamWorks_Animation_SKG_logo.svg) |
