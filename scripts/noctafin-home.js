@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.16.0";
+  const VERSION = "1.16.1";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -144,6 +144,7 @@
   let ambientCanvasState = null;
   let loaderShownAt = 0;
   let loaderGeneration = 0;
+  let loaderCloseTimer = null;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -1135,8 +1136,8 @@
     return layer;
   }
 
-  function ensureLiquidLoader(label = "Chargement de Lumo") {
-    if (!document.body) return null;
+  function ensureLiquidLoader(label = "Chargement de Lumo", mode = "navigation") {
+    if (!document.documentElement) return null;
     let loader = document.getElementById("lumo-page-loader");
     if (!loader) {
       loader = document.createElement("div");
@@ -1145,27 +1146,58 @@
       loader.setAttribute("aria-live", "polite");
       const bars = Array.from({ length: 7 }, (_, index) => `<i style="--i:${index}"></i>`).join("");
       loader.innerHTML = `<div class="lumo-liquid-loader" aria-hidden="true">${bars}</div><span class="lumo-page-loader__label"></span>`;
-      document.body.appendChild(loader);
+      document.documentElement.appendChild(loader);
     }
     $(".lumo-page-loader__label", loader).textContent = label;
     loader.classList.remove("is-done");
-    loader.dataset.generation = String(++loaderGeneration);
-    loaderShownAt = performance.now();
+    if (loaderCloseTimer) clearTimeout(loaderCloseTimer);
+    if (mode === "startup" && loader.dataset.mode === "startup") {
+      loaderGeneration = Number(loader.dataset.generation) || 1;
+      loaderShownAt = Number(loader.dataset.startedAt) || performance.now();
+    } else {
+      loader.dataset.mode = mode;
+      loader.dataset.generation = String(++loaderGeneration);
+      loaderShownAt = performance.now();
+      loader.dataset.startedAt = String(loaderShownAt);
+    }
+    document.documentElement.classList.add("lumo-transitioning");
     return loader;
   }
 
-  function finishLiquidLoader() {
+  function loaderViewReady() {
+    if (isPlaybackRoute()) return true;
+    if (isDetailRoute()) return Boolean($('#lumo-detail-page[data-detail-state="ready"],#lumo-detail-page[data-detail-state="error"]'));
+    if (isTaxonomyRoute()) return Boolean($('#lumo-taxonomy-hero[data-loading="false"]'));
+    if (isHomeVisible() || /(^|\/)home(?:\.html)?$/.test(currentRoutePath())) {
+      const home = $("#noctafin-custom-sections");
+      if (!home || (CONFIG.hero.enabled && !$("#noctafin-hero"))) return false;
+      const visibleImages = $$("#noctafin-hero .noctafin-hero__logo, .noctafin-brand__logo")
+        .filter((image) => image.getBoundingClientRect().width > 0);
+      return visibleImages.every((image) => image.complete);
+    }
+    return document.readyState === "complete";
+  }
+
+  function finishLiquidLoader(expectedGeneration = loaderGeneration) {
     const loader = document.getElementById("lumo-page-loader");
-    if (!loader) return;
-    const generation = loader.dataset.generation;
-    const wait = Math.max(0, 320 - (performance.now() - loaderShownAt));
-    setTimeout(() => {
-      if (!loader.isConnected || loader.dataset.generation !== generation) return;
+    if (!loader || Number(loader.dataset.generation) !== expectedGeneration) return;
+    const minimum = loader.dataset.mode === "startup" ? 5000 : 3000;
+    const startedAt = Number(loader.dataset.startedAt) || loaderShownAt;
+    const close = () => {
+      if (!loader.isConnected || Number(loader.dataset.generation) !== expectedGeneration) return;
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < minimum || (!loaderViewReady() && elapsed < 9000)) {
+        loaderCloseTimer = setTimeout(close, 90);
+        return;
+      }
       loader.classList.add("is-done");
       setTimeout(() => {
-        if (loader.dataset.generation === generation) loader.remove();
-      }, 360);
-    }, wait);
+        if (Number(loader.dataset.generation) !== expectedGeneration) return;
+        loader.remove();
+        document.documentElement.classList.remove("lumo-transitioning");
+      }, 650);
+    };
+    close();
   }
 
   function syncBackgroundMedia() {
@@ -1473,8 +1505,10 @@
         <button type="button" class="noctafin-hero__arrow focusable" data-direction="1" aria-label="Sélection suivante">›</button>
       </div>
       <div class="noctafin-hero__content">
-        <img class="noctafin-hero__logo" alt="" hidden>
-        <h1 class="noctafin-hero__title"></h1>
+        <div class="lumo-logo-title-swap lumo-logo-title-swap--hero">
+          <img class="noctafin-hero__logo" alt="" hidden>
+          <h1 class="noctafin-hero__title"></h1>
+        </div>
         <div class="noctafin-hero__meta"></div>
         <p class="noctafin-hero__overview"></p>
         <div class="noctafin-hero__actions">
@@ -1618,11 +1652,26 @@
     });
 
     const logoUrl = imageUrl(heroArtworkId(item), "Logo", null, 900);
+    const swap = $(".lumo-logo-title-swap", hero);
+    const logoRequest = String(Number(hero.dataset.logoRequest || 0) + 1);
+    hero.dataset.logoRequest = logoRequest;
+    swap.classList.remove("has-logo");
     logo.hidden = false;
-    logo.onload = () => { logo.hidden = false; title.style.display = "none"; };
-    logo.onerror = () => { logo.hidden = true; title.style.display = "block"; };
-    title.style.display = "block";
+    logo.onload = () => {
+      if (hero.dataset.logoRequest !== logoRequest) return;
+      requestAnimationFrame(() => swap.classList.add("has-logo"));
+    };
+    logo.onerror = () => {
+      if (hero.dataset.logoRequest !== logoRequest) return;
+      logo.hidden = true;
+      swap.classList.remove("has-logo");
+    };
     logo.src = logoUrl;
+    if (logo.complete && logo.naturalWidth > 0) {
+      requestAnimationFrame(() => {
+        if (hero.dataset.logoRequest === logoRequest) swap.classList.add("has-logo");
+      });
+    }
 
     const id = detailsId(item);
     info.onclick = () => navigate(`/details?id=${encodeURIComponent(id)}`);
@@ -2751,22 +2800,20 @@
   }
 
   function setDetailLogoOrTitle(logo, title, item) {
+    const swap = logo.parentElement;
     const src = detailLogoUrl(item);
     title.textContent = item?.Type === "Episode" ? (item.SeriesName || item.Name || "") : (item?.Name || "");
     if (!src) {
       logo.hidden = true;
-      title.hidden = false;
       return;
     }
     logo.hidden = false;
-    title.hidden = false;
     logo.onload = () => {
-      logo.hidden = false;
-      title.hidden = true;
+      requestAnimationFrame(() => swap?.classList.add("has-logo"));
     };
     logo.onerror = () => {
       logo.hidden = true;
-      title.hidden = false;
+      swap?.classList.remove("has-logo");
     };
     logo.src = src;
   }
@@ -2889,6 +2936,9 @@
     logo.draggable = false;
     const title = document.createElement("h1");
     title.className = "lumo-movie-detail-hero__title";
+    const heading = document.createElement("div");
+    heading.className = "lumo-logo-title-swap lumo-logo-title-swap--detail";
+    heading.append(logo, title);
     setDetailLogoOrTitle(logo, title, item);
     const meta = document.createElement("div");
     meta.className = "lumo-detail-meta";
@@ -2917,7 +2967,7 @@
       chip.textContent = name;
       genres.appendChild(chip);
     });
-    content.append(logo, title, meta, actions);
+    content.append(heading, meta, actions);
     overviewWrap.appendChild(genres);
     hero.append(backdrop, veil, content, overviewWrap);
     root.append(makeDetailBackButton(), hero, buildMovieCredits(item));
@@ -3072,6 +3122,9 @@
     logo.draggable = false;
     const title = document.createElement("h1");
     title.className = "lumo-series-detail__title";
+    const heading = document.createElement("div");
+    heading.className = "lumo-logo-title-swap lumo-logo-title-swap--series";
+    heading.append(logo, title);
     setDetailLogoOrTitle(logo, title, item);
     const meta = document.createElement("div");
     meta.className = "lumo-detail-meta";
@@ -3090,7 +3143,7 @@
       chip.textContent = name;
       genres.appendChild(chip);
     });
-    info.append(logo, title, meta, actions, overview, genres);
+    info.append(heading, meta, actions, overview, genres);
     shell.append(poster, info);
 
     const resumeSlot = document.createElement("div");
@@ -3239,6 +3292,7 @@
       button.appendChild(fallback);
 
       if (group.logo) {
+        button.classList.add("has-logo-source");
         const frame = document.createElement("span");
         frame.className = "noctafin-brand__logo-frame";
         frame.style.setProperty("--lumo-brand-logo-filter", group.logoFilter || "none");
@@ -3249,9 +3303,10 @@
         logo.decoding = "async";
         logo.draggable = false;
         logo.referrerPolicy = "no-referrer";
-        logo.addEventListener("load", () => button.classList.add("has-logo"), { once: true });
+        logo.addEventListener("load", () => requestAnimationFrame(() => button.classList.add("has-logo")), { once: true });
         logo.addEventListener("error", () => {
           button.classList.remove("has-logo");
+          button.classList.remove("has-logo-source");
           frame.remove();
         }, { once: true });
         frame.appendChild(logo);
@@ -3848,12 +3903,13 @@
     mountScheduled = true;
     requestAnimationFrame(() => {
       mountScheduled = false;
-      mount().catch((error) => console.warn(LOG, error)).finally(finishLiquidLoader);
+      const generation = loaderGeneration;
+      mount().catch((error) => console.warn(LOG, error)).finally(() => finishLiquidLoader(generation));
     });
   }
 
   function boot() {
-    ensureLiquidLoader("Chargement de Lumo");
+    ensureLiquidLoader("Chargement de Lumo", "startup");
     $("#noctafin-browser-page")?.remove();
     document.body?.classList.remove("noctafin-browser-open");
     auth = getAuth();
@@ -3879,7 +3935,10 @@
       if (!document.hidden) scheduleMount();
     });
     const routeChanged = () => {
-      if (!isPlaybackRoute()) ensureLiquidLoader("Chargement de la page");
+      const activeLoader = document.getElementById("lumo-page-loader");
+      if (!isPlaybackRoute() && activeLoader?.dataset.mode !== "startup") {
+        ensureLiquidLoader("Chargement de la page");
+      }
       scheduleMount();
     };
     window.addEventListener("hashchange", routeChanged);

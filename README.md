@@ -2,6 +2,29 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
+<!-- Les deux liens ciblent l'étiquette de version publiée, pas une branche mouvante. -->
+[![Télécharger ZIP](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-ZIP-8057e8?style=for-the-badge&logo=github)](https://github.com/0x80070006/Noctafin-jellyfin-theme-/archive/refs/tags/v1.16.1.zip)
+[![Télécharger TAR.GZ](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-TAR.GZ-268bb4?style=for-the-badge&logo=github)](https://github.com/0x80070006/Noctafin-jellyfin-theme-/archive/refs/tags/v1.16.1.tar.gz)
+
+## Captures réelles
+
+Ces captures proviennent de l'interface Jellyfin avec Lumo installé, depuis une bibliothèque active. Les affiches et titres dépendent de la bibliothèque connectée.
+
+![Accueil avec Hero cinématique et plateformes](docs/screenshots/accueil.jpg)
+
+![Ligne Anime et affiches détectées](docs/screenshots/anime.jpg)
+
+![Page Studio avec identité visuelle](docs/screenshots/studio.jpg)
+
+![Fiche de film avec lecture et informations](docs/screenshots/fiche-film.jpg)
+
+## Corrections 1.16.1
+
+- Le chargement démarre avant les modules de Jellyfin : un voile noir Lumo couvre le logo de démarrage natif. Il dure au moins **5 secondes** puis disparaît en fondu une fois l'accueil prêt.
+- Lors d'un changement d'onglet ou de catégorie, le voile couvre toute la fenêtre pendant au moins **3 secondes**. Il attend la vue et les visuels principaux jusqu'à une limite de 9 secondes ; en cas d'échec, l'interface reste accessible.
+- Les titres du Hero, des fiches et des jaquettes Studio se fondent progressivement dans leur logo dès que celui-ci est chargé. Un logo indisponible laisse le titre lisible.
+- L'installation est réversible : l'option **Désinstaller** retire le chargeur précoce, le CSS et le runtime ajoutés à Jellyfin Web.
+
 ## Nouveautés 1.16.0
 
 - Fond nébuleuse interactif léger, dessiné localement sans dépendance externe. Il réagit doucement au pointeur, limite sa fréquence d'image et se met en pause lorsque l'onglet ou le lecteur est actif.
@@ -63,7 +86,7 @@ Un clic plus récent annule désormais proprement une tentative précédente. L'
 
 ### Chaîne CSS 1.14
 
-`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.16.css`, toutes cache-bustées en `?v=1.16.0`.
+`styles/boot.css` et `scripts/noctafin-boot.js` démarrent en premier dans le `<head>`. Ensuite `theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.16.css`, toutes cache-bustées en `?v=1.16.1`.
 
 ### Validation
 
@@ -114,9 +137,11 @@ Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
 ```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.16.0" data-lumo-theme="1.16.0">
-<script src="ui/noctafin-config.js?v=1.16.0" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.16.0" data-noctafin-home></script>
+<link rel="stylesheet" href="ui/lumo/styles/boot.css?v=1.16.1" data-lumo-boot-style="1.16.1">
+<script src="ui/noctafin-boot.js?v=1.16.1" data-lumo-boot="1.16.1"></script>
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.16.1" data-lumo-theme="1.16.1">
+<script src="ui/noctafin-config.js?v=1.16.1" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.16.1" data-noctafin-home></script>
 ```
 
 ## Mise à jour
@@ -124,17 +149,21 @@ Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin
 Extrais la nouvelle archive, puis relance l'installateur depuis son dossier :
 
 ```bash
-cd /chemin/vers/Lumo-Jellyfin-v1.16.0
+cd /chemin/vers/Lumo-Jellyfin-v1.16.1
 chmod +x install/install.sh
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
+Pour revenir à Jellyfin sans Lumo, relance le même installateur et choisis **2) Désinstaller**, ou utilise `./install/install.sh --uninstall`. Redémarre Jellyfin puis recharge la page. Une sauvegarde de `index.html` est conservée à côté du fichier d'origine.
+
 ## Vérification
 
 ```bash
-grep -n "1.16.0" /usr/share/jellyfin/web/index.html
+grep -n "1.16.1" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
+ls -lh /usr/share/jellyfin/web/ui/noctafin-boot.js
+ls -lh /usr/share/jellyfin/web/ui/lumo/styles/boot.css
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.12.css
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.13.css
 ```
@@ -162,7 +191,7 @@ dans le champ CSS personnalisé : cela chargerait la feuille deux fois.
 Après avoir copié `theme.css` et `styles/` sous `jellyfin-web/ui/lumo/`, le CSS personnalisé peut charger le style seul :
 
 ```css
-@import url("ui/lumo/theme.css?v=1.16.0");
+@import url("ui/lumo/theme.css?v=1.16.1");
 ```
 
 Le mode CSS-only ne peut pas fournir les fiches cinématiques, les Heroes dynamiques ni les rails Studio/Genre/Réseau.

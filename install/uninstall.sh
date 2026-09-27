@@ -12,10 +12,12 @@ python3 - "$WEB_DIR/index.html" <<'PY'
 import pathlib, re, sys
 path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
+text = re.sub(r'<link[^>]*data-lumo-boot-style[^>]*>\s*', '', text, flags=re.I)
+text = re.sub(r'<script[^>]*data-lumo-boot[^>]*></script>\s*', '', text, flags=re.I)
 text = re.sub(r'<link[^>]*data-lumo-theme[^>]*>\s*', '', text, flags=re.I)
 text = re.sub(r'<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', text, flags=re.I)
 path.write_text(text, encoding="utf-8")
 PY
-rm -f "$WEB_DIR/ui/noctafin-config.js" "$WEB_DIR/ui/noctafin-home.js"
+rm -f "$WEB_DIR/ui/noctafin-config.js" "$WEB_DIR/ui/noctafin-home.js" "$WEB_DIR/ui/noctafin-boot.js"
 rm -rf "$WEB_DIR/ui/noctafin-assets" "$WEB_DIR/ui/lumo"
 echo "Lumo supprimé de Jellyfin Web. Retire aussi tout ancien @import Lumo/NoctaFin encore présent dans le CSS personnalisé."

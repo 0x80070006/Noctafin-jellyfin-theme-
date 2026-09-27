@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.16.0"
+$Version = "1.16.1"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
 
@@ -60,6 +60,7 @@ if (-not (Test-Path $Backup)) { Copy-Item $Index $Backup -Force }
 
 Copy-Item (Join-Path $Root "scripts\noctafin-config.js") (Join-Path $Ui "noctafin-config.js") -Force
 Copy-Item (Join-Path $Root "scripts\noctafin-home.js") (Join-Path $Ui "noctafin-home.js") -Force
+Copy-Item (Join-Path $Root "scripts\noctafin-boot.js") (Join-Path $Ui "noctafin-boot.js") -Force
 Copy-Item (Join-Path $Root "theme.css") (Join-Path $LumoDir "theme.css") -Force
 Get-ChildItem $LumoStyles -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Copy-Item (Join-Path $Root "styles\*.css") $LumoStyles -Force
@@ -115,12 +116,14 @@ foreach ($Entry in $Logos.GetEnumerator()) {
 }
 
 $Html = Get-Content $Index -Raw -Encoding UTF8
+$Html = [regex]::Replace($Html, '<link[^>]*data-lumo-boot-style[^>]*>\s*', '', 'IgnoreCase')
+$Html = [regex]::Replace($Html, '<script[^>]*data-lumo-boot[^>]*></script>\s*', '', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '<link[^>]*data-lumo-theme[^>]*>\s*', '', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*', '', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '<script[^>]*data-abyss-spotlight[^>]*></script>\s*', '', 'IgnoreCase')
 if ($Html -notmatch '</head>') { throw "index.html ne contient pas </head>" }
 if ($Html -notmatch '</body>') { throw "index.html ne contient pas </body>" }
-$Style = "<link rel=`"stylesheet`" href=`"ui/lumo/theme.css?v=$Version`" data-lumo-theme=`"$Version`">`n"
+$Style = "<link rel=`"stylesheet`" href=`"ui/lumo/styles/boot.css?v=$Version`" data-lumo-boot-style=`"$Version`">`n<script src=`"ui/noctafin-boot.js?v=$Version`" data-lumo-boot=`"$Version`"></script>`n<link rel=`"stylesheet`" href=`"ui/lumo/theme.css?v=$Version`" data-lumo-theme=`"$Version`">`n"
 $Scripts = "<script src=`"ui/noctafin-config.js?v=$Version`" data-noctafin-config></script>`n<script src=`"ui/noctafin-home.js?v=$Version`" data-noctafin-home></script>`n"
 $Html = [regex]::Replace($Html, '</head>', $Style + '</head>', 'IgnoreCase')
 $Html = [regex]::Replace($Html, '</body>', $Scripts + '</body>', 'IgnoreCase')

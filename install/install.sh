@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.16.0"
+VERSION="1.16.1"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
 
@@ -74,6 +74,7 @@ fi
 # Runtime dynamique.
 install -m 0644 "$ROOT/scripts/noctafin-config.js" "$UI_DIR/noctafin-config.js"
 install -m 0644 "$ROOT/scripts/noctafin-home.js" "$UI_DIR/noctafin-home.js"
+install -m 0644 "$ROOT/scripts/noctafin-boot.js" "$UI_DIR/noctafin-boot.js"
 
 # CSS complet copié localement : indispensable pour les vues modernes/admin où
 # le CSS de Branding n'est pas toujours chargé de la même façon que sur l'accueil.
@@ -179,6 +180,8 @@ version = sys.argv[2]
 text = path.read_text(encoding="utf-8")
 
 patterns = [
+    r'<link[^>]*data-lumo-boot-style[^>]*>\s*',
+    r'<script[^>]*data-lumo-boot[^>]*></script>\s*',
     r'<link[^>]*data-lumo-theme[^>]*>\s*',
     r'<script[^>]*data-noctafin-(?:config|home)[^>]*></script>\s*',
     r'<script[^>]*data-abyss-spotlight[^>]*></script>\s*',
@@ -191,7 +194,11 @@ if not re.search(r'</head>', text, flags=re.I):
 if not re.search(r'</body>', text, flags=re.I):
     raise SystemExit("index.html ne contient pas </body>")
 
-style = f'<link rel="stylesheet" href="ui/lumo/theme.css?v={version}" data-lumo-theme="{version}">\n'
+style = (
+    f'<link rel="stylesheet" href="ui/lumo/styles/boot.css?v={version}" data-lumo-boot-style="{version}">\n'
+    f'<script src="ui/noctafin-boot.js?v={version}" data-lumo-boot="{version}"></script>\n'
+    f'<link rel="stylesheet" href="ui/lumo/theme.css?v={version}" data-lumo-theme="{version}">\n'
+)
 scripts = (
     f'<script src="ui/noctafin-config.js?v={version}" data-noctafin-config></script>\n'
     f'<script src="ui/noctafin-home.js?v={version}" data-noctafin-home></script>\n'

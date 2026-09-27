@@ -19,18 +19,15 @@ html.lumo-playback-active #lumo-nebula-canvas {
 #lumo-page-loader {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 10000 !important;
+  z-index: 2147483647 !important;
   display: grid !important;
   place-content: center !important;
   justify-items: center !important;
   gap: 24px !important;
   color: rgba(244,247,255,.82) !important;
-  background:
-    radial-gradient(circle at 36% 40%, rgba(112,72,255,.19), transparent 34%),
-    radial-gradient(circle at 68% 62%, rgba(0,205,255,.12), transparent 38%),
-    #020308 !important;
+  background: #000 !important;
   opacity: 1 !important;
-  transition: opacity 320ms ease, visibility 320ms ease !important;
+  transition: opacity 600ms ease, visibility 600ms ease !important;
 }
 
 #lumo-page-loader.is-done {
@@ -96,6 +93,47 @@ html.lumo-playback-active #lumo-nebula-canvas {
 .noctafin-card__art img {
   content-visibility: auto !important;
 }
+
+/* Both images and text occupy one stable slot while artwork is decoded. */
+.lumo-logo-title-swap {
+  display: grid !important;
+  align-items: center !important;
+  justify-items: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.lumo-logo-title-swap > img,
+.lumo-logo-title-swap > h1 { grid-area: 1 / 1 !important; }
+.lumo-logo-title-swap > img {
+  opacity: 0 !important;
+  transition: opacity 520ms ease !important;
+}
+.lumo-logo-title-swap > img[hidden] { display: none !important; }
+.lumo-logo-title-swap > h1 {
+  opacity: 1 !important;
+  transition: opacity 440ms ease !important;
+}
+.lumo-logo-title-swap.has-logo > img { opacity: 1 !important; }
+.lumo-logo-title-swap.has-logo > h1 { opacity: 0 !important; }
+.lumo-logo-title-swap--hero { min-height: clamp(90px, 10vw, 150px) !important; }
+.lumo-logo-title-swap--detail { justify-items: center !important; min-height: 150px !important; }
+.lumo-logo-title-swap--series { min-height: 120px !important; }
+
+html.lumo-ui .noctafin-brand__logo-frame {
+  opacity: 0 !important;
+  transition: opacity 480ms ease !important;
+}
+html.lumo-ui .noctafin-brand.has-logo .noctafin-brand__logo-frame { opacity: 1 !important; }
+html.lumo-ui .noctafin-brand__name { transition: opacity 420ms ease !important; }
+html.lumo-ui .noctafin-brand.has-logo .noctafin-brand__name { opacity: 0 !important; }
+
+.lumo-taxonomy-hero__logo {
+  opacity: 0 !important;
+  transition: opacity 520ms ease !important;
+}
+.lumo-taxonomy-hero.has-logo .lumo-taxonomy-hero__logo { opacity: 1 !important; }
+
+html.lumo-boot-enabled .splashLogo { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   #lumo-nebula-canvas { opacity: .62 !important; }

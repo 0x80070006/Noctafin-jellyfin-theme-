@@ -93,19 +93,19 @@ if (/(?:videoPlayerContainer|htmlVideoPlayer|videoOsdBottom)\s*\{/.test(playback
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
 const expectedThemeImports = [
-  'tokens.css?v=1.16.0',
-  'core.css?v=1.16.0',
-  'header.css?v=1.16.0',
-  'home.css?v=1.16.0',
-  'details.css?v=1.16.0',
-  'player.css?v=1.16.0',
-  'responsive.css?v=1.16.0',
-  'lumo-v1.10.css?v=1.16.0',
-  'lumo-v1.11.css?v=1.16.0',
-  'lumo-v1.12.css?v=1.16.0',
-  'lumo-v1.13.css?v=1.16.0',
-  'lumo-v1.15.css?v=1.16.0',
-  'lumo-v1.16.css?v=1.16.0'
+  'tokens.css?v=1.16.1',
+  'core.css?v=1.16.1',
+  'header.css?v=1.16.1',
+  'home.css?v=1.16.1',
+  'details.css?v=1.16.1',
+  'player.css?v=1.16.1',
+  'responsive.css?v=1.16.1',
+  'lumo-v1.10.css?v=1.16.1',
+  'lumo-v1.11.css?v=1.16.1',
+  'lumo-v1.12.css?v=1.16.1',
+  'lumo-v1.13.css?v=1.16.1',
+  'lumo-v1.15.css?v=1.16.1',
+  'lumo-v1.16.css?v=1.16.1'
 ];
 for (const needle of expectedThemeImports) {
   if (!themeCss.includes(needle)) throw new Error(`Import theme.css manquant: ${needle}`);
@@ -129,4 +129,16 @@ for (const needle of ['readRowCache', 'writeRowCache', 'showAnimeRow', 'ensureLi
   if (!runtimeSource.includes(needle)) throw new Error(`Runtime 1.16 incomplet: ${needle}`);
 }
 
-console.log(`Configuration valide: nébuleuse, loaders, cache de session, Anime, sept logos et ${groups.length} groupes.`);
+const bootSource = fs.readFileSync(new URL('./noctafin-boot.js', import.meta.url), 'utf8');
+const bootCss = fs.readFileSync(new URL('../styles/boot.css', import.meta.url), 'utf8');
+for (const needle of ['lumo-transitioning', 'dataset.mode = "startup"', '12000']) {
+  if (!bootSource.includes(needle)) throw new Error(`Chargement précoce incomplet: ${needle}`);
+}
+for (const needle of ['background: #000', '.splashLogo', '.is-done']) {
+  if (!bootCss.includes(needle)) throw new Error(`CSS de démarrage incomplet: ${needle}`);
+}
+for (const needle of ['minimum = loader.dataset.mode === "startup" ? 5000 : 3000', 'elapsed < 9000', 'lumo-logo-title-swap']) {
+  if (!runtimeSource.includes(needle)) throw new Error(`Transition visuelle incomplète: ${needle}`);
+}
+
+console.log(`Configuration valide: démarrage précoce, transitions, cache de session, Anime, sept logos et ${groups.length} groupes.`);

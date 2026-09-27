@@ -39,6 +39,8 @@ jobs:
           grep -q 'showAnimeRow' scripts/noctafin-home.js
           grep -q 'ROW_CACHE_PREFIX' scripts/noctafin-home.js
           grep -q 'ensureLiquidLoader' scripts/noctafin-home.js
+          grep -q 'lumo-transitioning' scripts/noctafin-boot.js
+          test -s styles/boot.css
           grep -q 'ACTION=' install/install.sh
           test -s assets/logos/apple-tv-plus.svg
           test -s assets/logos/netflix.svg

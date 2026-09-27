@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.16.1
+
+- Voile noir Lumo créé dès le chargement du document, avant l'application Jellyfin, pour couvrir son logo de démarrage. Durée minimale de 5 secondes au lancement et de 3 secondes pendant les changements de page, avec fondu de sortie et garde-fou en cas d'erreur.
+- Transition progressive entre les titres et leurs images pour le Hero, les fiches et les jaquettes Studio ; les visuels locaux décodés prennent la place du texte sans saut de mise en page.
+- Chargement borné par l'état de la page et des images visibles, avec gestion des navigations concurrentes et disparition de secours si une API échoue.
+- Captures réelles de l'interface Jellyfin et accès directs aux archives dans le README.
+
 ## 1.16.0
 
 - Ajout d'une nébuleuse interactive en Canvas 2D, plafonnée à 24 images/s et suspendue hors écran, pendant la lecture, avec mouvement réduit ou sur les fonds saisonniers.
