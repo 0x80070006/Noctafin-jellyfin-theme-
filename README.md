@@ -10,6 +10,8 @@ Thème cinématique + extension d'interface pour Jellyfin 12. L'installation com
 
 Ces captures proviennent de l'interface Jellyfin avec Lumo installé, depuis une bibliothèque active. Les affiches et titres dépendent de la bibliothèque connectée.
 
+![Écran de chargement noir au lancement](docs/screenshots/chargement.jpg)
+
 ![Accueil avec Hero cinématique et plateformes](docs/screenshots/accueil.jpg)
 
 ![Ligne Anime et affiches détectées](docs/screenshots/anime.jpg)
