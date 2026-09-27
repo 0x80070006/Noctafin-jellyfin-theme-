@@ -1,9 +1,9 @@
 {
   "name": "lumo-jellyfin-theme",
-  "version": "1.16.1",
+  "version": "1.16.2",
   "private": true,
   "description": "Lumo: cinematic Jellyfin 12 theme with interactive nebula, cached lazy rows, anime detection and native playback.",
   "scripts": {
-    "check": "node --check scripts/noctafin-config.js && node --check scripts/noctafin-boot.js && node --check scripts/noctafin-home.js && node scripts/validate-config.mjs && node scripts/validate-playback.mjs && node scripts/validate-layout.mjs && node scripts/validate-css.mjs && node scripts/test-behavior.mjs"
+    "check": "node --check scripts/noctafin-config.js && node --check scripts/noctafin-boot.js && node --check scripts/noctafin-home.js && node scripts/validate-config.mjs && node scripts/validate-playback.mjs && node scripts/validate-layout.mjs && node scripts/validate-css.mjs && node scripts/test-behavior.mjs && node scripts/test-hero.mjs"
   }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.16.2
+
+- Synchronisation atomique du fond et des informations du Hero après préchargement, avec garde contre les réponses tardives et les clics rapides.
+- Préchargement borné du prochain fond, repli visuel en cas d'erreur et fondu réduit à 320 ms.
+
 ## 1.16.1
 
 - Voile noir Lumo créé dès le chargement du document, avant l'application Jellyfin, pour couvrir son logo de démarrage. Durée minimale de 5 secondes au lancement et de 3 secondes pendant les changements de page, avec fondu de sortie et garde-fou en cas d'erreur.

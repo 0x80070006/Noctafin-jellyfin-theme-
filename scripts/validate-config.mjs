@@ -93,19 +93,19 @@ if (/(?:videoPlayerContainer|htmlVideoPlayer|videoOsdBottom)\s*\{/.test(playback
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
 const expectedThemeImports = [
-  'tokens.css?v=1.16.1',
-  'core.css?v=1.16.1',
-  'header.css?v=1.16.1',
-  'home.css?v=1.16.1',
-  'details.css?v=1.16.1',
-  'player.css?v=1.16.1',
-  'responsive.css?v=1.16.1',
-  'lumo-v1.10.css?v=1.16.1',
-  'lumo-v1.11.css?v=1.16.1',
-  'lumo-v1.12.css?v=1.16.1',
-  'lumo-v1.13.css?v=1.16.1',
-  'lumo-v1.15.css?v=1.16.1',
-  'lumo-v1.16.css?v=1.16.1'
+  'tokens.css?v=1.16.2',
+  'core.css?v=1.16.2',
+  'header.css?v=1.16.2',
+  'home.css?v=1.16.2',
+  'details.css?v=1.16.2',
+  'player.css?v=1.16.2',
+  'responsive.css?v=1.16.2',
+  'lumo-v1.10.css?v=1.16.2',
+  'lumo-v1.11.css?v=1.16.2',
+  'lumo-v1.12.css?v=1.16.2',
+  'lumo-v1.13.css?v=1.16.2',
+  'lumo-v1.15.css?v=1.16.2',
+  'lumo-v1.16.css?v=1.16.2'
 ];
 for (const needle of expectedThemeImports) {
   if (!themeCss.includes(needle)) throw new Error(`Import theme.css manquant: ${needle}`);

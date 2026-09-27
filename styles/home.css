@@ -97,7 +97,7 @@
   background-position: center 24%;
   opacity: 0;
   transform: scale(1.035);
-  transition: opacity 850ms ease, transform 8s linear;
+  transition: opacity 320ms ease, transform 8s linear;
 }
 
 .noctafin-hero__bg.is-active {

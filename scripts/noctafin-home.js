@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.16.1";
+  const VERSION = "1.16.2";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -108,7 +108,10 @@
   let heroTimer = null;
   let heroItems = [];
   let heroIndex = 0;
+  let heroTargetIndex = 0;
+  let heroRequest = 0;
   let backgroundIndex = 0;
+  const heroBackdropCache = new Map();
   let rowObserver = null;
   let mountScheduled = false;
   let taxonomyCache = null;
@@ -1599,31 +1602,65 @@
     return item.Type === "Episode" ? (item.SeriesId || item.Id) : item.Id;
   }
 
-  function updateHeroBackground(hero, item) {
+  function loadHeroBackdrop(url) {
+    if (heroBackdropCache.has(url)) return heroBackdropCache.get(url);
+    const pending = new Promise((resolve) => {
+      const preload = new Image();
+      preload.decoding = "async";
+      let done = false;
+      const finish = (loaded) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timeout);
+        preload.onload = null;
+        preload.onerror = null;
+        resolve(loaded);
+      };
+      const timeout = setTimeout(() => finish(false), 3000);
+      preload.onload = () => finish(preload.naturalWidth > 0);
+      preload.onerror = () => finish(false);
+      preload.src = url;
+      if (preload.complete && preload.naturalWidth > 0) finish(true);
+    });
+    heroBackdropCache.set(url, pending);
+    pending.then((loaded) => {
+      if (!loaded) heroBackdropCache.delete(url);
+    });
+    while (heroBackdropCache.size > CONFIG.hero.maxItems + 2) {
+      heroBackdropCache.delete(heroBackdropCache.keys().next().value);
+    }
+    return pending;
+  }
+
+  function updateHeroBackground(hero, item, loaded) {
     const layers = [$(".noctafin-hero__bg--a", hero), $(".noctafin-hero__bg--b", hero)];
     backgroundIndex = backgroundIndex ? 0 : 1;
     const incoming = layers[backgroundIndex];
     const outgoing = layers[backgroundIndex ? 0 : 1];
     const url = imageUrl(heroArtworkId(item), "Backdrop", 0, 2200);
-    incoming.dataset.pendingBackground = url;
-    const preload = new Image();
-    preload.decoding = "async";
-    preload.onload = () => {
-      if (!incoming.isConnected || incoming.dataset.pendingBackground !== url) return;
-      incoming.style.backgroundImage = `url("${url.replace(/"/g, "%22")}")`;
-      requestAnimationFrame(() => {
-        incoming.classList.add("is-active");
-        outgoing.classList.remove("is-active");
-      });
-    };
-    preload.src = url;
+    incoming.style.backgroundImage = loaded
+      ? `url("${url.replace(/"/g, "%22")}")`
+      : "radial-gradient(ellipse at 75% 35%, #27213f, #050710 65%)";
+    incoming.classList.add("is-active");
+    outgoing.classList.remove("is-active");
+    hero.dataset.activeBackdropId = loaded ? heroArtworkId(item) : "";
   }
 
-  function renderHero(hero, index) {
+  async function renderHero(hero, index) {
     if (!heroItems.length) return;
-    heroIndex = (index + heroItems.length) % heroItems.length;
-    const item = heroItems[heroIndex];
-    updateHeroBackground(hero, item);
+    if (heroTimer) clearTimeout(heroTimer);
+    heroTimer = null;
+    heroTargetIndex = (index + heroItems.length) % heroItems.length;
+    const targetIndex = heroTargetIndex;
+    const request = ++heroRequest;
+    const item = heroItems[targetIndex];
+    const backdropUrl = imageUrl(heroArtworkId(item), "Backdrop", 0, 2200);
+    const loaded = await loadHeroBackdrop(backdropUrl);
+    if (request !== heroRequest || !hero.isConnected || !isHomeVisible()) return;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    if (request !== heroRequest || !hero.isConnected || !isHomeVisible()) return;
+    heroIndex = targetIndex;
+    updateHeroBackground(hero, item, loaded);
 
     const logo = $(".noctafin-hero__logo", hero);
     const title = $(".noctafin-hero__title", hero);
@@ -1683,6 +1720,14 @@
       dot.classList.toggle("is-active", dotIndex === heroIndex);
       dot.setAttribute("aria-current", dotIndex === heroIndex ? "true" : "false");
     });
+    scheduleHero(hero);
+    if (heroItems.length > 1) {
+      const next = heroItems[(heroIndex + 1) % heroItems.length];
+      const nextUrl = imageUrl(heroArtworkId(next), "Backdrop", 0, 2200);
+      setTimeout(() => {
+        if (request === heroRequest && hero.isConnected && isHomeVisible()) loadHeroBackdrop(nextUrl);
+      }, 0);
+    }
   }
 
   function scheduleHero(hero) {
@@ -1690,7 +1735,7 @@
     if (heroItems.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     heroTimer = setTimeout(() => {
       if (isHomeVisible()) renderHero(hero, heroIndex + 1);
-      scheduleHero(hero);
+      else scheduleHero(hero);
     }, Math.max(3500, CONFIG.hero.rotateEveryMs));
   }
 
@@ -1708,8 +1753,7 @@
       }
       $$(".noctafin-hero__arrow", hero).forEach((button) => {
         button.addEventListener("click", () => {
-          renderHero(hero, heroIndex + Number(button.dataset.direction));
-          scheduleHero(hero);
+          renderHero(hero, heroTargetIndex + Number(button.dataset.direction));
         });
       });
       const dots = $(".noctafin-hero__dots", hero);
@@ -1721,12 +1765,10 @@
         dot.setAttribute("aria-label", `Sélection ${index + 1}`);
         dot.addEventListener("click", () => {
           renderHero(hero, index);
-          scheduleHero(hero);
         });
         dots.appendChild(dot);
       });
-      renderHero(hero, 0);
-      scheduleHero(hero);
+      await renderHero(hero, 0);
     } catch (error) {
       console.warn(LOG, "Hero indisponible", error);
       hero.remove();
@@ -3802,6 +3844,7 @@
   }
 
   function cleanupTransient() {
+    heroRequest += 1;
     if (heroTimer) clearTimeout(heroTimer);
     heroTimer = null;
     rowObserver?.disconnect();
@@ -3809,6 +3852,7 @@
     $$(".noctafin-track-shell").forEach((shell) => shell._noctafinResizeObserver?.disconnect?.());
     heroItems = [];
     heroIndex = 0;
+    heroTargetIndex = 0;
     backgroundIndex = 0;
   }
 
