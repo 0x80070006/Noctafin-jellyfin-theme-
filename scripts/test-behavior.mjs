@@ -11,6 +11,7 @@ assert.notEqual(instrumented, source, 'runtime wrapper changed');
 
 const requests = [];
 let videos = [];
+const sessionData = new Map();
 const sandbox = {
   window: {
     NOCTAFIN_CONFIG: {},
@@ -23,6 +24,11 @@ const sandbox = {
   },
   localStorage: {
     getItem() { return JSON.stringify({ Servers: [{ AccessToken: 'wrong', UserId: 'other', ManualAddress: 'https://other.example' }] }); }
+  },
+  sessionStorage: {
+    getItem(key) { return sessionData.get(key) || null; },
+    setItem(key, value) { sessionData.set(key, String(value)); },
+    removeItem(key) { sessionData.delete(key); }
   },
   fetch: async (url) => {
     requests.push(url);
@@ -54,6 +60,7 @@ const taxonomy = [
   { Id: 'ff966337d51b0e006da6e16df7cb7ca1', Name: 'Walt Disney Pictures' }
 ];
 const studios = sandbox.window.NOCTAFIN_CONFIG.studios;
+assert.ok(sandbox.window.NOCTAFIN_CONFIG.anime.aliases.includes('Anime'), 'Anime detection aliases must be configured');
 for (const [label, expected] of [
   ['PIXAR', 'a1384420050b89ea581e04c0dd9a83a8'],
   ['DREAMWORKS', 'e06730e67f5a2e6712cb6789f424a16d'],
@@ -72,6 +79,10 @@ assert.match(sandbox.window.location.hash, /studioId=a1384420050b89ea581e04c0dd9
 const resumed = await fetchRowItems({ resume: true, includeTypes: 'Movie,Episode' });
 assert.deepEqual(Array.from(resumed, (item) => item.Id), ['a1', 'movie', 'b1']);
 assert.match(requests[0], /Limit=60/);
+const requestCountAfterResume = requests.length;
+const resumedFromCache = await fetchRowItems({ resume: true, includeTypes: 'Movie,Episode' });
+assert.deepEqual(Array.from(resumedFromCache, (item) => item.Id), ['a1', 'movie', 'b1']);
+assert.equal(requests.length, requestCountAfterResume, 'resume row should be served from the short session cache');
 
 const firstPage = Array.from({ length: 500 }, (_, index) => ({ Id: `unrelated-${index}`, Name: `Studio ${index}` }));
 sandbox.fetch = async (url) => {
@@ -100,4 +111,4 @@ videos = [{
   currentSrc: 'preview.mp4'
 }];
 assert.equal(hasActivePlaybackSurface(), false, 'hover preview must not activate fullscreen player mode');
-console.log('Behavior verified: server token isolation, exact paged studio IDs, resume dedupe, preview isolation.');
+console.log('Behavior verified: server isolation, taxonomy IDs, session cache, resume dedupe and preview isolation.');

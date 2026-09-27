@@ -2,6 +2,14 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
+## Nouveautés 1.16.0
+
+- Fond nébuleuse interactif léger, dessiné localement sans dépendance externe. Il réagit doucement au pointeur, limite sa fréquence d'image et se met en pause lorsque l'onglet ou le lecteur est actif.
+- Écran de démarrage et loaders liquides aux couleurs de Lumo pour les fiches et les lignes chargées à la demande.
+- Cache de session borné pour les sélections et le Hero, avec expiration courte pour « Continuer de regarder » et cache quotidien pour les autres lignes.
+- Ligne « Anime » créée automatiquement lorsqu'un genre Anime, Animé, Japanimation ou équivalent est présent dans la bibliothèque.
+- Menu CLI au lancement des installateurs Linux et Windows : installer, désinstaller ou quitter. Les options `--install` et `--uninstall` restent disponibles pour l'automatisation.
+
 ## Corrections 1.15.2
 
 - Les cartes de films et séries ouvrent leur fiche cinématique ; seul un bouton « Lecture » démarre la vidéo. Les cartes d'épisodes dans une fiche de série gardent leur action de lecture explicite.
@@ -55,7 +63,7 @@ Un clic plus récent annule désormais proprement une tentative précédente. L'
 
 ### Chaîne CSS 1.14
 
-`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.13.css` et la correction `lumo-v1.15.css`, toutes cache-bustées en `?v=1.15.2`.
+`theme.css` charge, dans cet ordre, `tokens`, `core`, `header`, `home`, `details`, `player`, `responsive`, puis les couches de compatibilité `lumo-v1.10.css` à `lumo-v1.16.css`, toutes cache-bustées en `?v=1.16.0`.
 
 ### Validation
 
@@ -96,6 +104,8 @@ JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
 ```
 
+Dans un terminal, le script affiche un menu **Installer / Désinstaller**. Pour un déploiement automatisé, utilise explicitement `--install` ou `--uninstall` ; sans terminal interactif, l'action par défaut reste l'installation. Sous Windows, `install.ps1` propose le même menu et accepte `-Action Install` ou `-Action Uninstall`.
+
 Si le conteneur n'a pas accès à Wikimedia, `LUMO_DOWNLOAD_EXTRA_LOGOS=0`
 évite d'attendre les logos optionnels. Les sept jaquettes fournies restent disponibles.
 
@@ -104,9 +114,9 @@ Recharge ensuite le navigateur avec `Ctrl+Shift+R`.
 Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin vide. L'installateur ajoute automatiquement :
 
 ```html
-<link rel="stylesheet" href="ui/lumo/theme.css?v=1.15.2" data-lumo-theme="1.15.2">
-<script src="ui/noctafin-config.js?v=1.15.2" data-noctafin-config></script>
-<script src="ui/noctafin-home.js?v=1.15.2" data-noctafin-home></script>
+<link rel="stylesheet" href="ui/lumo/theme.css?v=1.16.0" data-lumo-theme="1.16.0">
+<script src="ui/noctafin-config.js?v=1.16.0" data-noctafin-config></script>
+<script src="ui/noctafin-home.js?v=1.16.0" data-noctafin-home></script>
 ```
 
 ## Mise à jour
@@ -114,7 +124,7 @@ Pour l'installation complète, laisse le champ **CSS personnalisé** de Jellyfin
 Extrais la nouvelle archive, puis relance l'installateur depuis son dossier :
 
 ```bash
-cd /chemin/vers/Lumo-Jellyfin-v1.15.2
+cd /chemin/vers/Lumo-Jellyfin-v1.16.0
 chmod +x install/install.sh
 JELLYFIN_WEB_DIR=/usr/share/jellyfin/web ./install/install.sh
 systemctl restart jellyfin
@@ -123,7 +133,7 @@ systemctl restart jellyfin
 ## Vérification
 
 ```bash
-grep -n "1.15.2" /usr/share/jellyfin/web/index.html
+grep -n "1.16.0" /usr/share/jellyfin/web/index.html
 ls -lh /usr/share/jellyfin/web/ui/noctafin-home.js
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.12.css
 ls -lh /usr/share/jellyfin/web/ui/lumo/styles/lumo-v1.13.css
@@ -152,7 +162,7 @@ dans le champ CSS personnalisé : cela chargerait la feuille deux fois.
 Après avoir copié `theme.css` et `styles/` sous `jellyfin-web/ui/lumo/`, le CSS personnalisé peut charger le style seul :
 
 ```css
-@import url("ui/lumo/theme.css?v=1.15.2");
+@import url("ui/lumo/theme.css?v=1.16.0");
 ```
 
 Le mode CSS-only ne peut pas fournir les fiches cinématiques, les Heroes dynamiques ni les rails Studio/Genre/Réseau.

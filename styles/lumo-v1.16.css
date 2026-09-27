@@ -1,0 +1,104 @@
+/* Lumo 1.16 — responsive nebula, liquid loaders and rendering containment. */
+#lumo-nebula-canvas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: .82 !important;
+  filter: saturate(1.08) contrast(1.03) !important;
+  pointer-events: none !important;
+}
+
+html[data-lumo-custom-background] #lumo-nebula-canvas,
+html[data-lumo-season="halloween"] #lumo-nebula-canvas,
+html[data-lumo-season="christmas"] #lumo-nebula-canvas,
+html.lumo-playback-active #lumo-nebula-canvas {
+  display: none !important;
+}
+
+#lumo-page-loader {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: grid !important;
+  place-content: center !important;
+  justify-items: center !important;
+  gap: 24px !important;
+  color: rgba(244,247,255,.82) !important;
+  background:
+    radial-gradient(circle at 36% 40%, rgba(112,72,255,.19), transparent 34%),
+    radial-gradient(circle at 68% 62%, rgba(0,205,255,.12), transparent 38%),
+    #020308 !important;
+  opacity: 1 !important;
+  transition: opacity 320ms ease, visibility 320ms ease !important;
+}
+
+#lumo-page-loader.is-done {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.lumo-page-loader__label {
+  font-size: .78rem !important;
+  font-weight: 750 !important;
+  letter-spacing: .14em !important;
+  text-transform: uppercase !important;
+}
+
+.lumo-liquid-loader,
+.lumo-row-loader {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 76px !important;
+}
+
+.lumo-liquid-loader i,
+.lumo-row-loader i {
+  display: block !important;
+  width: 9px !important;
+  height: 42px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #f052d2, #8a5cff 54%, #27d9ff) !important;
+  box-shadow: 0 0 18px rgba(124,92,255,.34) !important;
+  transform-origin: center !important;
+  animation: lumo-liquid-wave 1.35s cubic-bezier(.45,.05,.55,.95) calc(var(--i) * -90ms) infinite !important;
+}
+
+.lumo-liquid-loader i:nth-child(2n),
+.lumo-row-loader i:nth-child(2n) {
+  background: linear-gradient(180deg, #6c72ff, #35cfff) !important;
+}
+
+.lumo-liquid-loader--detail i { width: 8px !important; }
+
+.lumo-row-loader {
+  width: 100% !important;
+  min-height: clamp(170px, 24vw, 300px) !important;
+  opacity: .76 !important;
+}
+
+.noctafin-media-row.is-loading .noctafin-card-track::before { display: none !important; }
+
+@keyframes lumo-liquid-wave {
+  0%, 100% { transform: scaleY(.28) translateY(12px); opacity: .45; border-radius: 999px; }
+  48% { transform: scaleY(1) translateY(-4px); opacity: 1; border-radius: 8px 8px 999px 999px; }
+  68% { transform: scaleY(.62) translateY(5px); opacity: .76; }
+}
+
+.noctafin-media-row {
+  content-visibility: auto !important;
+  contain-intrinsic-size: auto 390px !important;
+}
+
+.noctafin-card__art img {
+  content-visibility: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #lumo-nebula-canvas { opacity: .62 !important; }
+  .lumo-liquid-loader i,
+  .lumo-row-loader i { animation-duration: 2.4s !important; }
+}

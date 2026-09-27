@@ -34,7 +34,9 @@ window.NOCTAFIN_CONFIG = {
   background: {
     image: "",
     imageBrightness: 0.72,
-    overlayOpacity: 0.50
+    overlayOpacity: 0.50,
+    interactiveNebula: true,
+    nebulaFps: 24
   },
   taxonomyHero: {
     enabled: true,
@@ -53,11 +55,16 @@ window.NOCTAFIN_CONFIG = {
     dedupeNativeRows: true,
     hideNativeHomeRows: true,
     showResumeRow: true,
+    showAnimeRow: true,
     showStudioRail: true,
     showNetworkRail: true,
     showGenreRows: true,
     showStudioRows: true,
     showNetworkRows: true
+  },
+  anime: {
+    label: "Anime",
+    aliases: ["Anime", "Animé", "Japanimation", "Japanese Animation", "Animation japonaise"]
   },
   genres: [
     { label: "Action", aliases: ["Action"] },

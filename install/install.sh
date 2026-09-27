@@ -1,9 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="1.15.2"
+VERSION="1.16.0"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${JELLYFIN_WEB_DIR:-}"
+
+ACTION="${1:-}"
+if [[ -z "$ACTION" && -t 0 ]]; then
+  printf '\033[1;35m\n  ╭──────────────────────────────╮\n'
+  printf '  │       Lumo pour Jellyfin     │\n'
+  printf '  ╰──────────────────────────────╯\033[0m\n\n'
+  printf '  \033[1;36m1)\033[0m Installer / mettre à jour le thème\n'
+  printf '  \033[1;36m2)\033[0m Désinstaller le thème\n'
+  printf '  \033[2m0) Quitter\033[0m\n\n'
+  read -r -p '  Votre choix [1]: ' choice
+  case "${choice:-1}" in
+    1) ACTION="install" ;;
+    2) ACTION="uninstall" ;;
+    0) echo "Installation annulée."; exit 0 ;;
+    *) echo "Choix invalide."; exit 2 ;;
+  esac
+fi
+ACTION="${ACTION:---install}"
+case "$ACTION" in
+  install|--install) ;;
+  uninstall|--uninstall) exec bash "$ROOT/install/uninstall.sh" ;;
+  -h|--help) echo "Usage: $0 [--install|--uninstall]"; exit 0 ;;
+  *) echo "Action inconnue: $ACTION"; echo "Usage: $0 [--install|--uninstall]"; exit 2 ;;
+esac
 
 if [[ -z "$WEB_DIR" ]]; then
   for candidate in \

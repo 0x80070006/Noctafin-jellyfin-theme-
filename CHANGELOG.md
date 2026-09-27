@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.16.0
+
+- Ajout d'une nébuleuse interactive en Canvas 2D, plafonnée à 24 images/s et suspendue hors écran, pendant la lecture, avec mouvement réduit ou sur les fonds saisonniers.
+- Ajout d'un écran de démarrage et de loaders liquides pour les fiches et les rails différés.
+- Cache de session par serveur, utilisateur, jour et requête pour le Hero et les rails ; expiration de 45 secondes pour la reprise et de 10 minutes pour les sélections.
+- Ajout automatique d'une ligne Anime lorsque la taxonomie Jellyfin contient un genre compatible.
+- Menu CLI Installer/Désinstaller sur Linux et Windows, avec mode non interactif conservé.
+- Préchargement des fonds de Hero, rendu différé des rails et limitation du travail hors écran.
+
 ## 1.15.2
 
 - Les cartes des rails ouvrent la fiche de film ou de série au lieu de lancer la lecture ; le bouton Lecture reste l'entrée explicite vers le lecteur.

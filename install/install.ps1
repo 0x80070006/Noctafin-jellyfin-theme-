@@ -1,7 +1,35 @@
+param(
+    [ValidateSet("Install", "Uninstall")]
+    [string]$Action
+)
+
 $ErrorActionPreference = "Stop"
-$Version = "1.15.2"
+$Version = "1.16.0"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WebDir = $env:JELLYFIN_WEB_DIR
+
+if (-not $Action -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+    Write-Host ""
+    Write-Host "  +------------------------------+" -ForegroundColor Magenta
+    Write-Host "  |       Lumo pour Jellyfin     |" -ForegroundColor Magenta
+    Write-Host "  +------------------------------+" -ForegroundColor Magenta
+    Write-Host ""
+    Write-Host "  1) Installer / mettre à jour le thème" -ForegroundColor Cyan
+    Write-Host "  2) Désinstaller le thème" -ForegroundColor Cyan
+    Write-Host "  0) Quitter" -ForegroundColor DarkGray
+    $Choice = Read-Host "Votre choix [1]"
+    switch ($Choice) {
+        { $_ -in @("", "1") } { $Action = "Install"; break }
+        "2" { $Action = "Uninstall"; break }
+        "0" { Write-Host "Installation annulée."; exit 0 }
+        default { throw "Choix invalide." }
+    }
+}
+if (-not $Action) { $Action = "Install" }
+if ($Action -eq "Uninstall") {
+    & (Join-Path $Root "install\uninstall.ps1")
+    exit $LASTEXITCODE
+}
 
 if (-not $WebDir) {
     $Candidates = @(

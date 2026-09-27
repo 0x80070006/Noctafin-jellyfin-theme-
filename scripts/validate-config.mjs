@@ -71,6 +71,10 @@ if (!cfg.taxonomyHero?.enabled) throw new Error('taxonomyHero doit rester activ�
 if (!cfg.details?.enabled) throw new Error('details doit rester activé');
 if (Number(cfg.details?.episodePageSize) < 20) throw new Error('details.episodePageSize doit rester >= 20');
 if (cfg.navigation?.serverIdFallback) throw new Error('serverIdFallback doit rester vide pour tous les serveurs');
+if (!cfg.background?.interactiveNebula) throw new Error('La nébuleuse interactive doit rester activée par défaut');
+if (!cfg.rows?.showAnimeRow || !cfg.anime?.aliases?.some((name) => /anime|animé/i.test(name))) {
+  throw new Error('La détection de la ligne Anime est incomplète');
+}
 
 
 if (runtimeSource.includes('`#/video?') || runtimeSource.includes('navigate(`/video?')) {
@@ -89,18 +93,19 @@ if (/(?:videoPlayerContainer|htmlVideoPlayer|videoOsdBottom)\s*\{/.test(playback
 
 const themeCss = fs.readFileSync(new URL('../theme.css', import.meta.url), 'utf8');
 const expectedThemeImports = [
-  'tokens.css?v=1.15.2',
-  'core.css?v=1.15.2',
-  'header.css?v=1.15.2',
-  'home.css?v=1.15.2',
-  'details.css?v=1.15.2',
-  'player.css?v=1.15.2',
-  'responsive.css?v=1.15.2',
-  'lumo-v1.10.css?v=1.15.2',
-  'lumo-v1.11.css?v=1.15.2',
-  'lumo-v1.12.css?v=1.15.2',
-  'lumo-v1.13.css?v=1.15.2',
-  'lumo-v1.15.css?v=1.15.2'
+  'tokens.css?v=1.16.0',
+  'core.css?v=1.16.0',
+  'header.css?v=1.16.0',
+  'home.css?v=1.16.0',
+  'details.css?v=1.16.0',
+  'player.css?v=1.16.0',
+  'responsive.css?v=1.16.0',
+  'lumo-v1.10.css?v=1.16.0',
+  'lumo-v1.11.css?v=1.16.0',
+  'lumo-v1.12.css?v=1.16.0',
+  'lumo-v1.13.css?v=1.16.0',
+  'lumo-v1.15.css?v=1.16.0',
+  'lumo-v1.16.css?v=1.16.0'
 ];
 for (const needle of expectedThemeImports) {
   if (!themeCss.includes(needle)) throw new Error(`Import theme.css manquant: ${needle}`);
@@ -116,4 +121,12 @@ for (const needle of ['#lumo-detail-page', '.lumo-movie-detail-hero', '.lumo-ser
   if (!detailCssSource.includes(needle)) throw new Error(`CSS détail incomplet: ${needle}`);
 }
 
-console.log(`Configuration valide: sept logos locaux, ${groups.length} groupes, ${cfg.genres?.length || 0} genres, 12 médias/rail, heroes et fiches.`);
+const effectsCss = fs.readFileSync(new URL('../styles/lumo-v1.16.css', import.meta.url), 'utf8');
+for (const needle of ['#lumo-nebula-canvas', '#lumo-page-loader', '.lumo-liquid-loader', 'content-visibility: auto']) {
+  if (!effectsCss.includes(needle)) throw new Error(`Optimisation visuelle manquante: ${needle}`);
+}
+for (const needle of ['readRowCache', 'writeRowCache', 'showAnimeRow', 'ensureLiquidLoader', 'startAmbientReflections']) {
+  if (!runtimeSource.includes(needle)) throw new Error(`Runtime 1.16 incomplet: ${needle}`);
+}
+
+console.log(`Configuration valide: nébuleuse, loaders, cache de session, Anime, sept logos et ${groups.length} groupes.`);

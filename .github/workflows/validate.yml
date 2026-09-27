@@ -24,6 +24,7 @@ jobs:
           grep -Fq "lumo-v1.12.css?v=$version" theme.css
           grep -Fq "lumo-v1.13.css?v=$version" theme.css
           grep -Fq "lumo-v1.15.css?v=$version" theme.css
+          grep -Fq "lumo-v1.16.css?v=$version" theme.css
           grep -q 'function installPlaybackDelegation' scripts/noctafin-home.js
           grep -q 'function clickExactNativePlayback' scripts/noctafin-home.js
           grep -Fq "VERSION = \"$version\"" scripts/noctafin-home.js
@@ -35,6 +36,10 @@ jobs:
           grep -q 'function syncDetailPage' scripts/noctafin-home.js
           grep -q 'function buildSeriesDetailPage' scripts/noctafin-home.js
           grep -q 'function fetchSeriesSeasons' scripts/noctafin-home.js
+          grep -q 'showAnimeRow' scripts/noctafin-home.js
+          grep -q 'ROW_CACHE_PREFIX' scripts/noctafin-home.js
+          grep -q 'ensureLiquidLoader' scripts/noctafin-home.js
+          grep -q 'ACTION=' install/install.sh
           test -s assets/logos/apple-tv-plus.svg
           test -s assets/logos/netflix.svg
           ! test -e assets/background/lumo-japan-night-1080p.mp4

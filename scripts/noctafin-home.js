@@ -2,7 +2,7 @@
   "use strict";
 
   const LOG = "[Lumo]";
-  const VERSION = "1.15.2";
+  const VERSION = "1.16.0";
   const DEFAULTS = {
     locale: "fr-FR",
     navigation: {
@@ -30,7 +30,9 @@
     background: {
       image: "",
       imageBrightness: 0.72,
-      overlayOpacity: 0.50
+      overlayOpacity: 0.50,
+      interactiveNebula: true,
+      nebulaFps: 24
     },
     taxonomyHero: { enabled: true, maxItems: 18 },
     details: {
@@ -45,12 +47,14 @@
       dedupeNativeRows: true,
       hideNativeHomeRows: true,
       showResumeRow: true,
+      showAnimeRow: true,
       showStudioRail: true,
       showNetworkRail: true,
       showGenreRows: true,
       showStudioRows: true,
       showNetworkRows: true
     },
+    anime: { label: "Anime", aliases: ["Anime", "Animé", "Japanimation", "Japanese Animation", "Animation japonaise"] },
     genres: [],
     studios: [],
     networks: []
@@ -69,6 +73,7 @@
     taxonomyHero: { ...DEFAULTS.taxonomyHero, ...(source.taxonomyHero || {}) },
     details: { ...DEFAULTS.details, ...(source.details || {}) },
     rows: { ...DEFAULTS.rows, ...(source.rows || {}) },
+    anime: { ...DEFAULTS.anime, ...(source.anime || {}) },
     genres: Array.isArray(source.genres) ? source.genres : [],
     studios: Array.isArray(source.studios) ? source.studios : [],
     networks: Array.isArray(source.networks) ? source.networks : []
@@ -133,7 +138,12 @@
   let playbackDelegationInstalled = false;
   const seriesResumeCache = new Map();
   const previewCache = new Map();
+  const rowCache = new Map();
+  const ROW_CACHE_PREFIX = "lumo.row-cache.v1:";
   let activePreview = null;
+  let ambientCanvasState = null;
+  let loaderShownAt = 0;
+  let loaderGeneration = 0;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -215,6 +225,7 @@
   function navigate(route) {
     const target = String(route || "").trim();
     if (!target) return;
+    ensureLiquidLoader("Chargement de la page");
     try {
       if (window.Dashboard && typeof window.Dashboard.navigate === "function") {
         window.Dashboard.navigate(target);
@@ -1107,10 +1118,14 @@
       const art = document.createElement("div");
       art.id = "lumo-background-art";
 
+      const canvas = document.createElement("canvas");
+      canvas.id = "lumo-nebula-canvas";
+      canvas.setAttribute("aria-hidden", "true");
+
       const shade = document.createElement("div");
       shade.id = "lumo-background-shade";
 
-      layer.append(art, shade);
+      layer.append(art, canvas, shade);
       document.body.prepend(layer);
     } else {
       /* v1.10 removes the video background completely. Clean up a stale
@@ -1118,6 +1133,39 @@
       layer.querySelector("#lumo-background-video")?.remove();
     }
     return layer;
+  }
+
+  function ensureLiquidLoader(label = "Chargement de Lumo") {
+    if (!document.body) return null;
+    let loader = document.getElementById("lumo-page-loader");
+    if (!loader) {
+      loader = document.createElement("div");
+      loader.id = "lumo-page-loader";
+      loader.setAttribute("role", "status");
+      loader.setAttribute("aria-live", "polite");
+      const bars = Array.from({ length: 7 }, (_, index) => `<i style="--i:${index}"></i>`).join("");
+      loader.innerHTML = `<div class="lumo-liquid-loader" aria-hidden="true">${bars}</div><span class="lumo-page-loader__label"></span>`;
+      document.body.appendChild(loader);
+    }
+    $(".lumo-page-loader__label", loader).textContent = label;
+    loader.classList.remove("is-done");
+    loader.dataset.generation = String(++loaderGeneration);
+    loaderShownAt = performance.now();
+    return loader;
+  }
+
+  function finishLiquidLoader() {
+    const loader = document.getElementById("lumo-page-loader");
+    if (!loader) return;
+    const generation = loader.dataset.generation;
+    const wait = Math.max(0, 320 - (performance.now() - loaderShownAt));
+    setTimeout(() => {
+      if (!loader.isConnected || loader.dataset.generation !== generation) return;
+      loader.classList.add("is-done");
+      setTimeout(() => {
+        if (loader.dataset.generation === generation) loader.remove();
+      }, 360);
+    }, wait);
   }
 
   function syncBackgroundMedia() {
@@ -1141,21 +1189,76 @@
       "--lumo-background-overlay",
       String(Math.max(0, Math.min(0.95, Number(CONFIG.background.overlayOpacity) || 0.50)))
     );
+    if (ambientCanvasState) ambientCanvasState.sync();
   }
 
   function startAmbientReflections() {
+    if (ambientCanvasState || !CONFIG.background.interactiveNebula) return;
+    const layer = ensureBackgroundLayer();
+    const canvas = $("#lumo-nebula-canvas", layer);
+    const context = canvas?.getContext?.("2d", { alpha: true });
+    if (!canvas || !context) return;
     const root = document.documentElement;
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    const step = () => {
-      if (document.hidden || motion?.matches || root.classList.contains("lumo-playback-active")) return;
-      for (const index of [1, 2]) {
-        root.style.setProperty(`--lumo-glow-${index}-x`, `${Math.round((Math.random() - .5) * 50)}vw`);
-        root.style.setProperty(`--lumo-glow-${index}-y`, `${Math.round((Math.random() - .5) * 45)}vh`);
+    const state = { frame: 0, last: 0, width: 0, height: 0, mouseX: .5, mouseY: .5, targetX: .5, targetY: .5 };
+    const active = () => !document.hidden && !root.classList.contains("lumo-playback-active")
+      && !root.hasAttribute("data-lumo-custom-background")
+      && !["halloween", "christmas"].includes(root.dataset.lumoSeason || "default");
+    const resize = () => {
+      const scale = Math.min(1, 1100 / Math.max(1, innerWidth));
+      state.width = Math.max(320, Math.round(innerWidth * scale));
+      state.height = Math.max(220, Math.round(innerHeight * scale));
+      if (canvas.width !== state.width || canvas.height !== state.height) {
+        canvas.width = state.width;
+        canvas.height = state.height;
       }
     };
-    step();
-    setInterval(step, 24000);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) step(); });
+    const draw = (now = 0) => {
+      state.frame = requestAnimationFrame(draw);
+      canvas.hidden = !active();
+      if (canvas.hidden) return;
+      const interval = 1000 / Math.max(12, Math.min(30, Number(CONFIG.background.nebulaFps) || 24));
+      if (!motion?.matches && now - state.last < interval) return;
+      state.last = now;
+      resize();
+      state.mouseX += (state.targetX - state.mouseX) * .025;
+      state.mouseY += (state.targetY - state.mouseY) * .025;
+      const w = state.width, h = state.height, time = now * .000045;
+      context.clearRect(0, 0, w, h);
+      context.fillStyle = "#020308";
+      context.fillRect(0, 0, w, h);
+      context.globalCompositeOperation = "screen";
+      const clouds = [
+        [0.18 + Math.sin(time * 1.3) * .12 + (state.mouseX - .5) * .08, 0.28 + Math.cos(time) * .13 + (state.mouseY - .5) * .06, .58, "92,62,255", .34],
+        [0.78 + Math.cos(time * .9) * .13 - (state.mouseX - .5) * .06, 0.66 + Math.sin(time * 1.1) * .15, .52, "0,194,255", .22],
+        [0.55 + Math.sin(time * .7 + 2) * .2, 0.16 + Math.cos(time * 1.2) * .09, .42, "235,49,151", .17]
+      ];
+      for (const [x, y, radius, rgb, alpha] of clouds) {
+        const r = Math.max(w, h) * radius;
+        const gradient = context.createRadialGradient(x * w, y * h, 0, x * w, y * h, r);
+        gradient.addColorStop(0, `rgba(${rgb},${alpha})`);
+        gradient.addColorStop(.35, `rgba(${rgb},${alpha * .38})`);
+        gradient.addColorStop(1, `rgba(${rgb},0)`);
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, w, h);
+      }
+      context.globalCompositeOperation = "source-over";
+      const vignette = context.createRadialGradient(w * .5, h * .48, 0, w * .5, h * .48, Math.max(w, h) * .72);
+      vignette.addColorStop(0, "rgba(0,0,0,.16)");
+      vignette.addColorStop(1, "rgba(0,0,0,.72)");
+      context.fillStyle = vignette;
+      context.fillRect(0, 0, w, h);
+      if (motion?.matches) cancelAnimationFrame(state.frame);
+    };
+    const pointer = (event) => {
+      state.targetX = Math.max(0, Math.min(1, event.clientX / Math.max(1, innerWidth)));
+      state.targetY = Math.max(0, Math.min(1, event.clientY / Math.max(1, innerHeight)));
+    };
+    window.addEventListener("pointermove", pointer, { passive: true });
+    window.addEventListener("resize", resize, { passive: true });
+    ambientCanvasState = { sync: () => { canvas.hidden = !active(); }, state };
+    resize();
+    state.frame = requestAnimationFrame(draw);
   }
 
   function replaceBrandContents(target, name, logoHref, season) {
@@ -1385,6 +1488,9 @@
   }
 
   async function fetchHeroItems() {
+    const cacheQuery = { hero: true, includeTypes: "Movie,Series", limit: CONFIG.hero.maxItems };
+    const cached = readRowCache(cacheQuery);
+    if (cached?.length) return cached.slice(0, CONFIG.hero.maxItems);
     const params = new URLSearchParams({
       Limit: String(Math.max(12, CONFIG.hero.maxItems * 2)),
       Recursive: "true",
@@ -1450,7 +1556,9 @@
       unique.push(item);
     }
 
-    return unique.slice(0, CONFIG.hero.maxItems);
+    const selected = unique.slice(0, CONFIG.hero.maxItems);
+    writeRowCache(cacheQuery, selected);
+    return selected;
   }
 
   function heroArtworkId(item) {
@@ -1463,11 +1571,18 @@
     const incoming = layers[backgroundIndex];
     const outgoing = layers[backgroundIndex ? 0 : 1];
     const url = imageUrl(heroArtworkId(item), "Backdrop", 0, 2200);
-    incoming.style.backgroundImage = `url("${url}")`;
-    requestAnimationFrame(() => {
-      incoming.classList.add("is-active");
-      outgoing.classList.remove("is-active");
-    });
+    incoming.dataset.pendingBackground = url;
+    const preload = new Image();
+    preload.decoding = "async";
+    preload.onload = () => {
+      if (!incoming.isConnected || incoming.dataset.pendingBackground !== url) return;
+      incoming.style.backgroundImage = `url("${url.replace(/"/g, "%22")}")`;
+      requestAnimationFrame(() => {
+        incoming.classList.add("is-active");
+        outgoing.classList.remove("is-active");
+      });
+    };
+    preload.src = url;
   }
 
   function renderHero(hero, index) {
@@ -2555,6 +2670,7 @@
     img.alt = "";
     img.decoding = "async";
     img.loading = "lazy";
+    img.fetchPriority = "low";
     img.draggable = false;
     applyImageCandidates(img, episodeThumbCandidates(episode, series));
     const progress = document.createElement("span");
@@ -2734,6 +2850,7 @@
         if (actor.Id) {
           const img = document.createElement("img");
           img.loading = "lazy";
+          img.fetchPriority = "low";
           img.alt = "";
           img.src = imageUrl(actor.Id, "Primary", null, 320);
           img.onerror = () => img.remove();
@@ -2825,6 +2942,7 @@
     const img = document.createElement("img");
     img.loading = "lazy";
     img.decoding = "async";
+    img.fetchPriority = "low";
     img.alt = "";
     img.draggable = false;
     applyImageCandidates(img, episodeThumbCandidates(episode, series));
@@ -2891,6 +3009,7 @@
     const img = document.createElement("img");
     img.loading = "lazy";
     img.decoding = "async";
+    img.fetchPriority = "low";
     img.alt = season.Name || "Saison";
     img.draggable = false;
     applyImageCandidates(img, uniqueUrls([
@@ -3061,7 +3180,7 @@
     loading.className = "lumo-detail-page lumo-detail-page--loading";
     loading.dataset.itemId = itemId;
     loading.dataset.detailState = "loading";
-    loading.innerHTML = '<div class="lumo-detail-loading"><span></span><span></span><span></span></div>';
+    loading.innerHTML = `<div class="lumo-liquid-loader lumo-liquid-loader--detail" aria-label="Chargement de la fiche">${Array.from({ length: 7 }, (_, index) => `<i style="--i:${index}"></i>`).join("")}</div>`;
     (detailOverlayHost() || document.body).appendChild(loading);
 
     try {
@@ -3164,6 +3283,11 @@
 
     const heading = makeHeading(kicker, title, onTitleClick);
     const { shell, track, nav } = createTrackShell(`noctafin-card-track noctafin-card-track--${layout}`, title);
+    const loader = document.createElement("div");
+    loader.className = "lumo-row-loader";
+    loader.setAttribute("aria-label", `Chargement de ${title}`);
+    loader.innerHTML = Array.from({ length: 7 }, (_, index) => `<i style="--i:${index}"></i>`).join("");
+    track.appendChild(loader);
     heading.appendChild(nav);
     section.append(heading, shell);
     return section;
@@ -3183,6 +3307,52 @@
       hash = Math.imul(hash, 16777619);
     }
     return hash >>> 0;
+  }
+
+  function rowCacheDescriptor(query) {
+    return JSON.stringify({
+      version: VERSION,
+      server: auth?.serverId || auth?.base || "",
+      user: auth?.userId || "",
+      day: query?.resume ? "resume" : localDayKey(),
+      query
+    });
+  }
+
+  function readRowCache(query) {
+    const descriptor = rowCacheDescriptor(query);
+    const storageKey = `${ROW_CACHE_PREFIX}${hash32(descriptor).toString(36)}`;
+    const memory = rowCache.get(storageKey);
+    if (memory?.descriptor === descriptor && memory.expiresAt > Date.now()) return memory.items;
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+      if (stored?.descriptor === descriptor && stored.expiresAt > Date.now() && Array.isArray(stored.items)) {
+        rowCache.set(storageKey, stored);
+        return stored.items;
+      }
+      if (stored) sessionStorage.removeItem(storageKey);
+    } catch { /* Private browsing/quota: memory cache still works. */ }
+    return null;
+  }
+
+  function writeRowCache(query, items) {
+    const descriptor = rowCacheDescriptor(query);
+    const storageKey = `${ROW_CACHE_PREFIX}${hash32(descriptor).toString(36)}`;
+    const entry = {
+      descriptor,
+      expiresAt: Date.now() + (query?.resume ? 45_000 : 10 * 60_000),
+      items: Array.isArray(items) ? items : []
+    };
+    rowCache.set(storageKey, entry);
+    if (rowCache.size > 32) rowCache.delete(rowCache.keys().next().value);
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(entry));
+      const indexKey = `${ROW_CACHE_PREFIX}index`;
+      const index = JSON.parse(sessionStorage.getItem(indexKey) || "[]").filter((key) => key !== storageKey);
+      index.push(storageKey);
+      while (index.length > 24) sessionStorage.removeItem(index.shift());
+      sessionStorage.setItem(indexKey, JSON.stringify(index));
+    } catch { /* cache is optional */ }
   }
 
   function seededRandom(seed) {
@@ -3229,6 +3399,8 @@
        is deterministic for the current local day, then changes next day. */
     const configuredLimit = Number(query?.limit ?? CONFIG.rows.rowLimit);
     const rowLimit = Math.max(1, Math.min(12, Number.isFinite(configuredLimit) ? configuredLimit : 12));
+    const cached = readRowCache(query);
+    if (cached) return cached.slice(0, rowLimit);
 
     if (query.resume) {
       const params = new URLSearchParams({
@@ -3242,12 +3414,14 @@
       });
       const result = (await fetchJson(`/Users/${auth.userId}/Items/Resume?${params}`)).Items || [];
       const seenSeries = new Set();
-      return uniqueItems(result).filter((item) => {
+      const items = uniqueItems(result).filter((item) => {
         if (item.Type !== "Episode" || !item.SeriesId) return true;
         if (seenSeries.has(item.SeriesId)) return false;
         seenSeries.add(item.SeriesId);
         return true;
       }).slice(0, rowLimit);
+      writeRowCache(query, items);
+      return items;
     }
 
     const configuredPool = Number(CONFIG.rows.dailyPoolLimit) || 96;
@@ -3275,7 +3449,9 @@
       params.set("SortOrder", "Descending");
       items = (await fetchJson(`/Users/${auth.userId}/Items?${params}`)).Items || [];
     }
-    return dailySelection(items, query, rowLimit);
+    const selected = dailySelection(items, query, rowLimit);
+    writeRowCache(query, selected);
+    return selected;
   }
 
 
@@ -3356,6 +3532,8 @@
     `;
     const img = $("img", card);
     img.alt = title || "";
+    img.decoding = "async";
+    img.fetchPriority = "low";
     if (layout === "landscape") {
       applyImageCandidates(img, landscapeImageCandidates(item));
     } else {
@@ -3495,6 +3673,7 @@
       if (!root.isConnected || authKey !== `${auth?.base || ""}:${auth?.userId || ""}`) return;
 
       const genres = CONFIG.genres.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.genres) }));
+      const anime = { ...CONFIG.anime, kind: "genre", _ids: configuredGroupIds(CONFIG.anime, taxonomy.genres) };
       const studios = CONFIG.studios.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios, true) }));
       const networks = CONFIG.networks.map((group) => ({ ...group, _ids: configuredGroupIds(group, taxonomy.studios, true) }));
 
@@ -3507,6 +3686,15 @@
           id: "noctafin-resume",
           query: { resume: true, includeTypes: "Movie,Episode", minItems: 1 },
           layout: "landscape"
+        }));
+      }
+      if (CONFIG.rows.showAnimeRow && anime._ids.length) {
+        fragment.appendChild(createLazyMediaRow({
+          kicker: "Sélection japonaise",
+          title: anime.label || "Anime",
+          id: "noctafin-anime",
+          query: { genreIds: anime._ids, includeTypes: "Movie,Series", minItems: 1 },
+          onTitleClick: () => navigateToNativeFilter(anime, "genre")
         }));
       }
       if (CONFIG.rows.showStudioRail) fragment.appendChild(createBrandShelf("Studios", studios, "studio"));
@@ -3640,10 +3828,11 @@
     $$("#noctafin-hero").forEach((node) => node.remove());
     $$("#noctafin-custom-sections").forEach((node) => node.remove());
 
+    let heroReady = Promise.resolve();
     if (CONFIG.hero.enabled) {
       const hero = createHero();
       found.homeTab.insertBefore(hero, found.sections);
-      initHero(hero);
+      heroReady = initHero(hero);
     }
 
     const root = document.createElement("div");
@@ -3651,7 +3840,7 @@
     root.className = "noctafin-custom-sections";
     insertCustomRoot(found.sections, root);
     syncNativeRows(found.sections);
-    initCustomRows(root);
+    await Promise.allSettled([heroReady, initCustomRows(root)]);
   }
 
   function scheduleMount() {
@@ -3659,11 +3848,12 @@
     mountScheduled = true;
     requestAnimationFrame(() => {
       mountScheduled = false;
-      mount().catch((error) => console.warn(LOG, error));
+      mount().catch((error) => console.warn(LOG, error)).finally(finishLiquidLoader);
     });
   }
 
   function boot() {
+    ensureLiquidLoader("Chargement de Lumo");
     $("#noctafin-browser-page")?.remove();
     document.body?.classList.remove("noctafin-browser-open");
     auth = getAuth();
@@ -3688,8 +3878,12 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) scheduleMount();
     });
-    window.addEventListener("hashchange", scheduleMount);
-    window.addEventListener("popstate", scheduleMount);
+    const routeChanged = () => {
+      if (!isPlaybackRoute()) ensureLiquidLoader("Chargement de la page");
+      scheduleMount();
+    };
+    window.addEventListener("hashchange", routeChanged);
+    window.addEventListener("popstate", routeChanged);
     document.addEventListener("play", () => { syncPlaybackMode(); scheduleMount(); }, true);
     document.addEventListener("playing", () => { syncPlaybackMode(); scheduleMount(); }, true);
     document.addEventListener("ended", () => setTimeout(() => { syncPlaybackMode(); scheduleMount(); }, 120), true);
