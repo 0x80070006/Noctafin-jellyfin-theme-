@@ -2,9 +2,15 @@
 
 Thème cinématique + extension d'interface pour Jellyfin 12. L'installation complète injecte le CSS local et le runtime JavaScript directement dans `jellyfin-web`.
 
-<!-- Les deux liens ciblent l'étiquette de version publiée, pas une branche mouvante. -->
-[![Télécharger ZIP](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-ZIP-8057e8?style=for-the-badge&logo=github)](https://github.com/0x80070006/Noctafin-jellyfin-theme-/archive/refs/tags/v1.16.2.zip)
-[![Télécharger TAR.GZ](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-TAR.GZ-268bb4?style=for-the-badge&logo=github)](https://github.com/0x80070006/Noctafin-jellyfin-theme-/archive/refs/tags/v1.16.2.tar.gz)
+**État :** version 1.16.2 du thème et de l'installateur disponible sous forme de tag Git. Les vérifications du dépôt portent sur le JavaScript, la configuration et la mise en page ; l'installation sur une instance Jellyfin neuve n'a pas été validée dans cet audit.
+
+[Télécharger le ZIP v1.16.2](https://github.com/0x80070006/Noctafin-jellyfin-theme-/archive/refs/tags/v1.16.2.zip) · [Télécharger le TAR.GZ v1.16.2](https://github.com/0x80070006/Noctafin-jellyfin-theme-/archive/refs/tags/v1.16.2.tar.gz) · [Historique des tags](https://github.com/0x80070006/Noctafin-jellyfin-theme-/tags)
+
+Le dépôt ne publie pas encore de release GitHub avec un paquet d'installation distinct. Les liens ci-dessus téléchargent les sources figées au tag.
+
+## Technologies et dépendances
+
+CSS, JavaScript sans dépendances npm à installer, scripts d'installation Bash et PowerShell. Jellyfin 12 et l'accès au répertoire `jellyfin-web` sont nécessaires pour l'installation complète. Les scripts modifient les fichiers de l'interface web de Jellyfin : sauvegardez votre installation et consultez [la configuration](docs/CONFIGURATION.md) et [le dépannage](docs/TROUBLESHOOTING.md).
 
 ## Captures réelles
 
